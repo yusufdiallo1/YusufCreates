@@ -190,12 +190,36 @@ export default defineSchema({
   invoices: defineTable({
     leadId: v.optional(v.id("leads")),
     projectId: v.optional(v.id("projects")),
+    clientName: v.string(),
+    clientEmail: v.string(),
+    description: v.string(),
+    /** Full project value. The two instalments are derived from this. */
     amount: v.number(),
     currency: v.string(),
     vatAmount: v.optional(v.number()),
-    stripeId: v.optional(v.string()),
-    status: v.string(),
+    /** "deposit" is the first 50%, "balance" the second on completion. */
+    stage: v.union(v.literal("deposit"), v.literal("balance")),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("sent"),
+      v.literal("paid"),
+      v.literal("overdue"),
+      v.literal("void"),
+    ),
+    /**
+     * Unguessable token in the invoice URL. Bank details are never on a public
+     * route — this is the only way to reach them, and the link is emailed
+     * rather than published.
+     */
+    token: v.string(),
+    reference: v.string(),
     dueDate: v.optional(v.number()),
     issuedAt: v.optional(v.number()),
-  }).index("by_status", ["status"]),
+    paidAt: v.optional(v.number()),
+    /** Set when the client confirms they have sent the transfer. */
+    markedSentAt: v.optional(v.number()),
+  })
+    .index("by_status", ["status"])
+    .index("by_token", ["token"])
+    .index("by_lead", ["leadId"]),
 });

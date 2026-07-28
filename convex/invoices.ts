@@ -2,8 +2,81 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireAdmin } from "./lib/auth";
 
+/**
+ * Invoices — bank transfer, split 50% deposit and 50% on completion.
+ *
+ * Bank details never appear on a public route. Each invoice carries an
+ * unguessable token and is reachable only at /invoice/<token>, which is
+ * noindex and emailed directly to the client. Published account details get
+ * scraped, and a public page makes impersonating an invoice trivial.
+ */
+
+const invoiceStatus = v.union(
+  v.literal("draft"),
+  v.literal("sent"),
+  v.literal("paid"),
+  v.literal("overdue"),
+  v.literal("void"),
+);
+
+/** 128 bits of entropy, URL-safe. Not guessable by enumeration. */
+function makeToken(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Human-readable reference the client quotes on the transfer. */
+function makeReference(stage: "deposit" | "balance"): string {
+  const n = Math.floor(Math.random() * 9000) + 1000;
+  return `YC-${stage === "deposit" ? "D" : "B"}${n}`;
+}
+
+/**
+ * Public read, by token only.
+ *
+ * There is deliberately no unauthenticated query that lists invoices or looks
+ * one up by client name or email — the token is the only key.
+ */
+export const getByToken = query({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const invoice = await ctx.db
+      .query("invoices")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .unique();
+
+    // A draft or voided invoice must not be payable.
+    if (!invoice) return null;
+    if (invoice.status === "draft" || invoice.status === "void") return null;
+
+    return invoice;
+  },
+});
+
+/**
+ * Client confirms they have sent the transfer.
+ *
+ * Records intent, not receipt — only the admin marks an invoice paid, after
+ * the money lands. Anyone holding the link can call this, which is acceptable:
+ * the worst case is a false "sent" flag, reconciled against the bank anyway.
+ */
+export const markSent = mutation({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const invoice = await ctx.db
+      .query("invoices")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .unique();
+
+    if (!invoice || invoice.status !== "sent") return null;
+    await ctx.db.patch(invoice._id, { markedSentAt: Date.now() });
+    return invoice._id;
+  },
+});
+
 export const listByStatus = query({
-  args: { status: v.optional(v.string()) },
+  args: { status: v.optional(invoiceStatus) },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     if (args.status === undefined) {
@@ -18,32 +91,61 @@ export const listByStatus = query({
   },
 });
 
-export const create = mutation({
+/**
+ * Creates both instalments at once, so a half-invoiced project cannot exist.
+ * The deposit is issued immediately; the balance stays draft until delivery.
+ */
+export const createPair = mutation({
   args: {
     leadId: v.optional(v.id("leads")),
     projectId: v.optional(v.id("projects")),
+    clientName: v.string(),
+    clientEmail: v.string(),
+    description: v.string(),
+    /** Full project value; each instalment is half. */
     amount: v.number(),
     currency: v.string(),
-    vatAmount: v.optional(v.number()),
     dueDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    return await ctx.db.insert("invoices", {
-      ...args,
-      status: "draft",
-      issuedAt: Date.now(),
-    });
+
+    const half = Math.round(args.amount / 2);
+    const stages: ("deposit" | "balance")[] = ["deposit", "balance"];
+    const ids: string[] = [];
+
+    for (const stage of stages) {
+      ids.push(
+        await ctx.db.insert("invoices", {
+          leadId: args.leadId,
+          projectId: args.projectId,
+          clientName: args.clientName,
+          clientEmail: args.clientEmail,
+          description: args.description,
+          amount: half,
+          currency: args.currency,
+          stage,
+          status: stage === "deposit" ? "sent" : "draft",
+          token: makeToken(),
+          reference: makeReference(stage),
+          dueDate: stage === "deposit" ? args.dueDate : undefined,
+          issuedAt: stage === "deposit" ? Date.now() : undefined,
+        }),
+      );
+    }
+
+    return { depositId: ids[0], balanceId: ids[1] };
   },
 });
 
 export const setStatus = mutation({
-  args: { id: v.id("invoices"), status: v.string(), stripeId: v.optional(v.string()) },
+  args: { id: v.id("invoices"), status: invoiceStatus },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     await ctx.db.patch(args.id, {
       status: args.status,
-      ...(args.stripeId ? { stripeId: args.stripeId } : {}),
+      ...(args.status === "paid" ? { paidAt: Date.now() } : {}),
+      ...(args.status === "sent" ? { issuedAt: Date.now() } : {}),
     });
   },
 });

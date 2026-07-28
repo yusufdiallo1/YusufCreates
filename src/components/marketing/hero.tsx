@@ -10,6 +10,7 @@ import {
 } from "motion/react";
 import { NameMark } from "@/components/ui/NameMark";
 import { InstagramIcon } from "@/components/ui/SocialIcons";
+import { HeroNewsletter } from "@/components/marketing/HeroNewsletter";
 import { INSTAGRAM } from "@/lib/constants";
 
 /**
@@ -103,6 +104,10 @@ export function Hero() {
           >
             See the work
           </Link>
+        </motion.div>
+
+        <motion.div {...step(0.46)}>
+          <HeroNewsletter />
         </motion.div>
 
         <motion.div
