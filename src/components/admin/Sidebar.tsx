@@ -45,7 +45,10 @@ const GROUPS: { heading: string; items: { href: string; label: string }[] }[] = 
   },
   {
     heading: "Money",
-    items: [{ href: "/admin/invoices", label: "Proposals and invoices" }],
+    items: [
+      { href: "/admin/invoices", label: "Proposals and invoices" },
+      { href: "/admin/promos", label: "Promotions" },
+    ],
   },
 ];
 

@@ -23,6 +23,7 @@ import type * as leads from "../leads.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as posts from "../posts.js";
 import type * as projects from "../projects.js";
+import type * as promos from "../promos.js";
 import type * as proposals from "../proposals.js";
 import type * as seed from "../seed.js";
 import type * as settings from "../settings.js";
@@ -51,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   posts: typeof posts;
   projects: typeof projects;
+  promos: typeof promos;
   proposals: typeof proposals;
   seed: typeof seed;
   settings: typeof settings;

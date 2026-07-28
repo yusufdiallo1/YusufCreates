@@ -352,6 +352,56 @@ export default defineSchema({
   }).index("by_kind_key", ["kind", "key"]),
 
   /**
+   * Promotions.
+   *
+   * Status is DERIVED on every read from the window, the pause flag and the
+   * redemption count — never stored. A stored status goes stale the moment a
+   * window closes, and a promo that expires "whenever a cron next runs" is a
+   * promo that honours a discount it should not.
+   */
+  promos: defineTable({
+    name: v.string(),
+    kind: v.union(v.literal("automatic"), v.literal("code")),
+    /** Uppercase. Null for automatic promos. */
+    code: v.optional(v.string()),
+    discountType: v.union(
+      v.literal("percentage"),
+      v.literal("fixed"),
+      v.literal("override"),
+    ),
+    discountValue: v.number(),
+    /** Empty means every tier. */
+    appliesTo: v.array(v.string()),
+    startsAt: v.number(),
+    /** Null for open-ended. */
+    endsAt: v.optional(v.number()),
+    maxRedemptions: v.optional(v.number()),
+    redemptionCount: v.number(),
+    paused: v.boolean(),
+    bannerText: v.optional(v.string()),
+    showCountdown: v.boolean(),
+  })
+    .index("by_code", ["code"])
+    .index("by_kind", ["kind"]),
+
+  /**
+   * Written when an invoice is ISSUED, not when a code is entered. Counting at
+   * entry lets someone exhaust a limited promo without ever becoming a client.
+   */
+  promoRedemptions: defineTable({
+    promoId: v.id("promos"),
+    leadId: v.optional(v.id("leads")),
+    invoiceId: v.optional(v.id("invoices")),
+    email: v.string(),
+    tier: v.optional(v.string()),
+    originalPrice: v.number(),
+    discountedPrice: v.number(),
+    redeemedAt: v.number(),
+  })
+    .index("by_promo", ["promoId"])
+    .index("by_email", ["email"]),
+
+  /**
    * Key/value settings the site reads at runtime.
    *
    * Never secrets — those stay in environment variables, where a forgotten

@@ -5,6 +5,7 @@ import { Nav } from "@/components/marketing/Nav";
 import { Footer } from "@/components/marketing/Footer";
 import { Tracker } from "@/components/analytics/Tracker";
 import { ChatLauncher } from "@/components/chat/ChatLauncher";
+import { PromoBanner } from "@/components/marketing/PromoBanner";
 
 export default function MarketingLayout({
   children,
@@ -20,6 +21,7 @@ export default function MarketingLayout({
         <Tracker />
         <ScrollProgress />
         <CustomCursor />
+        <PromoBanner />
         <Nav />
 
         {/* Padded for the fixed nav so content never starts underneath it. */}
