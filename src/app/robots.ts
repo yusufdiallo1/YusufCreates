@@ -23,7 +23,15 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin", "/api/", "/invoice/", "/newsletter/", "/sign-in-admin"],
+        disallow: [
+          "/admin",
+          "/api/",
+          "/invoice/",
+          "/proposal/",
+          "/portal",
+          "/newsletter/",
+          "/sign-in-admin",
+        ],
       },
     ],
     sitemap: `${SITE.url}/sitemap.xml`,

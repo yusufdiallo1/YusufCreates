@@ -20,6 +20,13 @@ export const metadata: Metadata = {
     icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
     apple: [{ url: "/apple-touch-icon.svg", sizes: "180x180" }],
   },
+  // Feed autodiscovery. Without this a reader has to be handed the URL by
+  // hand, which nobody does.
+  alternates: {
+    types: {
+      "application/rss+xml": [{ url: "/feed.xml", title: SITE.name }],
+    },
+  },
   openGraph: {
     type: "website",
     siteName: SITE.name,

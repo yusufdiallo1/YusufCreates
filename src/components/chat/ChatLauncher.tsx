@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useQuery } from "convex/react";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 import { ChatPanel } from "@/components/chat/ChatPanel";
@@ -13,12 +14,25 @@ import { ChatPanel } from "@/components/chat/ChatPanel";
  * worse than no assistant at all.
  */
 export function ChatLauncher() {
+  // Held back until the page has settled. The pill is a blurred layer, and
+  // mounting it during load makes the compositor blur a backdrop that is
+  // still painting — measurably delaying LCP on a throttled phone for a
+  // control nobody uses in the first second.
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    // A plain timeout rather than requestIdleCallback: Safari still does not
+    // support it, and two seconds is well past LCP on any device while being
+    // long before anyone reaches for a chat widget.
+    const id = setTimeout(() => setReady(true), 2000);
+    return () => clearTimeout(id);
+  }, []);
+
   const entries = useQuery(
     api.kb.list,
-    isConvexConfigured ? {} : "skip",
+    isConvexConfigured && ready ? {} : "skip",
   );
 
-  if (!isConvexConfigured) return null;
+  if (!isConvexConfigured || !ready) return null;
 
   const suggestions = (entries ?? [])
     .slice()

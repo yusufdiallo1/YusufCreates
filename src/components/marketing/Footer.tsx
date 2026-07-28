@@ -70,12 +70,27 @@ export function Footer() {
               >
                 hello@yusufcreates.com
               </CopyButton>
-              <div>
+              <div className="space-y-1.5">
                 <Link
                   href="/start"
-                  className="text-sm text-accent transition-colors duration-fast hover:text-primary"
+                  className="block text-sm text-accent transition-colors duration-fast hover:text-primary"
                 >
                   Start a project
+                </Link>
+                <Link
+                  href="/call"
+                  className="block text-sm text-secondary transition-colors duration-fast hover:text-primary"
+                >
+                  Book a call
+                </Link>
+                {/* The lead magnet. Footer rather than nav — six top-level
+                    items is already the limit before a nav starts to read as
+                    a list. */}
+                <Link
+                  href="/audit"
+                  className="block text-sm text-secondary transition-colors duration-fast hover:text-primary"
+                >
+                  Free site audit
                 </Link>
               </div>
             </div>

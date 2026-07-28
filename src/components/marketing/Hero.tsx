@@ -120,13 +120,23 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
   const tiltX = useSpring(pointerY, { stiffness: 150, damping: 20 });
   const tiltY = useSpring(pointerX, { stiffness: 150, damping: 20 });
 
+  /*
+   * Load sequence timing.
+   *
+   * The delays are scaled down from the original storyboard because the hero
+   * sub-line is the LCP element on mobile, and LCP cannot fire until it is
+   * opaque. At the original 0.55s delay plus a 0.7s fade it reported ~2.65s on
+   * a 4x-throttled phone — the animation was the metric, not the loading.
+   *
+   * Everything still lands in the same order; it simply arrives sooner.
+   */
   const step = (delay: number) =>
     reduceMotion || !play
       ? { initial: false as const, animate: { opacity: 1, y: 0 } }
       : {
           initial: { opacity: 0, y: 16 },
           animate: { opacity: 1, y: 0 },
-          transition: { duration: 0.7, delay, ease: EASE },
+          transition: { duration: 0.45, delay: delay * 0.5, ease: EASE },
         };
 
   const shown = projects.filter((p) => p.coverUrl).slice(0, 3);
@@ -205,13 +215,21 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
             </span>
           </h1>
 
-          <motion.p
-            {...step(0.55)}
-            className="mt-6 max-w-[46ch] text-lg text-secondary"
-          >
+          {/*
+            Deliberately NOT animated in.
+
+            This paragraph is the largest text block, which makes it the LCP
+            element on a phone — and LCP cannot fire until it is opaque. Fading
+            it in meant the animation, not the loading, was the metric.
+
+            It rises with the rest of the column via the parent transform, so
+            the sequence still reads as one movement; this element simply never
+            starts invisible.
+          */}
+          <p className="mt-6 max-w-[46ch] text-lg text-secondary">
             For founders and teams who need the thing to work, not just look
             finished. I design it, build it, and stay when it ships.
-          </motion.p>
+          </p>
 
           <motion.div
             {...step(0.7)}
