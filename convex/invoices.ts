@@ -138,6 +138,132 @@ export const createPair = mutation({
   },
 });
 
+/**
+ * Records the Stripe invoice created for one of our invoices.
+ *
+ * Secret-gated rather than admin-gated: the caller is a server route handler
+ * acting on the admin's behalf, not a browser session.
+ */
+export const attachStripe = mutation({
+  args: {
+    secret: v.string(),
+    id: v.id("invoices"),
+    stripeInvoiceId: v.string(),
+    stripeCustomerId: v.string(),
+    stripeHostedUrl: v.optional(v.string()),
+    stripePdfUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, { secret, id, ...fields }) => {
+    requireServerSecret(secret);
+    await ctx.db.patch(id, { ...fields, status: "sent", issuedAt: Date.now() });
+  },
+});
+
+/**
+ * Applies a Stripe webhook outcome.
+ *
+ * Idempotent by event id: Stripe retries deliveries, and applying a refund or
+ * a payment twice silently corrupts the revenue figures. The guard and the
+ * write happen in one transaction, so two concurrent deliveries of the same
+ * event cannot both pass it.
+ */
+export const applyStripeEvent = mutation({
+  args: {
+    secret: v.string(),
+    stripeEventId: v.string(),
+    eventType: v.string(),
+    stripeInvoiceId: v.string(),
+    status: v.optional(
+      v.union(
+        v.literal("sent"),
+        v.literal("paid"),
+        v.literal("overdue"),
+        v.literal("void"),
+      ),
+    ),
+    amountReceived: v.optional(v.number()),
+    stripeFee: v.optional(v.number()),
+    netReceived: v.optional(v.number()),
+    paymentMethodUsed: v.optional(
+      v.union(
+        v.literal("card"),
+        v.literal("apple_pay"),
+        v.literal("google_pay"),
+        v.literal("link"),
+      ),
+    ),
+    declineReason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    requireServerSecret(args.secret);
+
+    const seen = await ctx.db
+      .query("webhookEvents")
+      .withIndex("by_event", (q) => q.eq("stripeEventId", args.stripeEventId))
+      .unique();
+    if (seen) return { duplicate: true as const };
+
+    await ctx.db.insert("webhookEvents", {
+      stripeEventId: args.stripeEventId,
+      type: args.eventType,
+      receivedAt: Date.now(),
+    });
+
+    const invoice = await ctx.db
+      .query("invoices")
+      .withIndex("by_stripe_invoice", (q) =>
+        q.eq("stripeInvoiceId", args.stripeInvoiceId),
+      )
+      .unique();
+
+    // The event is still recorded above, so a retry does not reprocess an
+    // invoice that simply does not exist here.
+    if (!invoice) return { duplicate: false as const, matched: false as const };
+
+    await ctx.db.patch(invoice._id, {
+      ...(args.status ? { status: args.status } : {}),
+      ...(args.status === "paid" ? { paidAt: Date.now() } : {}),
+      ...(args.amountReceived !== undefined
+        ? { amountReceived: args.amountReceived }
+        : {}),
+      ...(args.stripeFee !== undefined ? { stripeFee: args.stripeFee } : {}),
+      ...(args.netReceived !== undefined
+        ? { netReceived: args.netReceived }
+        : {}),
+      ...(args.paymentMethodUsed
+        ? { paymentMethodUsed: args.paymentMethodUsed }
+        : {}),
+      ...(args.declineReason ? { declineReason: args.declineReason } : {}),
+    });
+
+    return {
+      duplicate: false as const,
+      matched: true as const,
+      clientEmail: invoice.clientEmail,
+      clientName: invoice.clientName,
+      reference: invoice.reference,
+    };
+  },
+});
+
+/** Shared gate for the server-to-server mutations above. */
+function requireServerSecret(secret: string) {
+  const expected = process.env.EMAIL_LOG_SECRET;
+  // Fail closed: an unset secret denies everyone rather than admitting all.
+  if (!expected || secret !== expected) {
+    throw new Error("Not authorised.");
+  }
+}
+
+/** Single invoice by id, for the issuing flow. */
+export const getById = query({
+  args: { id: v.id("invoices") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    return await ctx.db.get(args.id);
+  },
+});
+
 export const setStatus = mutation({
   args: { id: v.id("invoices"), status: invoiceStatus },
   handler: async (ctx, args) => {

@@ -271,10 +271,55 @@ export default defineSchema({
     dueDate: v.optional(v.number()),
     issuedAt: v.optional(v.number()),
     paidAt: v.optional(v.number()),
-    /** Set when the client confirms they have sent the transfer. */
+    /**
+     * Vestigial. Bank transfer used this to record that a client said they had
+     * sent the money; Stripe's webhook now owns payment state, so nothing
+     * writes it. Kept optional for one deploy so existing rows still validate.
+     */
     markedSentAt: v.optional(v.number()),
+
+    /* Stripe. All optional: an invoice exists in Convex first and is mirrored
+       to Stripe when it is issued, so these are unset on a draft. */
+    stripeInvoiceId: v.optional(v.string()),
+    stripeCustomerId: v.optional(v.string()),
+    stripeSubscriptionId: v.optional(v.string()),
+    /** Hosted invoice URL — where the client actually pays. */
+    stripeHostedUrl: v.optional(v.string()),
+    stripePdfUrl: v.optional(v.string()),
+    paymentMethodUsed: v.optional(
+      v.union(
+        v.literal("card"),
+        v.literal("apple_pay"),
+        v.literal("google_pay"),
+        v.literal("link"),
+      ),
+    ),
+    amountReceived: v.optional(v.number()),
+    /**
+     * Stripe's cut and what actually landed. Gross without net is a number
+     * that feels like revenue and is not.
+     */
+    stripeFee: v.optional(v.number()),
+    netReceived: v.optional(v.number()),
+    /** Plain-English reason from Stripe when a charge is declined. */
+    declineReason: v.optional(v.string()),
   })
     .index("by_status", ["status"])
     .index("by_token", ["token"])
-    .index("by_lead", ["leadId"]),
+    .index("by_lead", ["leadId"])
+    // The webhook's hot path: every event arrives keyed by Stripe's id.
+    .index("by_stripe_invoice", ["stripeInvoiceId"]),
+
+  /**
+   * Every Stripe event we have already processed.
+   *
+   * Stripe retries deliveries, and without this a retried refund or payment
+   * would be applied twice. A duplicate payment record is worse than a missing
+   * one, because it silently corrupts the revenue figures.
+   */
+  webhookEvents: defineTable({
+    stripeEventId: v.string(),
+    type: v.string(),
+    receivedAt: v.number(),
+  }).index("by_event", ["stripeEventId"]),
 });

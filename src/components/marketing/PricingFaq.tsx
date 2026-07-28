@@ -15,7 +15,7 @@ const FAQ = [
   },
   {
     q: "What are the payment terms?",
-    a: "50% to start, 50% on launch. Enterprise is milestone-based and set out in the proposal. Bank transfer or card.",
+    a: "50% to start, 50% on launch. Enterprise is milestone-based and set out in the proposal. Card, Apple Pay, Google Pay or Link.",
   },
   {
     q: "How many revisions do I get?",

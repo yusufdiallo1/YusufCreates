@@ -48,6 +48,22 @@ export default function middleware(
 }
 
 export const config = {
-  // Skip Next internals and static files, run on everything else.
-  matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],
+  /*
+   * Skip Next internals and static files, run on everything else — with two
+   * deliberate exclusions:
+   *
+   *   api/stripe/webhook  Stripe POSTs here with a signature over the raw
+   *                       body. Anything that redirects, rewrites or touches
+   *                       the request breaks verification, and a webhook that
+   *                       silently fails means invoices never mark paid.
+   *
+   *   .well-known         Apple Pay domain verification is served from here.
+   *                       If the file does not return exactly its own bytes,
+   *                       Apple Pay does not appear — with no error at all,
+   *                       it simply is not offered.
+   */
+  // A single negated pattern rather than a separate api entry: Next only
+  // accepts a lookahead at the start of a matcher, so excluding the webhook
+  // from a second "/(api|trpc)(.*)" line is not expressible.
+  matcher: ["/((?!_next|\\.well-known|api/stripe/webhook|.*\\.[^/]+$).*)"],
 };

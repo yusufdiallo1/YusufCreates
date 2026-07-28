@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { fetchQuery } from "convex/nextjs";
 import { api, isConvexConfigured } from "@/lib/convex-api";
-import { getBankDetails } from "@/lib/bank";
 import { InvoiceView } from "./InvoiceView";
 
 /**
  * Invoice page, reachable only with the token.
  *
- * noindex, nofollow and nocache: bank details must never be crawled, cached by
- * an intermediary, or turn up in search results.
+ * noindex, nofollow and nocache: the token is the only credential on this
+ * page, so the URL must never be crawled, cached by an intermediary, or turn
+ * up in search results.
  */
 export const metadata: Metadata = {
   title: "Invoice",
@@ -31,7 +31,5 @@ export default async function InvoicePage({
   // nothing should confirm to a guesser that a token nearly matched.
   if (!invoice) notFound();
 
-  const bank = getBankDetails();
-
-  return <InvoiceView invoice={invoice} bank={bank} token={token} />;
+  return <InvoiceView invoice={invoice} />;
 }

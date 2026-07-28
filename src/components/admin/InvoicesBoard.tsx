@@ -162,6 +162,48 @@ function StatusCell({
   invoice: Doc<"invoices">;
   onSet: (status: Status) => Promise<unknown>;
 }) {
+  const [issuing, setIssuing] = useState(false);
+  const [issueError, setIssueError] = useState<string | null>(null);
+
+  // Not yet in Stripe: the only meaningful action is to issue it, which
+  // creates the Stripe invoice and emails the client a payment link.
+  if (!invoice.stripeInvoiceId && invoice.status !== "void") {
+    return (
+      <div className="w-44">
+        <SlideToConfirm
+          purpose="send-invoice"
+          disabled={issuing}
+          ariaLabel={`Slide to issue invoice ${invoice.reference} and email it`}
+          onConfirm={async () => {
+            setIssuing(true);
+            setIssueError(null);
+            const res = await fetch("/api/stripe/issue", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: invoice._id }),
+            });
+            if (!res.ok) {
+              const body = await res.json().catch(() => ({}));
+              setIssueError(body.error ?? "Could not issue that.");
+              setIssuing(false);
+              // Throwing rolls the thumb back — nothing was issued.
+              throw new Error("issue failed");
+            }
+            setIssuing(false);
+          }}
+        />
+        {issueError ? (
+          <p
+            role="alert"
+            className="mt-1 text-[11px] text-[color:var(--text-notice)]"
+          >
+            {issueError}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
   if (invoice.status === "paid") {
     return (
       <span className="badge badge-warm">
