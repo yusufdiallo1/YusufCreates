@@ -1,4 +1,4 @@
-import { preloadQuery } from "convex/nextjs";
+import { fetchQuery, preloadQuery } from "convex/nextjs";
 import { convexAuthNextjsToken } from "@convex-dev/auth/nextjs/server";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 import { Hero } from "@/components/marketing/Hero";
@@ -30,6 +30,21 @@ export default async function HomePage() {
       )
     : null;
 
+  // Plain values for the hero slabs. An empty list renders the hero as a
+  // single centred column rather than empty glass frames.
+  const heroProjects = isConvexConfigured
+    ? await fetchQuery(api.projects.listFeatured, {}, { token })
+        .then((rows) =>
+          rows.map((p) => ({
+            slug: p.slug,
+            title: p.title,
+            coverUrl: p.coverUrl,
+            category: p.category,
+          })),
+        )
+        .catch(() => [])
+    : [];
+
   return (
     <>
       <script
@@ -39,7 +54,10 @@ export default async function HomePage() {
         }}
       />
 
-      <Hero />
+      {/* The hero's slabs hold real project screenshots. Fetched separately
+          from the preload the Projects section uses, because the hero needs
+          plain values on the server rather than a client-hydrated query. */}
+      <Hero projects={heroProjects} />
 
       {/* Tech marquee. Dot separators keep the rhythm even and stop two names
           reading as one phrase. */}
