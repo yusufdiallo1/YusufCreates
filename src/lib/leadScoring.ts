@@ -24,7 +24,18 @@ const URGENCY_WEIGHT: Record<string, number> = {
   "Just exploring": 0.25,
 };
 
+/**
+ * Keyed by plan id (see src/lib/inquiry.ts) with the older free-text project
+ * types kept alongside, so leads captured before the plan chooser existed
+ * still score rather than silently falling to the default.
+ */
 const FIT_WEIGHT: Record<string, number> = {
+  // Plan ids.
+  "web-app": 1,
+  "multi-page": 0.85,
+  "one-page": 0.8,
+  support: 0.7,
+  // Legacy project-type strings.
   "Web app or SaaS": 1,
   "Multilingual build": 0.95,
   "Marketing site": 0.8,
@@ -40,11 +51,21 @@ export interface ScoreInput {
   tier?: string;
   company?: string;
   message?: string;
+  /** Set on the enterprise path, which never collects a budget band. */
+  plan?: string;
+  projectPurpose?: string;
 }
 
 export function scoreLead(input: ScoreInput): { score: number; band: Band } {
   // Enterprise is hot by definition — the qualification happens in the call.
-  if (input.tier === "enterprise" || input.projectType === "Enterprise project") {
+  // The enterprise flow deliberately collects no budget, so scoring it through
+  // the multiplication below would floor it at the "missing budget" default and
+  // rank the largest enquiries lowest.
+  if (
+    input.plan === "enterprise" ||
+    input.tier === "enterprise" ||
+    input.projectType === "Enterprise project"
+  ) {
     return { score: 100, band: "hot" };
   }
 
@@ -58,6 +79,9 @@ export function scoreLead(input: ScoreInput): { score: number; band: Band } {
   // correlate with someone who has actually thought about the work.
   if (input.company?.trim()) score += 6;
   if ((input.message?.trim().length ?? 0) > 120) score += 8;
+  // The purpose field is required, so length is the only signal here — a
+  // considered answer beats three words.
+  if ((input.projectPurpose?.trim().length ?? 0) > 60) score += 6;
 
   score = Math.max(0, Math.min(100, score));
 

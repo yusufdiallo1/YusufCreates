@@ -262,6 +262,41 @@
    -------------------------------------------------------------------------- */
 
 @layer base {
+  /* ------------------------------------------------------------------
+     Lenis smooth scroll.
+
+     Lenis stamps these classes on <html> and REQUIRES the matching CSS —
+     without it the library sets height/overflow expectations the document
+     never satisfies and scrolling dies, most visibly on touch where there
+     is no wheel event to fall back on.
+
+     .lenis-stopped is the important one: Lenis locks scrolling with it (the
+     mobile nav overlay does this too). If nothing defines it, the lock can
+     never be released.
+     ------------------------------------------------------------------ */
+  html.lenis,
+  html.lenis body {
+    height: auto;
+  }
+
+  .lenis.lenis-smooth {
+    scroll-behavior: auto !important;
+  }
+
+  .lenis.lenis-smooth [data-lenis-prevent] {
+    overscroll-behavior: contain;
+  }
+
+  .lenis.lenis-stopped {
+    overflow: hidden;
+  }
+
+  /* Touch is native (syncTouch is off), so pointer events must reach the
+     document — Lenis's default would swallow them. */
+  .lenis.lenis-smooth iframe {
+    pointer-events: none;
+  }
+
   html {
     background-color: var(--bg-canvas);
     color: var(--text-primary);

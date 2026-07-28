@@ -44,8 +44,18 @@ export function ImageReveal({
       viewport={{ once: true, margin: "-12%" }}
       transition={{ duration: 1, delay, ease: [0.16, 1, 0.3, 1] }}
     >
+      {/*
+        Must fill the frame. A next/image with `fill` resolves against its
+        nearest positioned ancestor — which is this wrapper, not the frame
+        outside it. Left as an auto-height block it collapses to zero and the
+        image never appears.
+      */}
       <motion.div
-        style={{ willChange: "transform" }}
+        style={{
+          position: "absolute",
+          inset: 0,
+          willChange: "transform",
+        }}
         initial={{ scale: 1.15 }}
         whileInView={{ scale: 1 }}
         viewport={{ once: true, margin: "-12%" }}

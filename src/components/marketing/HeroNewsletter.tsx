@@ -24,8 +24,13 @@ export function HeroNewsletter() {
 
   return (
     <div className="mx-auto mt-10 w-full max-w-sm">
-      <label htmlFor="hero-newsletter" className="sr-only">
-        Email address for the newsletter
+      {/* Visible, because "you@company.com" says what to type but not why.
+          The old copy lived in the placeholder, which vanishes on focus. */}
+      <label
+        htmlFor="hero-newsletter"
+        className="block text-center text-sm text-secondary"
+      >
+        Get occasional notes on what I&apos;m building
       </label>
       <input
         id="hero-newsletter"
@@ -36,8 +41,8 @@ export function HeroNewsletter() {
           setEmail(e.target.value);
           setError(null);
         }}
-        placeholder="Get occasional notes on what I'm building"
-        className="hairline w-full rounded-full bg-surface-1 px-5 py-2.5 text-center text-sm text-primary placeholder:text-secondary"
+        placeholder="you@company.com"
+        className="hairline mt-2 w-full rounded-full bg-surface-1 px-5 py-2.5 text-center text-sm text-primary placeholder:text-secondary"
       />
 
       <div className="mt-2">

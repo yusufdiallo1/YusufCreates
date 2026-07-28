@@ -39,10 +39,25 @@ async function verifyTurnstile(token: string | undefined, ip: string | null) {
 interface Payload {
   name?: string;
   email?: string;
+  phone?: string;
+  contactPreference?: string;
   company?: string;
   role?: string;
   projectType?: string;
   projectTypeOther?: string;
+  /** Plan id from src/lib/inquiry.ts — decides which fields are meaningful. */
+  plan?: string;
+  projectPurpose?: string;
+  audience?: string;
+  currentState?: string;
+  existingUrl?: string;
+  pageCount?: string | number;
+  procurementProcess?: string;
+  /** Sent as "yes"/"no" by the checkbox; stored as a boolean. */
+  ndaRequired?: string;
+  targetLaunch?: string;
+  decisionMakers?: string;
+  supportScope?: string;
   tier?: string;
   budget?: string;
   timeline?: string;
@@ -101,7 +116,33 @@ export async function POST(request: Request) {
 
   // Layer 4 — recorded, not enforced.
   const suspicion = suspicionFromSignals(payload.slideSignals);
-  const { score } = scoreLead(payload);
+  const { score } = scoreLead({
+    budget: payload.budget,
+    timeline: payload.timeline,
+    projectType: payload.projectType,
+    tier: payload.tier,
+    company: payload.company,
+    message: payload.message,
+    plan: payload.plan,
+    projectPurpose: payload.projectPurpose,
+  });
+
+  const trim = (s: string | undefined) => s?.trim() || undefined;
+
+  // The checkbox posts "yes"/"no". Absent means the field was never shown for
+  // this plan, which is different from an explicit "no" — keep it undefined.
+  const ndaRequired =
+    payload.ndaRequired === undefined
+      ? undefined
+      : payload.ndaRequired === "yes";
+
+  // Number input arrives as a string, and "" must not become 0.
+  const rawPages =
+    typeof payload.pageCount === "number"
+      ? payload.pageCount
+      : Number(payload.pageCount);
+  const pageCount =
+    Number.isFinite(rawPages) && rawPages > 0 ? Math.round(rawPages) : undefined;
 
   // "Something else" carries its description into the stored project type so
   // the notification email is readable without opening the record.
@@ -114,9 +155,21 @@ export async function POST(request: Request) {
     await fetchMutation(api.leads.submit, {
       name: payload.name?.trim() ?? "",
       email,
-      company: payload.company?.trim() || undefined,
-      role: payload.role?.trim() || undefined,
+      phone: trim(payload.phone),
+      contactPreference: trim(payload.contactPreference),
+      company: trim(payload.company),
+      role: trim(payload.role),
       projectType: projectType || undefined,
+      projectPurpose: trim(payload.projectPurpose),
+      audience: trim(payload.audience),
+      currentState: trim(payload.currentState),
+      existingUrl: trim(payload.existingUrl),
+      pageCount,
+      procurementProcess: trim(payload.procurementProcess),
+      ndaRequired,
+      targetLaunch: trim(payload.targetLaunch),
+      decisionMakers: trim(payload.decisionMakers),
+      supportScope: trim(payload.supportScope),
       tier: payload.tier || undefined,
       budget: payload.budget || undefined,
       timeline: payload.timeline || undefined,

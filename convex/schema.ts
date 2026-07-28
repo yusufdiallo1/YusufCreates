@@ -48,14 +48,35 @@ export default defineSchema({
   leads: defineTable({
     name: v.string(),
     email: v.string(),
+    phone: v.optional(v.string()),
+    /** Preferred way to be reached: email, phone, whatsapp. */
+    contactPreference: v.optional(v.string()),
     company: v.optional(v.string()),
     role: v.optional(v.string()),
     projectType: v.optional(v.string()),
+    /** Free text: what the project is actually for. */
+    projectPurpose: v.optional(v.string()),
+    /** Who it serves — the audience behind the purpose. */
+    audience: v.optional(v.string()),
+    /** Where they are now: nothing yet, a rebuild, a live product. */
+    currentState: v.optional(v.string()),
+    existingUrl: v.optional(v.string()),
     tier: v.optional(v.string()),
     budget: v.optional(v.string()),
     timeline: v.optional(v.string()),
     pageCount: v.optional(v.number()),
     message: v.optional(v.string()),
+
+    /* Enterprise path only. These are the questions that decide whether a
+       large engagement is real, so they are asked instead of budget rather
+       than in addition to it. */
+    procurementProcess: v.optional(v.string()),
+    ndaRequired: v.optional(v.boolean()),
+    targetLaunch: v.optional(v.string()),
+    decisionMakers: v.optional(v.string()),
+
+    /* Support path only. */
+    supportScope: v.optional(v.string()),
     score: v.optional(v.number()),
     status: leadStatus,
     source: v.optional(v.string()),
