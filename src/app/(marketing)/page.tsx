@@ -6,6 +6,7 @@ import { Projects } from "@/components/marketing/Projects";
 import { Skills } from "@/components/marketing/Skills";
 import { About } from "@/components/marketing/About";
 import { Process } from "@/components/marketing/Process";
+import { HowIWork } from "@/components/marketing/HowIWork";
 import { Testimonials } from "@/components/marketing/Testimonials";
 import { ContactCTA } from "@/components/marketing/ContactCTA";
 import { TechMarquee } from "@/components/marketing/TechMarquee";
@@ -71,6 +72,10 @@ export default async function HomePage() {
       {preloadedProjects ? <Projects preloaded={preloadedProjects} /> : null}
 
       <Process />
+
+      {/* Trust. Answers the two questions nobody asks out loud: will this
+          person disappear, and can I reach them. */}
+      <HowIWork />
 
       <Skills />
 
