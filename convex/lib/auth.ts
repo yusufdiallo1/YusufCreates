@@ -7,9 +7,16 @@ import type { Id } from "../_generated/dataModel";
  *
  * Never trust the client: arguments, headers and any "isAdmin" flag sent from
  * the browser are attacker-controlled. Identity comes only from the auth token
- * Convex validated, and the account is re-checked against ADMIN_GITHUB_ID on
- * every call so revoking access takes effect immediately rather than at the
- * next sign-in.
+ * Convex validated, and the account is re-checked against ADMIN_EMAIL on every
+ * call rather than read from a stored role flag — so revoking access takes
+ * effect immediately instead of at the next sign-in.
+ *
+ * This checks the email on the user record because sign-in uses the Password
+ * provider. convex/auth.ts refuses to create an account for any other address,
+ * so the two checks agree; this one is the authoritative gate for data access.
+ *
+ * Fails closed. An unset ADMIN_EMAIL denies everyone rather than admitting
+ * anyone, which is the only safe direction for a misconfiguration.
  */
 export async function requireAdmin(
   ctx: QueryCtx | MutationCtx,
@@ -19,22 +26,33 @@ export async function requireAdmin(
     throw new Error("Not authenticated.");
   }
 
-  const allowed = process.env.ADMIN_GITHUB_ID;
+  const allowed = process.env.ADMIN_EMAIL;
   if (!allowed) {
-    throw new Error("ADMIN_GITHUB_ID is not configured.");
+    throw new Error("ADMIN_EMAIL is not configured.");
   }
 
-  // Re-verify against the linked GitHub account, not a stored role flag.
-  const account = await ctx.db
-    .query("authAccounts")
-    .withIndex("userIdAndProvider", (q) =>
-      q.eq("userId", userId).eq("provider", "github"),
-    )
-    .unique();
+  const user = await ctx.db.get(userId);
+  const email = (user as { email?: string } | null)?.email;
 
-  if (!account || String(account.providerAccountId) !== String(allowed)) {
+  if (!email || email.toLowerCase() !== allowed.toLowerCase()) {
     throw new Error("Not authorised.");
   }
 
   return userId;
+}
+
+/**
+ * The same check phrased as a question.
+ *
+ * The admin shell needs to know whether to render a signed-out state, and
+ * doing that by catching an exception from every query on a fresh page load
+ * is noisy and easy to get wrong.
+ */
+export async function isAdmin(ctx: QueryCtx | MutationCtx): Promise<boolean> {
+  try {
+    await requireAdmin(ctx);
+    return true;
+  } catch {
+    return false;
+  }
 }

@@ -14,8 +14,12 @@ import {
  * re-verifies identity server-side, because middleware cannot protect data
  * reached by any other path.
  */
-const isProtected = createRouteMatcher(["/admin(.*)", "/dashboard(.*)"]);
-const isSignIn = createRouteMatcher(["/signin"]);
+// /dashboard no longer exists — the admin lives entirely under /admin.
+const isProtected = createRouteMatcher(["/admin(.*)"]);
+// Sign-in is the Password provider at /sign-in-admin. The old /signin page
+// used GitHub OAuth, which convex/auth.ts no longer configures, so sending
+// anyone there was sending them to a dead end.
+const isSignIn = createRouteMatcher(["/sign-in-admin"]);
 
 // The Convex middleware throws without a deployment URL, which would take down
 // every route. Until `npx convex dev` has run, pass requests through untouched.
@@ -26,11 +30,11 @@ const convexMiddleware = convexAuthNextjsMiddleware(
     const authed = await convexAuth.isAuthenticated();
 
     if (isProtected(request) && !authed) {
-      return nextjsMiddlewareRedirect(request, "/signin");
+      return nextjsMiddlewareRedirect(request, "/sign-in-admin");
     }
 
     if (isSignIn(request) && authed) {
-      return nextjsMiddlewareRedirect(request, "/dashboard");
+      return nextjsMiddlewareRedirect(request, "/admin");
     }
   },
 );

@@ -50,6 +50,9 @@ export type SlidePurpose =
   | "to-payment"
   | "start-subscription"
   | "send-broadcast"
+  | "send-invoice"
+  | "mark-paid"
+  | "activate-promo"
   | "delete";
 
 type SlideToConfirmProps = {
@@ -89,6 +92,28 @@ const COPY: Record<
     label: "Slide to send",
     pending: "Sending",
     done: "Sent",
+    danger: false,
+  },
+  "send-invoice": {
+    label: "Slide to issue invoice",
+    pending: "Issuing",
+    done: "Issued",
+    danger: false,
+  },
+  // Not destructive, but not cleanly reversible either: it closes the money
+  // record and stops the chasing. Telling a client they still owe you after
+  // marking it settled is the conversation this friction prevents.
+  "mark-paid": {
+    label: "Slide to mark paid",
+    pending: "Recording",
+    done: "Paid",
+    danger: false,
+  },
+  // A site-wide discount going live is not something to fire on a stray click.
+  "activate-promo": {
+    label: "Slide to activate",
+    pending: "Activating",
+    done: "Live",
     danger: false,
   },
   delete: {

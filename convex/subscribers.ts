@@ -119,9 +119,18 @@ export const listSendable = query({
 /**
  * Append-only record of every send. Without it there is no way to answer
  * "did they actually get it" when someone says nothing arrived.
+ *
+ * Reachable only with a shared secret. This was previously open, which let
+ * anyone forge rows in the one table that says whether a message actually went
+ * out — a poisoned log is worse than no log.
+ *
+ * It stays a public mutation rather than an internalMutation because its
+ * callers are Next route handlers using fetchMutation, which by design can
+ * only reach public functions. The secret is what actually gates it.
  */
 export const logEmail = mutation({
   args: {
+    secret: v.string(),
     to: v.string(),
     template: v.string(),
     subject: v.string(),
@@ -134,8 +143,15 @@ export const logEmail = mutation({
     error: v.optional(v.string()),
     leadId: v.optional(v.id("leads")),
   },
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("emailLog", { ...args, sentAt: Date.now() });
+  handler: async (ctx, { secret, ...row }) => {
+    const expected = process.env.EMAIL_LOG_SECRET;
+
+    // Fail closed. An unset secret must never mean "allow everyone".
+    if (!expected || secret !== expected) {
+      throw new Error("Not authorised.");
+    }
+
+    return await ctx.db.insert("emailLog", { ...row, sentAt: Date.now() });
   },
 });
 

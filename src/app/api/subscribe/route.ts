@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { fetchMutation } from "convex/nextjs";
 import { api, isConvexConfigured } from "@/lib/convex-api";
+import { logEmailSend } from "@/lib/emailLog";
 import { sendEmail, siteUrl } from "@/lib/email";
 import { NewsletterWelcome } from "@emails/NewsletterWelcome";
 
@@ -66,18 +67,12 @@ export async function POST(request: Request) {
     });
 
     // Logged, never fatal — the subscriber row is already saved.
-    try {
-      await fetchMutation(api.subscribers.logEmail, {
-        to: email,
-        template: "NewsletterWelcome",
-        subject,
-        status: send.status,
-        providerId: send.status === "sent" ? send.id : undefined,
-        error: send.status === "failed" ? send.error : undefined,
-      });
-    } catch {
-      // Logging must not break the response either.
-    }
+    await logEmailSend({
+      to: email,
+      template: "NewsletterWelcome",
+      subject,
+      result: send,
+    });
   }
 
   return NextResponse.json({ ok: true });

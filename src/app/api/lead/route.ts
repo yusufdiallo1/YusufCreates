@@ -3,6 +3,7 @@ import { fetchMutation } from "convex/nextjs";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 import { scoreLead, suspicionFromSignals } from "@/lib/leadScoring";
 import { adminEmail, sendEmail, siteUrl } from "@/lib/email";
+import { logEmailSend } from "@/lib/emailLog";
 import { LeadConfirmation } from "@emails/LeadConfirmation";
 import { LeadNotification } from "@emails/LeadNotification";
 
@@ -261,19 +262,7 @@ async function logged({
   leadId?: LeadId;
 }) {
   const result = await sendEmail({ to, subject, react, replyTo });
-  try {
-    await fetchMutation(api.subscribers.logEmail, {
-      to,
-      template,
-      subject,
-      status: result.status,
-      providerId: result.status === "sent" ? result.id : undefined,
-      error: result.status === "failed" ? result.error : undefined,
-      leadId,
-    });
-  } catch {
-    // A logging failure must not surface either.
-  }
+  await logEmailSend({ to, template, subject, result, leadId });
 }
 
 /** The submitted fields worth showing, in a stable order, skipping blanks. */

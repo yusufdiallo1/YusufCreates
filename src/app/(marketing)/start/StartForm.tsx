@@ -6,6 +6,7 @@ import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
 import { Reveal } from "@/components/motion/Reveal";
 import { SubmitSuccess } from "@/components/marketing/SubmitSuccess";
 import { FieldError } from "@/components/ui/FieldError";
+import { playConfirmation } from "@/lib/sound";
 import {
   validateEmail,
   validatePhone,
@@ -322,6 +323,9 @@ export function StartForm() {
                       setError("That didn't send. Try again in a moment.");
                       throw new Error("Submit failed");
                     }
+                    // Fires only on a confirmed 2xx, so the sound always
+                    // means the enquiry actually landed.
+                    playConfirmation();
                     setSent(true);
                   }}
                 />

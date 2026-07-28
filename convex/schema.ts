@@ -77,6 +77,9 @@ export default defineSchema({
 
     /* Support path only. */
     supportScope: v.optional(v.string()),
+
+    /** Private admin notes. Append-only, timestamped. Never shown publicly. */
+    notes: v.optional(v.string()),
     score: v.optional(v.number()),
     status: leadStatus,
     source: v.optional(v.string()),

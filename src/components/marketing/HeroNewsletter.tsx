@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { MiniSlide } from "@/components/ui/MiniSlide";
 import { FieldError } from "@/components/ui/FieldError";
 import { validateEmail } from "@/lib/validate";
+import { playConfirmation } from "@/lib/sound";
 
 /**
  * Hero newsletter capture — email field with a mini slide-to-confirm beneath.
@@ -79,6 +80,7 @@ export function HeroNewsletter() {
               setError("That didn't send. Try again in a moment.");
               throw new Error("Subscribe failed");
             }
+            playConfirmation();
             setEmail("");
             setError(null);
           }}

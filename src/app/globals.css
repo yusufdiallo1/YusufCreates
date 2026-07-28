@@ -755,3 +755,104 @@
     }
   }
 }
+
+/* --------------------------------------------------------------------------
+   Admin
+   -------------------------------------------------------------------------- */
+
+@layer components {
+  /* Command palette ------------------------------------------------------ */
+
+  .palette-group [cmdk-group-heading] {
+    padding: 0.75rem 0.75rem 0.375rem;
+    font-size: 0.6875rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+
+  /* cmdk drives selection with aria-selected, so hover and keyboard land on
+     exactly the same state — otherwise the mouse and the arrow keys disagree
+     about what is highlighted. */
+  .palette-item[aria-selected="true"] {
+    background-color: var(--bg-surface-2);
+  }
+
+  .palette-item[aria-selected="true"] .text-primary {
+    color: var(--text-primary);
+  }
+
+  /* Admin sidebar -------------------------------------------------------- */
+
+  .admin-nav-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    transition:
+      color var(--duration-fast) var(--ease-out),
+      background-color var(--duration-fast) var(--ease-out);
+  }
+
+  .admin-nav-link:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-surface-2);
+  }
+
+  .admin-nav-link[aria-current="page"] {
+    color: var(--text-primary);
+    background-color: var(--bg-surface-2);
+  }
+
+  /* The active marker is a rail rather than a filled pill: at this density a
+     solid block per item turns the sidebar into a stack of buttons. */
+  .admin-nav-link[aria-current="page"]::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    height: 1rem;
+    width: 2px;
+    border-radius: 9999px;
+    background-color: var(--accent);
+    transform: translateY(-50%);
+  }
+
+  .admin-card {
+    border: 1px solid var(--border-hairline);
+    border-radius: 0.75rem;
+    background-color: var(--bg-surface-1);
+    padding: 1.25rem;
+  }
+
+  /* Score badges. Colour alone never carries the meaning — each badge also
+     spells out its band, so this reads correctly in greyscale and for anyone
+     who cannot separate the hues. */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 9999px;
+    border: 1px solid var(--border-hairline);
+    padding: 0.125rem 0.5rem;
+    font-size: 0.6875rem;
+    white-space: nowrap;
+  }
+
+  .badge-hot {
+    color: var(--text-notice);
+    border-color: color-mix(in srgb, var(--text-notice) 35%, transparent);
+  }
+
+  .badge-warm {
+    color: var(--text-primary);
+  }
+
+  .badge-cold {
+    color: var(--text-secondary);
+  }
+}
