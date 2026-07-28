@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { ComingSoon } from "@/components/admin/ComingSoon";
+import { BroadcastComposer } from "@/components/admin/BroadcastComposer";
 
-export const metadata: Metadata = { title: "Ubroadcasts" };
+export const metadata: Metadata = { title: "Broadcast" };
 
-export default function AdminUbroadcastsPage() {
-  return <ComingSoon section="Ubroadcasts" />;
+export default function AdminBroadcastsPage() {
+  return <BroadcastComposer />;
 }

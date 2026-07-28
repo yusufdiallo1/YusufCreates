@@ -40,3 +40,17 @@ export const remove = mutation({
     await ctx.db.delete(args.id);
   },
 });
+
+export const update = mutation({
+  args: {
+    id: v.id("kb"),
+    question: v.optional(v.string()),
+    answer: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    priority: v.optional(v.number()),
+  },
+  handler: async (ctx, { id, ...patch }) => {
+    await requireAdmin(ctx);
+    await ctx.db.patch(id, patch);
+  },
+});

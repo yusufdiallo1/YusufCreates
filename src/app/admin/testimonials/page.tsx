@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { ComingSoon } from "@/components/admin/ComingSoon";
+import { TestimonialsAdmin } from "@/components/admin/TestimonialsAdmin";
 
-export const metadata: Metadata = { title: "Utestimonials" };
+export const metadata: Metadata = { title: "Testimonials" };
 
-export default function AdminUtestimonialsPage() {
-  return <ComingSoon section="Utestimonials" />;
+export default function AdminTestimonialsPage() {
+  return <TestimonialsAdmin />;
 }

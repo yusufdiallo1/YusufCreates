@@ -40,3 +40,46 @@ export const resolve = mutation({
     await ctx.db.patch(args.id, { resolved: args.resolved });
   },
 });
+
+/**
+ * All feedback, grouped by project.
+ *
+ * listByProject needs a projectId, so there was no way to see everything at
+ * once. Joined in one handler rather than N queries from the client, and
+ * sorted unresolved-first because that is the only part that needs acting on.
+ */
+export const listGrouped = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+
+    const [items, projects] = await Promise.all([
+      ctx.db.query("feedback").order("desc").take(500),
+      ctx.db.query("projects").collect(),
+    ]);
+
+    const byProject = new Map(projects.map((p) => [p._id, p]));
+    const groups = new Map<
+      string,
+      { title: string; slug: string; items: typeof items; unresolved: number }
+    >();
+
+    for (const item of items) {
+      const project = byProject.get(item.projectId);
+      const key = String(item.projectId);
+      const group = groups.get(key) ?? {
+        title: project?.title ?? "Unknown project",
+        slug: project?.slug ?? "",
+        items: [] as typeof items,
+        unresolved: 0,
+      };
+      group.items.push(item);
+      if (!item.resolved) group.unresolved += 1;
+      groups.set(key, group);
+    }
+
+    return [...groups.entries()]
+      .map(([projectId, g]) => ({ projectId, ...g }))
+      .sort((a, b) => b.unresolved - a.unresolved);
+  },
+});

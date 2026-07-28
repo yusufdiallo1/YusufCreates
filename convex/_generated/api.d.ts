@@ -9,11 +9,13 @@
  */
 
 import type * as admin from "../admin.js";
+import type * as analytics from "../analytics.js";
 import type * as auth from "../auth.js";
 import type * as broadcasts from "../broadcasts.js";
 import type * as chat from "../chat.js";
 import type * as events from "../events.js";
 import type * as feedback from "../feedback.js";
+import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as invoices from "../invoices.js";
 import type * as kb from "../kb.js";
@@ -23,6 +25,7 @@ import type * as posts from "../posts.js";
 import type * as projects from "../projects.js";
 import type * as proposals from "../proposals.js";
 import type * as seed from "../seed.js";
+import type * as settings from "../settings.js";
 import type * as subscribers from "../subscribers.js";
 import type * as testimonials from "../testimonials.js";
 
@@ -34,11 +37,13 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
+  analytics: typeof analytics;
   auth: typeof auth;
   broadcasts: typeof broadcasts;
   chat: typeof chat;
   events: typeof events;
   feedback: typeof feedback;
+  files: typeof files;
   http: typeof http;
   invoices: typeof invoices;
   kb: typeof kb;
@@ -48,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   projects: typeof projects;
   proposals: typeof proposals;
   seed: typeof seed;
+  settings: typeof settings;
   subscribers: typeof subscribers;
   testimonials: typeof testimonials;
 }>;

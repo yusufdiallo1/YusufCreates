@@ -138,7 +138,17 @@ export default defineSchema({
     projectId: v.optional(v.id("projects")),
     featured: v.boolean(),
     order: v.number(),
-  }).index("by_featured", ["featured", "order"]),
+    /**
+     * Client-submitted testimonials land unapproved and never auto-publish.
+     * Optional so existing rows — all of which I wrote — stay valid; absent is
+     * treated as approved.
+     */
+    approved: v.optional(v.boolean()),
+    /** Token for the "leave a testimonial" link sent after a project ends. */
+    requestToken: v.optional(v.string()),
+  })
+    .index("by_featured", ["featured", "order"])
+    .index("by_token", ["requestToken"]),
 
   feedback: defineTable({
     projectId: v.id("projects"),
@@ -340,6 +350,17 @@ export default defineSchema({
     windowStart: v.number(),
     count: v.number(),
   }).index("by_kind_key", ["kind", "key"]),
+
+  /**
+   * Key/value settings the site reads at runtime.
+   *
+   * Never secrets — those stay in environment variables, where a forgotten
+   * auth check on a query cannot expose them.
+   */
+  settings: defineTable({
+    key: v.string(),
+    value: v.any(),
+  }).index("by_key", ["key"]),
 
   /** Every turn, for review. Lets me see what people actually ask. */
   chatMessages: defineTable({

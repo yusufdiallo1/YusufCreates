@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { ComingSoon } from "@/components/admin/ComingSoon";
+import { KbAdmin } from "@/components/admin/KbAdmin";
 
-export const metadata: Metadata = { title: "Ukb" };
+export const metadata: Metadata = { title: "Knowledge base" };
 
-export default function AdminUkbPage() {
-  return <ComingSoon section="Ukb" />;
+export default function AdminKbPage() {
+  return <KbAdmin />;
 }

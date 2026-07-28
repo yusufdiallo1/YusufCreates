@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { ComingSoon } from "@/components/admin/ComingSoon";
+import { AnalyticsDashboard } from "@/components/admin/AnalyticsDashboard";
 
-export const metadata: Metadata = { title: "Uanalytics" };
+export const metadata: Metadata = { title: "Analytics" };
 
-export default function AdminUanalyticsPage() {
-  return <ComingSoon section="Uanalytics" />;
+export default function AdminAnalyticsPage() {
+  return <AnalyticsDashboard />;
 }

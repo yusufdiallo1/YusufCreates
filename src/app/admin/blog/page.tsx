@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { ComingSoon } from "@/components/admin/ComingSoon";
+import { BlogAdmin } from "@/components/admin/BlogAdmin";
 
-export const metadata: Metadata = { title: "Ublog" };
+export const metadata: Metadata = { title: "Blog" };
 
-export default function AdminUblogPage() {
-  return <ComingSoon section="Ublog" />;
+export default function AdminBlogPage() {
+  return <BlogAdmin />;
 }

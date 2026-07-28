@@ -2,14 +2,28 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireAdmin } from "./lib/auth";
 
+/**
+ * Public list.
+ *
+ * Filters on publishedAt as well as the flag, which is what makes scheduling
+ * work: a post marked published with a future date stays hidden until that
+ * moment arrives. Doing it here rather than with a cron means there is no job
+ * to fail and no window where a scheduled post is late.
+ */
 export const listPublished = query({
   args: { limit: v.optional(v.number()) },
-  handler: async (ctx, args) =>
-    await ctx.db
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const rows = await ctx.db
       .query("posts")
       .withIndex("by_published", (q) => q.eq("published", true))
       .order("desc")
-      .take(args.limit ?? 20),
+      .take((args.limit ?? 20) * 2);
+
+    return rows
+      .filter((p) => (p.publishedAt ?? p._creationTime) <= now)
+      .slice(0, args.limit ?? 20);
+  },
 });
 
 export const getBySlug = query({
@@ -19,7 +33,10 @@ export const getBySlug = query({
       .query("posts")
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .unique();
-    return post && post.published ? post : null;
+    // Same schedule check as listPublished — otherwise a direct link would
+    // serve a post that has not gone live yet.
+    if (!post || !post.published) return null;
+    return (post.publishedAt ?? post._creationTime) <= Date.now() ? post : null;
   },
 });
 
@@ -31,13 +48,25 @@ export const create = mutation({
     excerpt: v.optional(v.string()),
     coverUrl: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
+    // Accepted at create so a post can be written and scheduled in one pass,
+    // rather than saved as a draft and then immediately edited to publish it.
+    published: v.optional(v.boolean()),
+    publishedAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
+
+    const existing = await ctx.db
+      .query("posts")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .unique();
+    if (existing) throw new Error("A post with that slug already exists.");
+
     const words = args.body.trim().split(/\s+/).length;
     return await ctx.db.insert("posts", {
       ...args,
-      published: false,
+      published: args.published ?? false,
+      publishedAt: args.publishedAt ?? Date.now(),
       readingTime: Math.max(1, Math.round(words / 200)),
     });
   },
@@ -51,5 +80,62 @@ export const setPublished = mutation({
       published: args.published,
       publishedAt: args.published ? Date.now() : undefined,
     });
+  },
+});
+
+/** Admin list — includes drafts, which listPublished deliberately hides. */
+export const listAll = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    return await ctx.db.query("posts").order("desc").take(200);
+  },
+});
+
+export const getById = query({
+  args: { id: v.id("posts") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    return await ctx.db.get(args.id);
+  },
+});
+
+/** Roughly 200 words a minute, which is the usual reading speed for prose. */
+function readingMinutes(body: string): number {
+  return Math.max(1, Math.round(body.trim().split(/\s+/).length / 200));
+}
+
+export const update = mutation({
+  args: {
+    id: v.id("posts"),
+    title: v.optional(v.string()),
+    slug: v.optional(v.string()),
+    body: v.optional(v.string()),
+    excerpt: v.optional(v.string()),
+    coverUrl: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    published: v.optional(v.boolean()),
+    publishedAt: v.optional(v.number()),
+  },
+  handler: async (ctx, { id, ...patch }) => {
+    await requireAdmin(ctx);
+
+    // Recomputed whenever the body changes, so the figure can never drift
+    // from the text it describes.
+    const readingTime =
+      patch.body !== undefined ? readingMinutes(patch.body) : undefined;
+
+    await ctx.db.patch(id, {
+      ...patch,
+      ...(readingTime !== undefined ? { readingTime } : {}),
+    });
+  },
+});
+
+export const remove = mutation({
+  args: { id: v.id("posts") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    await ctx.db.delete(args.id);
   },
 });
