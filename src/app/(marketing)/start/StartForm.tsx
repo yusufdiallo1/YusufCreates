@@ -5,6 +5,13 @@ import { useSearchParams } from "next/navigation";
 import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
 import { Reveal } from "@/components/motion/Reveal";
 import { SubmitSuccess } from "@/components/marketing/SubmitSuccess";
+import { FieldError } from "@/components/ui/FieldError";
+import {
+  validateEmail,
+  validatePhone,
+  validateRequired,
+  validateUrl,
+} from "@/lib/validate";
 import {
   CONTACT_PREFERENCES,
   FIELDS,
@@ -56,28 +63,62 @@ export function StartForm() {
     message: "",
   });
 
+  // Which fields have been left once. Errors show only after that, or after a
+  // failed attempt to advance — nobody should be corrected mid-word.
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const markTouched = (key: string) =>
+    setTouched((t) => ({ ...t, [key]: true }));
+
   const set = (key: string) => (value: string) =>
     setValues((v) => ({ ...v, [key]: value }));
 
   const activePlan = getPlan(plan);
 
-  const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(values.email ?? "");
   // Phone is optional in general, but required if they ask to be phoned —
   // otherwise the preference is unactionable.
   const wantsCall =
     values.contactPreference === "Phone call" ||
     values.contactPreference === "WhatsApp";
-  const phoneOk = !wantsCall || (values.phone ?? "").trim().length >= 6;
+
+  /**
+   * Single source of truth for what is wrong with a field. Both the inline
+   * message and the Next button read this, so the button can never be enabled
+   * while a visible error contradicts it.
+   */
+  function problemWith(key: string): string | null {
+    const value = values[key] ?? "";
+
+    if (key === "name") return validateRequired(value, "your name");
+    if (key === "email") return validateEmail(value);
+    if (key === "phone") return validatePhone(value, wantsCall);
+    if (key === "existingUrl") return validateUrl(value);
+
+    const def = FIELDS[key as FieldId];
+    if (def?.required) {
+      return validateRequired(value, def.label.toLowerCase().replace(/\?$/, ""));
+    }
+    return null;
+  }
+
+  /** Shown only once the field has been touched. */
+  const errorFor = (key: string) => (touched[key] ? problemWith(key) : null);
+
+  /** Touches every field on a step so its problems all surface at once. */
+  function revealProblems(keys: string[]) {
+    setTouched((t) => {
+      const next = { ...t };
+      for (const k of keys) next[k] = true;
+      return next;
+    });
+  }
+
+  const CONTACT_KEYS = ["name", "email", "phone"];
+  const planKeys: string[] = activePlan?.fields ?? [];
 
   const planChosen = plan !== "";
-  const contactValid = (values.name ?? "").trim() !== "" && emailOk && phoneOk;
-
+  const contactValid = CONTACT_KEYS.every((k) => problemWith(k) === null);
   const detailsValid =
-    activePlan?.fields.every((f) => {
-      const def = FIELDS[f];
-      if (!def.required) return true;
-      return (values[f] ?? "").trim() !== "";
-    }) ?? false;
+    activePlan !== undefined && planKeys.every((k) => problemWith(k) === null);
 
   const isValid = planChosen && contactValid && detailsValid;
 
@@ -160,6 +201,8 @@ export function StartForm() {
                   label="Name"
                   value={values.name ?? ""}
                   onChange={set("name")}
+                  onBlur={() => markTouched("name")}
+                  error={errorFor("name")}
                   required
                 />
                 <Field
@@ -170,6 +213,8 @@ export function StartForm() {
                   placeholder="you@company.com"
                   value={values.email ?? ""}
                   onChange={set("email")}
+                  onBlur={() => markTouched("email")}
+                  error={errorFor("email")}
                   required
                 />
                 <Field
@@ -181,21 +226,25 @@ export function StartForm() {
                   help="Include the country code."
                   value={values.phone ?? ""}
                   onChange={set("phone")}
+                  onBlur={() => markTouched("phone")}
+                  error={errorFor("phone")}
                   required={wantsCall}
                 />
                 <Select
                   id="contactPreference"
                   label="Best way to reach you"
                   value={values.contactPreference ?? ""}
-                  onChange={set("contactPreference")}
+                  onChange={(v) => {
+                    set("contactPreference")(v);
+                    // Switching to a call makes an empty phone field a problem,
+                    // so surface it immediately rather than at the Next click.
+                    if (v === "Phone call" || v === "WhatsApp") {
+                      markTouched("phone");
+                    }
+                  }}
                   options={CONTACT_PREFERENCES}
                   allowEmpty={false}
                 />
-                {wantsCall && !phoneOk ? (
-                  <p className="text-xs text-secondary">
-                    A number is needed for that — or switch back to email.
-                  </p>
-                ) : null}
               </div>
             </fieldset>
           </Reveal>
@@ -219,6 +268,8 @@ export function StartForm() {
                     id={f}
                     value={values[f] ?? ""}
                     onChange={set(f)}
+                    onBlur={() => markTouched(f)}
+                    error={errorFor(f)}
                   />
                 ))}
               </div>
@@ -315,14 +366,24 @@ export function StartForm() {
         </button>
 
         {step < TOTAL ? (
+          // Not disabled while incomplete. A dead button explains nothing —
+          // pressing it reveals exactly which fields are unfinished, which is
+          // the only way to find out on a keyboard or a screen reader.
           <button
             type="button"
-            onClick={() => setStep((s) => s + 1)}
-            disabled={
-              (step === 1 && !planChosen) ||
-              (step === 2 && !contactValid) ||
-              (step === 3 && !detailsValid)
-            }
+            onClick={() => {
+              if (step === 1 && !planChosen) return;
+              if (step === 2 && !contactValid) {
+                revealProblems(CONTACT_KEYS);
+                return;
+              }
+              if (step === 3 && !detailsValid) {
+                revealProblems(planKeys);
+                return;
+              }
+              setStep((s) => s + 1);
+            }}
+            disabled={step === 1 && !planChosen}
             className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
           >
             Next
@@ -338,10 +399,14 @@ function PlanField({
   id,
   value,
   onChange,
+  onBlur,
+  error,
 }: {
   id: FieldId;
   value: string;
   onChange: (v: string) => void;
+  onBlur?: () => void;
+  error?: string | null;
 }) {
   const def = FIELDS[id];
 
@@ -352,6 +417,8 @@ function PlanField({
         label={def.label}
         value={value}
         onChange={onChange}
+        onBlur={onBlur}
+        error={error}
         options={def.options ?? []}
         help={def.help}
       />
@@ -388,11 +455,15 @@ function PlanField({
           value={value}
           placeholder={def.placeholder}
           onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${id}-error` : undefined}
           className="hairline mt-2 w-full rounded-lg bg-surface-1 px-4 py-3 text-sm text-primary"
         />
         {def.help ? (
           <p className="mt-1.5 text-xs text-secondary">{def.help}</p>
         ) : null}
+        <FieldError id={`${id}-error`}>{error}</FieldError>
       </div>
     );
   }
@@ -404,6 +475,8 @@ function PlanField({
       type={def.kind === "number" ? "number" : "text"}
       value={value}
       onChange={onChange}
+      onBlur={onBlur}
+      error={error}
       required={def.required}
       help={def.help}
       placeholder={def.placeholder}
@@ -416,6 +489,8 @@ function Field({
   label,
   value,
   onChange,
+  onBlur,
+  error,
   type = "text",
   required,
   help,
@@ -426,6 +501,8 @@ function Field({
   label: string;
   value: string;
   onChange: (v: string) => void;
+  onBlur?: () => void;
+  error?: string | null;
   type?: string;
   required?: boolean;
   help?: string;
@@ -441,12 +518,20 @@ function Field({
       <input
         id={id}
         type={type}
-        required={required}
+        // No `required` attribute: validation is ours, so the browser never
+        // raises its own unstyleable bubble. aria-required keeps the semantics
+        // for assistive technology.
+        aria-required={required || undefined}
         value={value}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        aria-describedby={helpId}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={
+          [error ? `${id}-error` : null, helpId].filter(Boolean).join(" ") ||
+          undefined
+        }
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
         className="hairline mt-2 w-full rounded-lg bg-surface-1 px-4 py-2.5 text-sm text-primary"
       />
       {help ? (
@@ -454,6 +539,7 @@ function Field({
           {help}
         </p>
       ) : null}
+      <FieldError id={`${id}-error`}>{error}</FieldError>
     </div>
   );
 }
@@ -463,6 +549,8 @@ function Select({
   label,
   value,
   onChange,
+  onBlur,
+  error,
   options,
   help,
   allowEmpty = true,
@@ -471,6 +559,8 @@ function Select({
   label: string;
   value: string;
   onChange: (v: string) => void;
+  onBlur?: () => void;
+  error?: string | null;
   options: string[];
   help?: string;
   allowEmpty?: boolean;
@@ -484,8 +574,13 @@ function Select({
       <select
         id={id}
         value={value}
-        aria-describedby={helpId}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={
+          [error ? `${id}-error` : null, helpId].filter(Boolean).join(" ") ||
+          undefined
+        }
         onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
         className="hairline mt-2 w-full rounded-lg bg-surface-1 px-4 py-2.5 text-sm text-primary"
       >
         {allowEmpty ? <option value="">Choose one</option> : null}
@@ -500,6 +595,7 @@ function Select({
           {help}
         </p>
       ) : null}
+      <FieldError id={`${id}-error`}>{error}</FieldError>
     </div>
   );
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { FieldError } from "@/components/ui/FieldError";
+import { validateEmail } from "@/lib/validate";
 
 /**
  * Newsletter signup.
@@ -19,6 +21,8 @@ type Status = "idle" | "sending" | "sent" | "error";
 export function NewsletterForm({ className }: { className?: string }) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>("idle");
+  const [fieldError, setFieldError] = useState<string | null>(null);
+  const [touched, setTouched] = useState(false);
   // Honeypot. A real person never fills this in.
   const [company, setCompany] = useState("");
   // Lazily stamped on first render rather than at module scope, so the timer
@@ -29,6 +33,14 @@ export function NewsletterForm({ className }: { className?: string }) {
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (status === "sending") return;
+
+    const problem = validateEmail(email);
+    if (problem) {
+      setTouched(true);
+      setFieldError(problem);
+      return;
+    }
+    setFieldError(null);
 
     // Time trap: a genuine submission takes more than two seconds.
     const elapsed = Date.now() - (mountedAt.current ?? 0);
@@ -54,7 +66,7 @@ export function NewsletterForm({ className }: { className?: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className={className}>
+    <form noValidate onSubmit={onSubmit} className={className}>
       <label htmlFor="newsletter-email" className="text-xs text-secondary uppercase">
         Newsletter
       </label>
@@ -66,11 +78,21 @@ export function NewsletterForm({ className }: { className?: string }) {
         <input
           id="newsletter-email"
           type="email"
-          required
+          inputMode="email"
           autoComplete="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
+          aria-invalid={touched && fieldError ? true : undefined}
+          aria-describedby={fieldError ? "newsletter-email-error" : undefined}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            if (touched) setFieldError(validateEmail(e.target.value));
+          }}
+          onBlur={() => {
+            if (email.trim() === "") return;
+            setTouched(true);
+            setFieldError(validateEmail(email));
+          }}
+          placeholder="you@company.com"
           disabled={status === "sending" || status === "sent"}
           className="hairline min-w-0 flex-1 rounded-full bg-surface-1 px-4 py-2.5 text-sm text-primary placeholder:text-secondary disabled:opacity-60"
         />
@@ -97,11 +119,15 @@ export function NewsletterForm({ className }: { className?: string }) {
         />
       </div>
 
+      <FieldError id="newsletter-email-error">
+        {touched ? fieldError : null}
+      </FieldError>
+
       <p role="status" aria-live="polite" className="mt-2 min-h-5 text-xs text-secondary">
         {status === "sent"
           ? "Check your inbox to confirm."
           : status === "error"
-            ? "That didn't work. Try again shortly."
+            ? "That didn't send. Try again in a moment."
             : ""}
       </p>
     </form>

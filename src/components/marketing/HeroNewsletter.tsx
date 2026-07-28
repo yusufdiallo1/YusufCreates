@@ -2,6 +2,8 @@
 
 import { useRef, useState } from "react";
 import { MiniSlide } from "@/components/ui/MiniSlide";
+import { FieldError } from "@/components/ui/FieldError";
+import { validateEmail } from "@/lib/validate";
 
 /**
  * Hero newsletter capture — email field with a mini slide-to-confirm beneath.
@@ -16,6 +18,7 @@ import { MiniSlide } from "@/components/ui/MiniSlide";
 export function HeroNewsletter() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [touched, setTouched] = useState(false);
   const [company, setCompany] = useState("");
   const openedAt = useRef<number | null>(null);
   openedAt.current ??= Date.now();
@@ -37,9 +40,16 @@ export function HeroNewsletter() {
         type="email"
         autoComplete="email"
         value={email}
+        aria-invalid={touched && error ? true : undefined}
+        aria-describedby={error ? "hero-newsletter-error" : undefined}
         onChange={(e) => {
           setEmail(e.target.value);
-          setError(null);
+          setError(touched ? validateEmail(e.target.value) : null);
+        }}
+        onBlur={() => {
+          if (email.trim() === "") return;
+          setTouched(true);
+          setError(validateEmail(email));
         }}
         placeholder="you@company.com"
         className="hairline mt-2 w-full rounded-full bg-surface-1 px-5 py-2.5 text-center text-sm text-primary placeholder:text-secondary"
@@ -65,10 +75,12 @@ export function HeroNewsletter() {
             });
             // Throwing rolls the thumb back — the control owns that state.
             if (!res.ok) {
-              setError("That didn't work. Try again shortly.");
+              setTouched(true);
+              setError("That didn't send. Try again in a moment.");
               throw new Error("Subscribe failed");
             }
             setEmail("");
+            setError(null);
           }}
         />
       </div>
@@ -89,9 +101,11 @@ export function HeroNewsletter() {
         />
       </div>
 
-      <p role="status" aria-live="polite" className="mt-2 min-h-4 text-xs text-secondary">
-        {error}
-      </p>
+      <div className="min-h-6">
+        <FieldError id="hero-newsletter-error">
+          {touched ? error : null}
+        </FieldError>
+      </div>
     </div>
   );
 }

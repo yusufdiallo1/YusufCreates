@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { Logo } from "@/components/ui/Logo";
+import { FieldError } from "@/components/ui/FieldError";
 
 /**
  * Admin sign-in — Convex Auth, Password provider.
@@ -16,7 +17,13 @@ import { Logo } from "@/components/ui/Logo";
  * the security is entirely server-side.
  */
 
-const ADMIN_EMAIL = "committed1@gmail.com";
+/**
+ * Must match ADMIN_EMAIL on the Convex deployment, which is the side that
+ * actually enforces it — Convex deletes the account and refuses sign-in for
+ * any other address. This constant only decides what gets sent; it grants
+ * nothing on its own, so it is not a secret.
+ */
+const ADMIN_EMAIL = "yusufdiallo11@gmail.com";
 
 export function AdminSignIn() {
   const router = useRouter();
@@ -73,14 +80,16 @@ export function AdminSignIn() {
         await attempt("signUp");
         router.push("/admin");
       } catch {
-        setError("That is not right.");
+        // Deliberately vague: naming which part was wrong tells an attacker
+        // whether the account exists.
+        setError("That didn't match. Try again.");
         setBusy(false);
       }
     }
   }
 
   return (
-    <form onSubmit={submit} className="w-full max-w-sm text-center">
+    <form noValidate onSubmit={submit} className="w-full max-w-sm text-center">
       <Logo variant="mark" className="mx-auto h-8 w-auto" />
       <h1 className="mt-8 text-2xl">Admin</h1>
 
@@ -131,9 +140,12 @@ export function AdminSignIn() {
         {busy ? "Checking…" : "Continue"}
       </button>
 
-      <p role="status" aria-live="polite" className="mt-4 min-h-5 text-xs text-danger">
-        {error}
-      </p>
+      {/* Notice amber, not danger red — a mistyped password is a retry, not a
+          destructive outcome. min-h reserves the space so the button does not
+          jump when the message appears. */}
+      <div className="mt-4 min-h-5">
+        <FieldError>{error}</FieldError>
+      </div>
     </form>
   );
 }

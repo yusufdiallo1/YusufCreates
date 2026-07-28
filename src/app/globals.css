@@ -40,6 +40,12 @@
      button fill. This step is for filled destructive controls only. */
   --danger-solid: #c62a30;
 
+  /* Validation messages. Deliberately amber rather than --danger: an
+     unfinished email address is not a destructive outcome, and spending the
+     alarm colour on it leaves nothing louder for the cases that are. Verified
+     8.62:1 on --bg-surface-1, so it clears AA at the 12px these render at. */
+  --text-notice: #dba463;
+
   /* Typography ------------------------------------------------------------
      SF Pro resolves from the copy already installed on Apple operating
      systems. It is never self-hosted or served as a webfont — Apple's licence
@@ -151,6 +157,10 @@
   --danger: #d13239;
   --danger-solid: #c02b31;
 
+  /* Amber has to go much darker on a light canvas to stay legible; the dark
+     theme's value would sit near 1.6:1 here. Verified 5.40:1 on --bg-surface-1. */
+  --text-notice: #8a5a00;
+
   /* On light, glass is a white scrim: the bright inset highlight that reads as
      a bevel on dark would wash out, so it is dropped in favour of a soft
      ambient shadow and a darker seam. */
@@ -180,6 +190,7 @@
   --color-accent-solid: var(--accent-solid);
   --color-danger: var(--danger);
   --color-danger-solid: var(--danger-solid);
+  --color-notice: var(--text-notice);
 
   /* Fonts → font-sans, font-mono */
   --font-sans: var(--font-sans);
@@ -618,6 +629,7 @@
     --text-secondary: #c2c6cd;
     --glass-bg: rgba(14, 14, 22, 0.82);
     --focus-ring-width: 3px;
+    --text-notice: #f0c184;
   }
 
   [data-theme="light"] {
@@ -625,6 +637,7 @@
     --border-glass: rgba(10, 10, 10, 0.48);
     --text-secondary: #3d4046;
     --glass-bg: rgba(255, 255, 255, 0.92);
+    --text-notice: #6b4600;
   }
 
   .glass,
