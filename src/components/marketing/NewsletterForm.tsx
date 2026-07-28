@@ -123,6 +123,17 @@ export function NewsletterForm({ className }: { className?: string }) {
         {touched ? fieldError : null}
       </FieldError>
 
+      <p className="mt-2 text-xs text-secondary">
+        By subscribing you agree to the{" "}
+        <a
+          href="/legal/privacy"
+          className="text-accent transition-colors duration-fast hover:text-primary"
+        >
+          privacy policy
+        </a>
+        . One click to unsubscribe, any time.
+      </p>
+
       <p role="status" aria-live="polite" className="mt-2 min-h-5 text-xs text-secondary">
         {status === "sent"
           ? "Check your inbox to confirm."

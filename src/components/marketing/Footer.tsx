@@ -106,9 +106,27 @@ export function Footer() {
       </div>
 
       <div className="hairline-t">
-        <div className="mx-auto flex max-w-5xl flex-col gap-2 px-6 py-6 text-xs text-secondary sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto flex max-w-5xl flex-col gap-4 px-6 py-6 text-xs text-secondary sm:flex-row sm:items-center sm:justify-between">
           <p>© 2026 YusufCreates</p>
-          <p>Working with clients worldwide</p>
+
+          {/* Enterprise procurement looks for these, and a site collecting
+              email addresses without them is a real exposure. */}
+          <nav aria-label="Legal" className="flex flex-wrap gap-x-5 gap-y-2">
+            {[
+              { href: "/legal/privacy", label: "Privacy" },
+              { href: "/legal/terms", label: "Terms" },
+              { href: "/legal/cookies", label: "Cookies" },
+              { href: "/legal/accessibility", label: "Accessibility" },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="transition-colors duration-fast hover:text-primary"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
         </div>
       </div>
     </footer>

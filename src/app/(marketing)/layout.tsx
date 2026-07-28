@@ -3,6 +3,7 @@ import { SmoothScroll } from "@/components/motion/SmoothScroll";
 import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { Nav } from "@/components/marketing/Nav";
 import { Footer } from "@/components/marketing/Footer";
+import { Tracker } from "@/components/analytics/Tracker";
 
 export default function MarketingLayout({
   children,
@@ -14,6 +15,8 @@ export default function MarketingLayout({
     // scrolls natively — smoothing a data table is hostile.
     <SmoothScroll>
       <div className="flex min-h-full flex-col">
+        {/* First-party, cookieless. See src/lib/track.ts. */}
+        <Tracker />
         <ScrollProgress />
         <CustomCursor />
         <Nav />

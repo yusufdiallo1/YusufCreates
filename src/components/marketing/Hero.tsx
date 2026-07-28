@@ -13,6 +13,7 @@ import {
 } from "motion/react";
 import { LiquidGlass } from "@/components/ui/LiquidGlass";
 import { TextReveal } from "@/components/motion/TextReveal";
+import { track } from "@/lib/track";
 
 /**
  * Hero — glass slabs over a warm near-black void.
@@ -202,6 +203,7 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
             <Link
               href="/start"
               data-cursor="link"
+              onClick={() => track("cta_click", { cta: "hero-start" })}
               className="rounded-full bg-[color:var(--accent-solid)] px-6 py-3 text-center text-sm font-medium text-white transition-opacity duration-fast hover:opacity-90"
             >
               Start a project

@@ -7,6 +7,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { SubmitSuccess } from "@/components/marketing/SubmitSuccess";
 import { FieldError } from "@/components/ui/FieldError";
 import { playConfirmation } from "@/lib/sound";
+import { track } from "@/lib/track";
 import {
   validateEmail,
   validatePhone,
@@ -195,7 +196,12 @@ export function StartForm() {
                       type="button"
                       role="radio"
                       aria-checked={active}
-                      onClick={() => setPlan(p.id)}
+                      onClick={() => {
+                        // First real commitment in the funnel — everything
+                        // before this is just landing on the page.
+                        if (!plan) track("form_start", { step: p.id });
+                        setPlan(p.id);
+                      }}
                       className={`hairline block w-full rounded-lg px-5 py-4 text-left transition-colors duration-fast ${
                         active
                           ? "border-[color:var(--accent)] bg-surface-2"
@@ -319,7 +325,21 @@ export function StartForm() {
                 />
               </div>
 
-              <div className="mt-10">
+              {/* Consent by submission, not a checkbox. An unchecked box is
+                  friction, and a deliberate slide gesture is stronger evidence
+                  of an affirmative act than a tick ever was. */}
+              <p className="mt-8 text-xs text-secondary">
+                By sending this you agree to the{" "}
+                <a
+                  href="/legal/privacy"
+                  className="text-accent transition-colors duration-fast hover:text-primary"
+                >
+                  privacy policy
+                </a>
+                . I use your details to reply, and nothing else.
+              </p>
+
+              <div className="mt-4">
                 {/* The one irreversible action in this flow. onConfirm is
                     awaited by the control, which handles its own pending and
                     rollback states — no extra spinner or toast here. */}
@@ -350,6 +370,7 @@ export function StartForm() {
                     // Fires only on a confirmed 2xx, so the sound always
                     // means the enquiry actually landed.
                     playConfirmation();
+                    track("form_submit", { step: plan || "unknown" });
                     setSent(true);
                   }}
                 />

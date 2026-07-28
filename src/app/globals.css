@@ -1059,3 +1059,84 @@
     }
   }
 }
+
+/* --------------------------------------------------------------------------
+   Legal pages
+   -------------------------------------------------------------------------- */
+
+@layer components {
+  /* Long-form prose. These are read carefully rather than skimmed, so the
+     measure stays narrow and the leading generous. */
+  .legal-prose h1 {
+    font-size: var(--text-3xl);
+    margin-bottom: 0.5rem;
+  }
+
+  .legal-prose h2 {
+    font-size: var(--text-lg);
+    margin-top: 2.5rem;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary);
+  }
+
+  .legal-prose p,
+  .legal-prose li {
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+
+  .legal-prose p {
+    margin-bottom: 1rem;
+  }
+
+  .legal-prose ul {
+    margin-bottom: 1rem;
+    padding-left: 1.125rem;
+    list-style: disc;
+  }
+
+  .legal-prose li {
+    margin-bottom: 0.375rem;
+  }
+
+  .legal-prose a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .legal-prose a:hover {
+    color: var(--text-primary);
+  }
+
+  .legal-prose table {
+    width: 100%;
+    margin-bottom: 1.5rem;
+    font-size: var(--text-sm);
+    border-collapse: collapse;
+  }
+
+  .legal-prose th,
+  .legal-prose td {
+    padding: 0.625rem 0.75rem 0.625rem 0;
+    text-align: left;
+    vertical-align: top;
+    color: var(--text-secondary);
+  }
+
+  .legal-prose th {
+    color: var(--text-primary);
+    font-weight: var(--weight-medium);
+  }
+
+  .legal-prose tbody tr + tr th,
+  .legal-prose tbody tr + tr td {
+    border-top: 1px solid var(--border-hairline);
+  }
+
+  .legal-updated {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    margin-bottom: 2.5rem;
+  }
+}
