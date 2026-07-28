@@ -26,9 +26,11 @@ export const submit = mutation({
     entityType: v.optional(v.string()),
     turnstileToken: v.optional(v.string()),
     slideSignals: v.optional(slideSignals),
+    /** Computed in the route handler, which is not caller-controlled. */
+    score: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { turnstileToken, ...lead } = args;
+    const { turnstileToken, score: providedScore, ...lead } = args;
 
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(lead.email)) {
       throw new Error("A valid email address is required.");
@@ -42,7 +44,9 @@ export const submit = mutation({
       ...lead,
       status: "new" as const,
       turnstileVerified,
-      score: scoreLead(args),
+      // The route handler scores against the full weighting model; this
+      // fallback only applies if a lead is written from somewhere else.
+      score: providedScore ?? scoreLead(args),
     });
   },
 });

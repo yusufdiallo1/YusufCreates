@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
 import { Reveal } from "@/components/motion/Reveal";
+import { SubmitSuccess } from "@/components/marketing/SubmitSuccess";
 
 /**
  * Three-step lead form.
@@ -37,6 +38,11 @@ export function StartForm() {
   const params = useSearchParams();
   const [step, setStep] = useState(1);
   const [sent, setSent] = useState(false);
+  // Honeypot: hidden from sighted users and screen readers alike.
+  const [companyWebsite, setCompanyWebsite] = useState("");
+  // Time trap. Stamped on first render so it measures time on the form.
+  const openedAt = useRef<number | null>(null);
+  openedAt.current ??= Date.now();
 
   const [values, setValues] = useState({
     name: "",
@@ -62,15 +68,24 @@ export function StartForm() {
     (!needsDetail || values.projectTypeOther.trim().length > 2);
 
   if (sent) {
-    return (
-      <div className="text-center">
-        <h1 className="text-3xl">Thanks — that&apos;s with me.</h1>
-        <p className="mt-4 text-secondary">
-          I reply to everything within a day. If it&apos;s urgent, email{" "}
-          <span className="text-primary">hello@yusufcreates.com</span>.
-        </p>
-      </div>
-    );
+    const summary = [
+      { label: "Name", value: values.name },
+      { label: "Email", value: values.email },
+      values.company ? { label: "Company", value: values.company } : null,
+      values.projectType
+        ? {
+            label: "Project",
+            value:
+              values.projectType === "Something else"
+                ? values.projectTypeOther
+                : values.projectType,
+          }
+        : null,
+      values.budget ? { label: "Budget", value: values.budget } : null,
+      values.timeline ? { label: "Timeline", value: values.timeline } : null,
+    ].filter((x): x is { label: string; value: string } => x !== null);
+
+    return <SubmitSuccess summary={summary} />;
   }
 
   return (
@@ -188,6 +203,8 @@ export function StartForm() {
                         ...values,
                         source: "start-form",
                         slideSignals: signals,
+                        companyWebsite,
+                        elapsedMs: Date.now() - (openedAt.current ?? 0),
                       }),
                     });
                     if (!res.ok) throw new Error("Submit failed");
@@ -198,6 +215,23 @@ export function StartForm() {
             </fieldset>
           </Reveal>
         ) : null}
+      </div>
+
+      {/* Honeypot. aria-hidden plus tabIndex -1 keeps it away from screen
+          readers and keyboard users; only a bot filling every field hits it. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-[9999px] h-0 w-0 overflow-hidden"
+      >
+        <label htmlFor="company-website">Company website</label>
+        <input
+          id="company-website"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          value={companyWebsite}
+          onChange={(e) => setCompanyWebsite(e.target.value)}
+        />
       </div>
 
       <div className="mt-10 flex justify-between">
