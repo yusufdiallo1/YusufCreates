@@ -152,8 +152,8 @@ export const seedProjects = internalMutation({
         coverUrl: "/work/ledger-budget.jpg",
         liveUrl: "https://ledger-beta-lovat-14.vercel.app/",
         status: "published" as const,
-        order: 6,
-        featured: false,
+        order: 3,
+        featured: true,
         summary:
           "A budget tracker that answers one question first: how much is left this month.",
         problem:
