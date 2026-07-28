@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AuthGate } from "@/components/admin/AuthGate";
 import { ADMIN_NAV, SITE } from "@/lib/constants";
 
 /**
@@ -29,7 +30,9 @@ export default function AdminLayout({
         </nav>
       </aside>
 
-      <main className="flex-1 p-8">{children}</main>
+      <main id="main" className="flex-1 p-8">
+        <AuthGate>{children}</AuthGate>
+      </main>
     </div>
   );
 }

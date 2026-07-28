@@ -1,12 +1,74 @@
-import { SITE } from "@/lib/constants";
+import { preloadQuery } from "convex/nextjs";
+import { convexAuthNextjsToken } from "@convex-dev/auth/nextjs/server";
+import { api, isConvexConfigured } from "@/lib/convex-api";
+import { Hero } from "@/components/marketing/Hero";
+import { Projects } from "@/components/marketing/Projects";
+import { Skills } from "@/components/marketing/Skills";
+import { About } from "@/components/marketing/About";
+import { Process } from "@/components/marketing/Process";
+import { Testimonials } from "@/components/marketing/Testimonials";
+import { ContactCTA } from "@/components/marketing/ContactCTA";
+import { Marquee } from "@/components/motion/Marquee";
+import { ALL_SKILL_NAMES } from "@/lib/skills";
+import { professionalServiceJsonLd } from "@/lib/jsonld";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const token = isConvexConfigured ? await convexAuthNextjsToken() : undefined;
+
+  // Each degrades independently: a Convex failure must not 500 the front page.
+  const preloadedProjects = isConvexConfigured
+    ? await preloadQuery(api.projects.listFeatured, {}, { token }).catch(
+        () => null,
+      )
+    : null;
+
+  const preloadedTestimonials = isConvexConfigured
+    ? await preloadQuery(api.testimonials.listFeatured, {}, { token }).catch(
+        () => null,
+      )
+    : null;
+
   return (
-    <section className="mx-auto max-w-5xl px-6 py-24">
-      <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
-        {SITE.name}
-      </h1>
-      <p className="mt-4 max-w-xl text-lg opacity-70">{SITE.description}</p>
-    </section>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(professionalServiceJsonLd),
+        }}
+      />
+
+      <Hero />
+
+      {/* Tech marquee. Dot separators keep the rhythm even and stop two names
+          reading as one phrase. */}
+      <section className="hairline-y py-6" aria-label="Tools and technologies">
+        <Marquee speed={60} gap={0} className="text-secondary">
+          {ALL_SKILL_NAMES.map((name) => (
+            <span key={name} className="flex items-center whitespace-nowrap">
+              <span className="text-lg">{name}</span>
+              <span aria-hidden="true" className="px-8 text-lg opacity-40">
+                ·
+              </span>
+            </span>
+          ))}
+        </Marquee>
+      </section>
+
+      <About />
+
+      {/* Renders nothing when no projects are published. */}
+      {preloadedProjects ? <Projects preloaded={preloadedProjects} /> : null}
+
+      <Process />
+
+      <Skills />
+
+      {/* Renders nothing when the table is empty. */}
+      {preloadedTestimonials ? (
+        <Testimonials preloaded={preloadedTestimonials} />
+      ) : null}
+
+      <ContactCTA />
+    </>
   );
 }

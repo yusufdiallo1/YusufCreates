@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180" role="img" aria-label="YusufCreates">
+  <title>YusufCreates</title>
+  <!-- Opaque tile: iOS composites touch icons onto an unpredictable backdrop. -->
+  <rect width="180" height="180" fill="#08090a"/>
+  <g transform="translate(-3.354, -0.171) scale(0.84867)">
+    <g fill="none" stroke="#f7f8f8" stroke-width="18" stroke-linecap="square" stroke-linejoin="miter">
+      <path d="M61 48 L92 79 L61 110" />
+      <path d="M159 48 L115 92 L115 137" />
+    </g>
+    <rect x="99" y="155" width="34" height="17" fill="#5e6ad2" />
+  </g>
+</svg>

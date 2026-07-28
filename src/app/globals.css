@@ -1,26 +1,622 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   YusufCreates design system
+   Apple Liquid Glass over a Linear-style near-black canvas.
+   Depth comes from the surface ladder and hairline borders, not drop shadows.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Tokens — dark is the default, no media query required.
+   -------------------------------------------------------------------------- */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
+
+  /* Colour ---------------------------------------------------------------- */
+  --bg-canvas: #08090a;
+  --bg-surface-1: #0f1011;
+  --bg-surface-2: #161718;
+  --bg-surface-3: #23252a;
+
+  --text-primary: #f7f8f8;
+  --text-secondary: #8a8f98;
+
+  --border-hairline: rgba(255, 255, 255, 0.08);
+  --border-glass: rgba(255, 255, 255, 0.13);
+
+  --accent: #5e6ad2;
+  --accent-glow: rgba(94, 106, 210, 0.35);
+  --danger: #e5484d;
+
+  /* --accent at 4.42:1 under --text-primary sits just under the 4.5:1 needed
+     for body text on a filled button. This slightly darker step is for that
+     case only; --accent itself is unchanged and still correct for borders,
+     icons and large text (it clears the 3:1 non-text threshold). */
+  --accent-solid: #5560c4;
+
+  /* Same reasoning as --accent-solid: --danger is tuned to read as text on the
+     canvas (5.09:1), which leaves it too light to sit under white text as a
+     button fill. This step is for filled destructive controls only. */
+  --danger-solid: #c62a30;
+
+  /* Typography ------------------------------------------------------------
+     SF Pro resolves from the copy already installed on Apple operating
+     systems. It is never self-hosted or served as a webfont — Apple's licence
+     does not permit that on a public website. Inter Variable is self-hosted
+     via next/font and carries every non-Apple platform.
+     --font-inter is injected by next/font in layout.tsx. */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    var(--font-inter, "Inter Variable"), Inter, system-ui, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Type scale ------------------------------------------------------------ */
+  --text-xs: 0.75rem; /* 12 */
+  --text-sm: 0.875rem; /* 14 */
+  --text-base: 1rem; /* 16 */
+  --text-lg: 1.125rem; /* 18 */
+  --text-xl: 1.25rem; /* 20 */
+  --text-2xl: 1.5rem; /* 24 */
+
+  /* Display sizes scale with the viewport. Minimums are the step below so
+     small screens never fall through the scale. */
+  --text-3xl: clamp(1.5rem, 1.15rem + 1.75vw, 2rem); /* 24 → 32 */
+  --text-4xl: clamp(2rem, 1.3rem + 3.5vw, 3rem); /* 32 → 48 */
+  --text-5xl: clamp(2.5rem, 1.4rem + 5.5vw, 4rem); /* 40 → 64 */
+
+  /* Tracking. Display type tightens; body stays neutral. */
+  --tracking-display: -0.022em;
+  --tracking-tight: -0.014em;
+  --tracking-normal: 0em;
+
+  --leading-display: 1.05;
+  --leading-heading: 1.2;
+  --leading-body: 1.6;
+
+  --weight-light: 300;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* Spacing — 8pt based ---------------------------------------------------- */
+  --space-1: 0.25rem; /* 4 */
+  --space-2: 0.5rem; /* 8 */
+  --space-3: 0.75rem; /* 12 */
+  --space-4: 1rem; /* 16 */
+  --space-6: 1.5rem; /* 24 */
+  --space-8: 2rem; /* 32 */
+  --space-12: 3rem; /* 48 */
+  --space-16: 4rem; /* 64 */
+  --space-24: 6rem; /* 96 */
+  --space-32: 8rem; /* 128 */
+
+  /* Radius ----------------------------------------------------------------- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 28px;
+  --radius-full: 9999px;
+
+  /* Glass ------------------------------------------------------------------
+     The inset highlights do the work here — the outer shadow only seats the
+     panel against the canvas. */
+  --glass-bg: rgba(14, 14, 22, 0.24);
+  --glass-blur: 12px;
+  --glass-saturate: 180%;
+  --glass-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.5),
+    inset 0 -8px 20px rgba(255, 255, 255, 0.06),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.13);
+
+  /* Motion ------------------------------------------------------------------ */
+  --dur-fast: 0.2s;
+  --dur-base: 0.4s;
+  --dur-slow: 0.8s;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* Focus ------------------------------------------------------------------- */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --focus-ring-color: var(--accent);
 }
+
+/* --------------------------------------------------------------------------
+   Light mode. Canvas and primary text are specified; the rest is derived to
+   keep the same surface ladder and contrast relationships.
+   -------------------------------------------------------------------------- */
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-canvas: #fbfbfd;
+  --bg-surface-1: #f4f4f7;
+  --bg-surface-2: #ededf1;
+  --bg-surface-3: #e2e2e8;
+
+  --text-primary: #0a0a0a;
+  /* Holds 4.5:1 all the way up to --bg-surface-3, the worst case. */
+  --text-secondary: #5b5f66;
+
+  --border-hairline: rgba(10, 10, 10, 0.09);
+  --border-glass: rgba(10, 10, 10, 0.12);
+
+  /* Darkened slightly so it clears 4.5:1 on the light canvas. */
+  --accent: #4c58c0;
+  --accent-glow: rgba(76, 88, 192, 0.28);
+  --accent-solid: #4c58c0;
+  --danger: #d13239;
+  --danger-solid: #c02b31;
+
+  /* On light, glass is a white scrim: the bright inset highlight that reads as
+     a bevel on dark would wash out, so it is dropped in favour of a soft
+     ambient shadow and a darker seam. */
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-shadow:
+    0 16px 40px rgba(10, 10, 20, 0.1),
+    inset 0 1px 1px rgba(255, 255, 255, 0.9),
+    inset 0 0 0 1px rgba(10, 10, 10, 0.08);
+}
+
+/* --------------------------------------------------------------------------
+   Tailwind theme wiring. Exposes every token above as a utility class.
+   -------------------------------------------------------------------------- */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Colours → bg-canvas, text-primary, border-hairline, ring-accent, … */
+  --color-canvas: var(--bg-canvas);
+  --color-surface-1: var(--bg-surface-1);
+  --color-surface-2: var(--bg-surface-2);
+  --color-surface-3: var(--bg-surface-3);
+  --color-primary: var(--text-primary);
+  --color-secondary: var(--text-secondary);
+  --color-hairline: var(--border-hairline);
+  --color-glass: var(--border-glass);
+  --color-accent: var(--accent);
+  --color-accent-glow: var(--accent-glow);
+  --color-accent-solid: var(--accent-solid);
+  --color-danger: var(--danger);
+  --color-danger-solid: var(--danger-solid);
+
+  /* Fonts → font-sans, font-mono */
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  /* Type scale → text-xs … text-5xl */
+  --text-xs: var(--text-xs);
+  --text-sm: var(--text-sm);
+  --text-base: var(--text-base);
+  --text-lg: var(--text-lg);
+  --text-xl: var(--text-xl);
+  --text-2xl: var(--text-2xl);
+  --text-3xl: var(--text-3xl);
+  --text-4xl: var(--text-4xl);
+  --text-5xl: var(--text-5xl);
+
+  /* Tracking → tracking-display, tracking-tight, tracking-normal */
+  --tracking-display: var(--tracking-display);
+  --tracking-tight: var(--tracking-tight);
+  --tracking-normal: var(--tracking-normal);
+
+  /* Leading → leading-display, leading-heading, leading-body */
+  --leading-display: var(--leading-display);
+  --leading-heading: var(--leading-heading);
+  --leading-body: var(--leading-body);
+
+  /* Weights → font-light … font-semibold */
+  --font-weight-light: var(--weight-light);
+  --font-weight-regular: var(--weight-regular);
+  --font-weight-medium: var(--weight-medium);
+  --font-weight-semibold: var(--weight-semibold);
+
+  /* Spacing → p-1, gap-6, mt-32, … (8pt ladder) */
+  --spacing-1: var(--space-1);
+  --spacing-2: var(--space-2);
+  --spacing-3: var(--space-3);
+  --spacing-4: var(--space-4);
+  --spacing-6: var(--space-6);
+  --spacing-8: var(--space-8);
+  --spacing-12: var(--space-12);
+  --spacing-16: var(--space-16);
+  --spacing-24: var(--space-24);
+  --spacing-32: var(--space-32);
+
+  /* Radius → rounded-sm … rounded-full */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+  --radius-full: var(--radius-full);
+
+  /* Glass → backdrop-blur-glass, shadow-glass, bg-glass */
+  --color-glass-bg: var(--glass-bg);
+  --blur-glass: var(--glass-blur);
+  --shadow-glass: var(--glass-shadow);
+
+  /* Motion → duration-fast|base|slow, ease-out-expo, ease-in-out-quint */
+  --animate-duration-fast: var(--dur-fast);
+  --animate-duration-base: var(--dur-base);
+  --animate-duration-slow: var(--dur-slow);
+  --ease-out-expo: var(--ease-out-expo);
+  --ease-in-out-quint: var(--ease-in-out);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Tailwind v4 derives duration-* from its own scale, so register the motion
+   durations as first-class utilities. */
+@utility duration-fast {
+  transition-duration: var(--dur-fast);
+}
+@utility duration-base {
+  transition-duration: var(--dur-base);
+}
+@utility duration-slow {
+  transition-duration: var(--dur-slow);
+}
+
+/* --------------------------------------------------------------------------
+   Base layer
+   -------------------------------------------------------------------------- */
+
+@layer base {
+  html {
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    /* cv01 — single-storey a; ss03 — flat-top 3. Applies to the Inter
+       fallback; SF Pro simply ignores features it does not ship. */
+    font-feature-settings: "cv01" 1, "ss03" 1;
+    font-optical-sizing: auto;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+    font-size: var(--text-base);
+    font-weight: var(--weight-regular);
+    line-height: var(--leading-body);
+    letter-spacing: var(--tracking-normal);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-display);
+    line-height: var(--leading-heading);
+    text-wrap: balance;
+  }
+
+  h1 {
+    font-size: var(--text-5xl);
+    line-height: var(--leading-display);
+  }
+  h2 {
+    font-size: var(--text-4xl);
+  }
+  h3 {
+    font-size: var(--text-3xl);
+  }
+  h4 {
+    font-size: var(--text-2xl);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background-color: var(--accent-glow);
+    color: var(--text-primary);
+  }
+
+  /* Visible keyboard focus everywhere. :focus-visible keeps it off pointer
+     interaction without ever leaving keyboard users without an indicator. */
+  :focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+    border-radius: var(--radius-sm);
+  }
+
+  /* If a component must drop the native ring, this is the replacement — never
+     `outline: none` on its own. */
+  .focus-ring-inset:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 var(--focus-ring-width) var(--bg-canvas),
+      0 0 0 calc(var(--focus-ring-width) * 2) var(--focus-ring-color);
+  }
+
+  /* Skip link — visible the moment it takes focus. */
+  .skip-link {
+    position: absolute;
+    left: var(--space-4);
+    top: calc(var(--space-4) * -10);
+    z-index: 100;
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-surface-2);
+    color: var(--text-primary);
+    transition: top var(--dur-fast) var(--ease-out-expo);
+  }
+  .skip-link:focus-visible {
+    top: var(--space-4);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* --------------------------------------------------------------------------
+   Components
+   -------------------------------------------------------------------------- */
+
+@layer components {
+  /* Liquid glass panel. The backdrop-filter is the effect; the fallback path
+     is handled in the accessibility section below. */
+  .glass {
+    background-color: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur))
+      saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    box-shadow: var(--glass-shadow);
+    border-radius: var(--radius-xl);
+  }
+
+  /* Surface ladder. Depth is the step up the ladder plus a hairline — not a
+     drop shadow. */
+  .surface-1,
+  .surface-2,
+  .surface-3 {
+    border: 1px solid var(--border-hairline);
+    border-radius: var(--radius-lg);
+  }
+  .surface-1 {
+    background-color: var(--bg-surface-1);
+  }
+  .surface-2 {
+    background-color: var(--bg-surface-2);
+  }
+  .surface-3 {
+    background-color: var(--bg-surface-3);
+  }
+
+  /* Liquid glass — layered.
+     1. Base: translucent fill + blurred, saturated backdrop
+     2. Specular: --glass-shadow (outer drop, top inset highlight,
+        bottom inset scatter, 1px inset border)
+     3. Refraction: --lg-backdrop resolves to url(#filter) on Chromium only;
+        everywhere else it is the plain blur() + saturate() chain. */
+  .liquid-glass {
+    position: relative;
+    background-color: var(--glass-bg);
+    -webkit-backdrop-filter: var(--lg-backdrop);
+    backdrop-filter: var(--lg-backdrop);
+    box-shadow: var(--glass-shadow);
+    /* Blurred layers must not be resized or repositioned — the compositor
+       re-snapshots the backdrop every frame. Only opacity is safe here. */
+    will-change: opacity;
+  }
+
+  /* Touch devices are overwhelmingly on integrated GPUs where a wide blur
+     radius is the single most expensive part of this effect. */
+  @media (hover: none) {
+    .liquid-glass {
+      -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 0.6))
+        saturate(var(--glass-saturate));
+      backdrop-filter: blur(calc(var(--glass-blur) * 0.6))
+        saturate(var(--glass-saturate));
+    }
+  }
+
+  /* When the custom cursor is mounted it replaces the system pointer, so the
+     native one is hidden on interactive elements too. The class is applied by
+     CustomCursor only when it actually renders, so touch and reduced-motion
+     users keep their normal cursor. */
+  .has-custom-cursor,
+  .has-custom-cursor a,
+  .has-custom-cursor button,
+  .has-custom-cursor [role="button"] {
+    cursor: none;
+  }
+
+  /* Skill rows. Flat and hairline-separated; the only hover affordance is the
+     use line resolving from muted to full strength. */
+  .skill-row-use {
+    color: var(--text-secondary);
+    opacity: 0.55;
+    transition: opacity var(--dur-fast) var(--ease-out-expo);
+  }
+
+  .skill-row:hover .skill-row-use,
+  .skill-row:focus-within .skill-row-use {
+    opacity: 1;
+  }
+
+  /* Touch has no hover, so the use line is always legible there. */
+  @media (hover: none) {
+    .skill-row-use {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .skill-row-use {
+      transition: none;
+      opacity: 1;
+    }
+  }
+
+  /* Nav pill. Transparent at rest so the hero reads full-bleed; on scroll it
+     picks up a translucent fill and a hairline so content passing underneath
+     stays legible. */
+  .nav-pill {
+    background-color: transparent;
+    border: 1px solid transparent;
+    transition:
+      background-color var(--dur-base) var(--ease-out-expo),
+      border-color var(--dur-base) var(--ease-out-expo),
+      box-shadow var(--dur-base) var(--ease-out-expo);
+  }
+
+  .nav-pill-condensed {
+    background-color: color-mix(in srgb, var(--bg-surface-1) 72%, transparent);
+    border-color: var(--border-hairline);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    backdrop-filter: blur(12px) saturate(180%);
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .nav-pill-condensed {
+      background-color: var(--bg-surface-1);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+
+  .hairline {
+    border: 1px solid var(--border-hairline);
+  }
+  .hairline-t {
+    border-top: 1px solid var(--border-hairline);
+  }
+  .hairline-b {
+    border-bottom: 1px solid var(--border-hairline);
+  }
+  .platform-name {
+    opacity: 0.5;
+    transition: opacity var(--dur-fast) var(--ease-out-expo);
+  }
+  .platform-name:hover {
+    opacity: 1;
+  }
+
+  .footer-social {
+    color: var(--text-secondary);
+    transition: color var(--dur-fast) var(--ease-out-expo);
+  }
+  .footer-social:hover {
+    color: var(--text-primary);
+  }
+
+  .hairline-y {
+    border-top: 1px solid var(--border-hairline);
+    border-bottom: 1px solid var(--border-hairline);
+  }
+}
+
+/* ==========================================================================
+   Accessibility — non-negotiable
+   ========================================================================== */
+
+/* Reduced transparency: no backdrop-filter, opaque background. The blur is
+   what costs users here, so it is removed outright rather than softened. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .liquid-glass {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background-color: var(--bg-surface-2);
+    border: 1px solid var(--border-glass);
+    /* Drop the inset bevel highlights, which only read correctly over blur. */
+    box-shadow: none;
+  }
+}
+
+/* Same treatment where backdrop-filter is unsupported, so the panel never
+   renders as near-transparent text on the raw canvas. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .liquid-glass {
+    background-color: var(--bg-surface-2);
+    border: 1px solid var(--border-glass);
+    box-shadow: none;
+  }
+}
+
+/* Reduced motion: kill parallax, marquees and the custom cursor. Animations
+   are reduced to a single near-instant frame rather than removed, so
+   animation-driven state and completion events still fire. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+
+  /* Opt-in hooks the JS primitives check against. */
+  [data-parallax],
+  [data-marquee] {
+    transform: none !important;
+    animation: none !important;
+  }
+
+  [data-custom-cursor] {
+    display: none !important;
+  }
+
+  /* Restore the system cursor when the custom one is suppressed. */
+  [data-cursor-hidden] {
+    cursor: auto !important;
+  }
+}
+
+/* Increased contrast: stronger borders and text, brighter focus ring. */
+@media (prefers-contrast: more) {
+  :root {
+    --border-hairline: rgba(255, 255, 255, 0.28);
+    --border-glass: rgba(255, 255, 255, 0.42);
+    --text-secondary: #c2c6cd;
+    --glass-bg: rgba(14, 14, 22, 0.82);
+    --focus-ring-width: 3px;
+  }
+
+  [data-theme="light"] {
+    --border-hairline: rgba(10, 10, 10, 0.34);
+    --border-glass: rgba(10, 10, 10, 0.48);
+    --text-secondary: #3d4046;
+    --glass-bg: rgba(255, 255, 255, 0.92);
+  }
+
+  .glass,
+  .liquid-glass {
+    border: 1px solid var(--border-glass);
+  }
+
+  :focus-visible {
+    outline-color: var(--text-primary);
+  }
+}
+
+/* Forced colours (Windows high contrast): defer to the system palette. */
+@media (forced-colors: active) {
+  .glass,
+  .liquid-glass,
+  .surface-1,
+  .surface-2,
+  .surface-3 {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background-color: Canvas;
+    border: 1px solid CanvasText;
+    box-shadow: none;
+  }
+
+  :focus-visible {
+    outline: 3px solid Highlight;
+  }
 }

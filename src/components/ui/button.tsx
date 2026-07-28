@@ -1,13 +1,16 @@
 import { cn } from "@/lib/utils";
 
-type Variant = "primary" | "secondary" | "ghost";
+type Variant = "primary" | "secondary" | "ghost" | "danger";
 
 const VARIANTS: Record<Variant, string> = {
+  // accent-solid, not accent — see the note in globals.css on contrast.
   primary:
-    "bg-foreground text-background hover:opacity-90 disabled:opacity-50",
+    "bg-accent-solid text-primary hover:brightness-110 disabled:opacity-50",
   secondary:
-    "border border-black/15 hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10",
-  ghost: "hover:bg-black/5 dark:hover:bg-white/10",
+    "bg-surface-2 text-primary border border-hairline hover:bg-surface-3",
+  ghost: "text-secondary hover:bg-surface-1 hover:text-primary",
+  danger:
+    "bg-danger-solid text-primary hover:brightness-110 disabled:opacity-50",
 };
 
 export interface ButtonProps
@@ -23,7 +26,9 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex h-10 items-center justify-center rounded-lg px-4 text-sm font-medium transition-opacity",
+        "inline-flex h-10 items-center justify-center rounded-md px-4",
+        "text-sm font-medium tracking-tight",
+        "transition-[background-color,filter,opacity] duration-fast ease-out-expo",
         VARIANTS[variant],
         className,
       )}
