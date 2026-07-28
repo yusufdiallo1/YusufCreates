@@ -1,12 +1,8 @@
 import Link from "next/link";
-import {
-  GithubIcon,
-  InstagramIcon,
-  LinkedinIcon,
-  XIcon,
-} from "@/components/ui/SocialIcons";
+import { InstagramIcon } from "@/components/ui/SocialIcons";
 import { Logo } from "@/components/ui/Logo";
 import { CopyButton } from "@/components/ui/CopyButton";
+import { INSTAGRAM } from "@/lib/constants";
 
 /**
  * Footer — four columns collapsing to one on mobile.
@@ -24,24 +20,7 @@ const NAV = [
   { href: "/blog", label: "Blog" },
 ];
 
-const SOCIAL = [
-  {
-    label: "Instagram",
-    href: "https://instagram.com/yusufcreates",
-    Icon: InstagramIcon,
-  },
-  {
-    label: "GitHub",
-    href: "https://github.com/yusufdiallo1",
-    Icon: GithubIcon,
-  },
-  {
-    label: "LinkedIn",
-    href: "https://linkedin.com/in/yusufdiallo",
-    Icon: LinkedinIcon,
-  },
-  { label: "X", href: "https://x.com/yusufcreates", Icon: XIcon },
-];
+
 
 export function Footer() {
   return (
@@ -104,21 +83,17 @@ export function Footer() {
           {/* 4. Social */}
           <div>
             <h2 className="text-xs text-secondary uppercase">Elsewhere</h2>
-            <ul className="mt-4 flex flex-wrap gap-1">
-              {SOCIAL.map(({ label, href, Icon }) => (
-                <li key={label}>
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={label}
-                    className="footer-social flex size-10 items-center justify-center rounded-md"
-                  >
-                    <Icon size={20} />
-                  </a>
-                </li>
-              ))}
-            </ul>
+            <a
+              href={INSTAGRAM.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Instagram, ${INSTAGRAM.handle}`}
+              data-cursor="link"
+              className="footer-social mt-3 -ml-2 inline-flex items-center gap-2 rounded-md px-2 py-2"
+            >
+              <InstagramIcon size={20} />
+              <span className="text-sm">{INSTAGRAM.handle}</span>
+            </a>
           </div>
         </div>
       </div>

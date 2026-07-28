@@ -10,3 +10,9 @@ export const MARKETING_NAV = [
 ] as const;
 
 export const ADMIN_NAV = [{ href: "/dashboard", label: "Dashboard" }] as const;
+
+/** The one social account linked from the site. */
+export const INSTAGRAM = {
+  handle: "@yusufcreatesdev",
+  href: "https://www.instagram.com/yusufcreatesdev/",
+} as const;

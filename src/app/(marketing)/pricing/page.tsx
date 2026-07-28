@@ -1,33 +1,36 @@
-import { PRICING_TIERS } from "@/lib/pricing";
-import { formatCurrency } from "@/lib/utils";
+import type { Metadata } from "next";
+import { PricingTables } from "@/components/marketing/PricingTables";
+import { PricingFaq } from "@/components/marketing/PricingFaq";
+import { ContactCTA } from "@/components/marketing/ContactCTA";
+import { TextReveal } from "@/components/motion/TextReveal";
+import { Reveal } from "@/components/motion/Reveal";
+import { SITE } from "@/lib/constants";
 
-export const metadata = { title: "Pricing" };
+export const metadata: Metadata = {
+  title: "Pricing",
+  description:
+    "Transparent pricing in USD, SAR and AED. Launch from $900, Growth from $1,800, web apps from $6,000, Enterprise from $13,000.",
+  alternates: { canonical: `${SITE.url}/pricing` },
+};
 
 export default function PricingPage() {
   return (
-    <section className="mx-auto max-w-5xl px-6 py-24">
-      <h1 className="text-3xl font-semibold tracking-tight">Pricing</h1>
-
-      <div className="mt-10 grid gap-6 sm:grid-cols-2">
-        {PRICING_TIERS.map((tier) => (
-          <div
-            key={tier.id}
-            className="rounded-xl border border-black/10 p-6 dark:border-white/15"
-          >
-            <h2 className="font-medium">{tier.name}</h2>
-            <p className="mt-1 text-sm opacity-70">{tier.description}</p>
-            <p className="mt-4 text-2xl font-semibold">
-              {formatCurrency(tier.price.month)}
-              <span className="text-sm font-normal opacity-60">/mo</span>
-            </p>
-            <ul className="mt-4 space-y-1 text-sm opacity-80">
-              {tier.features.map((feature) => (
-                <li key={feature}>{feature}</li>
-              ))}
-            </ul>
-          </div>
-        ))}
+    <>
+      <div className="mx-auto max-w-3xl px-6 pt-32 pb-16 text-center">
+        <TextReveal as="h1" by="word" className="block text-4xl">
+          Pricing
+        </TextReveal>
+        <Reveal delay={0.1}>
+          <p className="mt-4 text-lg text-secondary">
+            Fixed prices, agreed before I start. No hourly billing, no surprise
+            invoices.
+          </p>
+        </Reveal>
       </div>
-    </section>
+
+      <PricingTables />
+      <PricingFaq />
+      <ContactCTA />
+    </>
   );
 }

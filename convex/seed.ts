@@ -81,6 +81,89 @@ export const seedProjects = internalMutation({
           "TypeScript",
         ],
       },
+      {
+        slug: "stopwatch",
+        title: "StopWatch",
+        client: "Personal project",
+        year: 2026,
+        category: "Web app",
+        coverUrl: "/work/stopwatch.jpg",
+        liveUrl: "https://stopwatchapp-omega.vercel.app/",
+        status: "published" as const,
+        order: 3,
+        featured: false,
+        summary:
+          "A focus timer, stopwatch, world clock and countdown in one calm interface.",
+        problem:
+          "Most timer apps either do one thing and stop, or bury four tools behind a cluttered toolbar. Neither is pleasant to keep open on a second monitor all day.",
+        process:
+          "Four modes behind a single sidebar, with Pomodoro blocks that track which round you are on and roll into breaks automatically. The running clock stays visible so the app doubles as a desk clock, and the whole thing follows the system light and dark preference.",
+        result:
+          "Runs entirely in the browser with no account and no backend.",
+        techStack: ["React", "TypeScript", "Tailwind CSS", "Vite", "Vercel"],
+      },
+      {
+        slug: "weather",
+        title: "Weather",
+        client: "Personal project",
+        year: 2026,
+        category: "Web app",
+        coverUrl: "/work/weather.jpg",
+        liveUrl: "https://weather-opal-five-94.vercel.app/",
+        status: "published" as const,
+        order: 4,
+        featured: false,
+        summary:
+          "Current conditions, hourly and seven-day forecasts, with an honest fallback when the API is unreachable.",
+        problem:
+          "Weather sites bury the number you actually want under advertising, and most fail silently or show stale figures when their data source is down.",
+        process:
+          "Live data with a clear hierarchy: temperature first, then wind, gusts, humidity, UV, rain chance and pressure. When the forecast API cannot be reached the app switches to clearly labelled sample data and says so in a banner rather than presenting invented numbers as real.",
+        result:
+          "Saved places, hourly and seven-day views, and a fallback state that never misleads.",
+        techStack: ["React", "TypeScript", "Tailwind CSS", "Vite", "Vercel"],
+      },
+      {
+        slug: "margin-notes",
+        title: "Margin",
+        client: "Personal project",
+        year: 2026,
+        category: "Web app",
+        coverUrl: "/work/margin-notes.jpg",
+        liveUrl: "https://margin-chi-five.vercel.app/",
+        status: "published" as const,
+        order: 5,
+        featured: false,
+        summary:
+          "A markdown note-taking app with separate writing and reading modes.",
+        problem:
+          "Note apps tend to force a choice between a plain textarea and a heavy editor that fights you over formatting.",
+        process:
+          "Markdown with a split between Write and Read, so drafting and reviewing are distinct states rather than a preview pane competing for width. Search across all notes, a built-in syntax cheatsheet, and local persistence so nothing is lost on refresh.",
+        result: "No account required; notes stay on the device.",
+        techStack: ["React", "TypeScript", "Tailwind CSS", "Vite", "Vercel"],
+      },
+      {
+        slug: "ledger-budget",
+        title: "Ledger",
+        client: "Personal project",
+        year: 2026,
+        category: "Web app",
+        coverUrl: "/work/ledger-budget.jpg",
+        liveUrl: "https://ledger-beta-lovat-14.vercel.app/",
+        status: "published" as const,
+        order: 6,
+        featured: false,
+        summary:
+          "A budget tracker that answers one question first: how much is left this month.",
+        problem:
+          "Budgeting tools open on a wall of transactions. The number people actually want — what is left — is somewhere further down.",
+        process:
+          "The remaining balance leads, with money in and money out beside it. Below that, spending by category as a donut, a per-day bar chart to surface unusual days, and the transaction list last. Sample transactions ship pre-loaded and clearly labelled so the charts are not empty on first open, with one button to clear them.",
+        result:
+          "Monthly navigation, category budgets, and multi-currency display.",
+        techStack: ["React", "TypeScript", "Recharts", "Tailwind CSS", "Vercel"],
+      },
     ];
 
     for (const project of projects) {

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import { NameMark } from "@/components/ui/NameMark";
+import { InstagramIcon } from "@/components/ui/SocialIcons";
+import { INSTAGRAM } from "@/lib/constants";
 
 /**
  * Hero — centred, single column.
@@ -81,16 +83,30 @@ export function Hero() {
           </Link>
         </motion.div>
 
-        <motion.p
+        <motion.div
           {...step(0.4)}
-          className="mt-8 inline-flex items-center gap-2 text-xs text-secondary"
+          className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-secondary"
         >
-          <span
-            aria-hidden="true"
-            className="size-1.5 rounded-full bg-accent"
-          />
-          Available for new work
-        </motion.p>
+          <span className="inline-flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className="size-1.5 rounded-full bg-accent"
+            />
+            Available for new work
+          </span>
+
+          <a
+            href={INSTAGRAM.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Instagram, ${INSTAGRAM.handle}`}
+            data-cursor="link"
+            className="inline-flex items-center gap-1.5 transition-colors duration-fast hover:text-primary"
+          >
+            <InstagramIcon size={14} />
+            {INSTAGRAM.handle}
+          </a>
+        </motion.div>
       </div>
     </section>
   );

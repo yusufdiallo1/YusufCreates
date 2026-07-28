@@ -620,3 +620,68 @@
     outline: 3px solid Highlight;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Component styles added after the base layer
+   -------------------------------------------------------------------------- */
+
+@layer components {
+  /* Enterprise band. A warm edge sets it apart from the packaged tiers
+     without resorting to a gradient. */
+  .enterprise-band {
+    background-color: var(--bg-surface-2);
+    border: 1px solid color-mix(in srgb, #c9a227 34%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, #c9a227 18%, transparent);
+  }
+
+  /* FAQ accordion */
+  .faq-chevron {
+    transition: transform var(--dur-fast) var(--ease-out-expo);
+  }
+  .faq-trigger[data-state="open"] .faq-chevron {
+    transform: rotate(45deg);
+  }
+  .faq-content[data-state="open"] {
+    animation: faq-open var(--dur-fast) var(--ease-out-expo);
+  }
+  .faq-content[data-state="closed"] {
+    animation: faq-close var(--dur-fast) var(--ease-out-expo);
+  }
+  @keyframes faq-open {
+    from { height: 0; }
+    to { height: var(--radix-accordion-content-height); }
+  }
+  @keyframes faq-close {
+    from { height: var(--radix-accordion-content-height); }
+    to { height: 0; }
+  }
+
+  /* Disappearing ink: typed characters fade to invisible, and revealing the
+     password fades them back. The value is never masked by the browser, so
+     the animation is what provides the privacy. */
+  .ink-input {
+    color: transparent;
+    caret-color: var(--text-primary);
+    transition: color var(--dur-slow) var(--ease-in-out-quint);
+  }
+  .ink-input.ink-visible {
+    color: var(--text-primary);
+  }
+  .ink-ghost {
+    color: var(--text-primary);
+    animation: ink-fade 1.1s var(--ease-in-out-quint) forwards;
+  }
+  @keyframes ink-fade {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ink-input,
+    .ink-ghost {
+      transition: none;
+      animation: none;
+    }
+    .ink-ghost { opacity: 0; }
+  }
+}
