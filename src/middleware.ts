@@ -16,6 +16,9 @@ import {
  */
 // /dashboard no longer exists — the admin lives entirely under /admin.
 const isProtected = createRouteMatcher(["/admin(.*)"]);
+// The portal handles its own three-state auth in-page rather than redirecting:
+// a client arriving from an email link should see an explanation, not a
+// sign-in form for an account they may not realise they have.
 // Sign-in is the Password provider at /sign-in-admin. The old /signin page
 // used GitHub OAuth, which convex/auth.ts no longer configures, so sending
 // anyone there was sending them to a dead end.

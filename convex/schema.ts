@@ -352,6 +352,57 @@ export default defineSchema({
   }).index("by_kind_key", ["kind", "key"]),
 
   /**
+   * Client portal.
+   *
+   * projectIds is the ONLY thing that decides what a client can see. Every
+   * portal query derives it from the authenticated session and filters by it —
+   * a project id from the URL is never trusted, because changing one in the
+   * address bar is the first thing anyone tries.
+   */
+  clients: defineTable({
+    email: v.string(),
+    name: v.string(),
+    company: v.optional(v.string()),
+    projectIds: v.array(v.id("projects")),
+    /** Set once they first sign in through a magic link. */
+    userId: v.optional(v.id("users")),
+    lastLoginAt: v.optional(v.number()),
+    createdAt: v.number(),
+  }).index("by_email", ["email"]),
+
+  milestones: defineTable({
+    projectId: v.id("projects"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    status: v.union(
+      v.literal("todo"),
+      v.literal("in_progress"),
+      v.literal("done"),
+    ),
+    order: v.number(),
+    dueAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+  }).index("by_project", ["projectId", "order"]),
+
+  deliverables: defineTable({
+    projectId: v.id("projects"),
+    name: v.string(),
+    url: v.string(),
+    version: v.number(),
+    uploadedAt: v.number(),
+    approvedAt: v.optional(v.number()),
+  }).index("by_project", ["projectId"]),
+
+  portalMessages: defineTable({
+    projectId: v.id("projects"),
+    authorType: v.union(v.literal("client"), v.literal("admin")),
+    authorName: v.string(),
+    body: v.string(),
+    readAt: v.optional(v.number()),
+    createdAt: v.number(),
+  }).index("by_project", ["projectId", "createdAt"]),
+
+  /**
    * Promotions.
    *
    * Status is DERIVED on every read from the window, the pause flag and the
