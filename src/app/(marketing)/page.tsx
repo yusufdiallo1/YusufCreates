@@ -9,6 +9,8 @@ import { Process } from "@/components/marketing/Process";
 import { Testimonials } from "@/components/marketing/Testimonials";
 import { ContactCTA } from "@/components/marketing/ContactCTA";
 import { TechMarquee } from "@/components/marketing/TechMarquee";
+import { WhatIDo } from "@/components/marketing/WhatIDo";
+import { Faq } from "@/components/marketing/Faq";
 import { ALL_SKILL_NAMES } from "@/lib/skills";
 import { professionalServiceJsonLd } from "@/lib/jsonld";
 
@@ -45,6 +47,8 @@ export default async function HomePage() {
 
       <About />
 
+      <WhatIDo />
+
       {/* Renders nothing when no projects are published. */}
       {preloadedProjects ? <Projects preloaded={preloadedProjects} /> : null}
 
@@ -56,6 +60,8 @@ export default async function HomePage() {
       {preloadedTestimonials ? (
         <Testimonials preloaded={preloadedTestimonials} />
       ) : null}
+
+      <Faq />
 
       <ContactCTA />
     </>
