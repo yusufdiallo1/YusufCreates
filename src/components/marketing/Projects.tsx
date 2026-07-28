@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePreloadedQuery, type Preloaded } from "convex/react";
 import type { api } from "@/lib/convex-api";
 import { Reveal } from "@/components/motion/Reveal";
+import { ImageReveal } from "@/components/motion/ImageReveal";
 import { cn } from "@/lib/utils";
 
 /**
@@ -91,7 +92,7 @@ export function ProjectCard({
       className="project-card group block h-full overflow-hidden rounded-xl"
     >
       {/* Fixed frame; only the image inside it scales, so no layout moves. */}
-      <div
+      <ImageReveal
         className={cn(
           "relative w-full overflow-hidden bg-surface-2",
           wide ? "aspect-[2/1]" : "aspect-[3/2]",
@@ -116,7 +117,7 @@ export function ProjectCard({
           aria-hidden="true"
           className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-[color:var(--bg-surface-1)] to-transparent"
         />
-      </div>
+      </ImageReveal>
 
       <div className="bg-surface-1 p-5">
         <div className="flex items-baseline justify-between gap-4">

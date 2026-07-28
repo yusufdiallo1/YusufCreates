@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { motion, useReducedMotion } from "motion/react";
+import { useRef } from "react";
+import {
+  motion,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from "motion/react";
 import { NameMark } from "@/components/ui/NameMark";
 import { InstagramIcon } from "@/components/ui/SocialIcons";
 import { INSTAGRAM } from "@/lib/constants";
@@ -24,6 +30,16 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 
 export function Hero() {
   const reduceMotion = useReducedMotion();
+  const ref = useRef<HTMLElement>(null);
+
+  // Foreground drifts up and fades before the hero leaves, so the section
+  // hands off rather than simply scrolling away.
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start start", "end start"],
+  });
+  const y = useTransform(scrollYProgress, [0, 1], [0, -40]);
+  const opacity = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
 
   const step = (delay: number) =>
     reduceMotion
@@ -35,7 +51,10 @@ export function Hero() {
         };
 
   return (
-    <section className="relative flex min-h-[86svh] items-center overflow-hidden">
+    <section
+      ref={ref}
+      className="relative flex min-h-[86dvh] items-center overflow-hidden"
+    >
       {/* A single quiet accent wash. No mesh, no gradient stack. */}
       <div
         aria-hidden="true"
@@ -43,7 +62,10 @@ export function Hero() {
         style={{ background: "var(--accent-glow)" }}
       />
 
-      <div className="mx-auto w-full max-w-3xl px-6 py-24 text-center">
+      <motion.div
+        style={reduceMotion ? undefined : { y, opacity }}
+        className="mx-auto w-full max-w-3xl px-6 py-24 text-center"
+      >
         <motion.div {...step(0)}>
           <NameMark className="text-sm tracking-[0.22em] text-secondary uppercase" />
         </motion.div>
@@ -107,7 +129,7 @@ export function Hero() {
             {INSTAGRAM.handle}
           </a>
         </motion.div>
-      </div>
+      </motion.div>
     </section>
   );
 }

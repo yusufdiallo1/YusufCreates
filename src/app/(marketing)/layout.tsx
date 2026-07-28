@@ -1,4 +1,6 @@
 import { CustomCursor } from "@/components/ui/CustomCursor";
+import { SmoothScroll } from "@/components/motion/SmoothScroll";
+import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { Nav } from "@/components/marketing/Nav";
 import { Footer } from "@/components/marketing/Footer";
 
@@ -8,16 +10,21 @@ export default function MarketingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-full flex-col">
-      <CustomCursor />
-      <Nav />
+    // Smoothing is deliberately scoped to marketing pages. The admin layout
+    // scrolls natively — smoothing a data table is hostile.
+    <SmoothScroll>
+      <div className="flex min-h-full flex-col">
+        <ScrollProgress />
+        <CustomCursor />
+        <Nav />
 
-      {/* Padded for the fixed nav so content never starts underneath it. */}
-      <main id="main" className="flex-1">
-        {children}
-      </main>
+        {/* Padded for the fixed nav so content never starts underneath it. */}
+        <main id="main" className="flex-1">
+          {children}
+        </main>
 
-      <Footer />
-    </div>
+        <Footer />
+      </div>
+    </SmoothScroll>
   );
 }

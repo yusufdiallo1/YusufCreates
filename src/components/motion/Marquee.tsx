@@ -1,6 +1,11 @@
 "use client";
 
-import { useAnimationFrame, useMotionValue, useReducedMotion } from "motion/react";
+import {
+  useAnimationFrame,
+  useMotionValue,
+  useReducedMotion,
+  type MotionValue,
+} from "motion/react";
 import { motion } from "motion/react";
 import { Children, useRef, useState } from "react";
 
@@ -25,6 +30,11 @@ interface MarqueeProps {
   /** Gap between items, in pixels. */
   gap?: number;
   pauseOnHover?: boolean;
+  /**
+   * Normalised scroll velocity (-1..1). When supplied, scrolling speeds the
+   * ticker up and a direction flip briefly runs it backwards.
+   */
+  velocity?: MotionValue<number>;
   className?: string;
 }
 
@@ -34,6 +44,7 @@ export function Marquee({
   direction = "left",
   gap = 48,
   pauseOnHover = true,
+  velocity,
   className,
 }: MarqueeProps) {
   const reduceMotion = useReducedMotion();
@@ -53,8 +64,13 @@ export function Marquee({
     if (half <= 0) return;
 
     const perMs = half / (speed * 1000);
+    // Scroll velocity multiplies the base speed. Clamped so a hard flick
+    // cannot reverse the ticker faster than it ever runs forwards.
+    const boost = velocity
+      ? Math.max(-2, Math.min(4, 1 + velocity.get() * 6))
+      : 1;
     const next =
-      offset.get() + (direction === "left" ? -1 : 1) * perMs * delta;
+      offset.get() + (direction === "left" ? -1 : 1) * perMs * delta * boost;
 
     // Normalise into [-half, 0). Because the two copies are identical, any
     // offset differing by exactly `half` renders the same pixels, so this

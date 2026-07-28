@@ -8,7 +8,7 @@ import { About } from "@/components/marketing/About";
 import { Process } from "@/components/marketing/Process";
 import { Testimonials } from "@/components/marketing/Testimonials";
 import { ContactCTA } from "@/components/marketing/ContactCTA";
-import { Marquee } from "@/components/motion/Marquee";
+import { TechMarquee } from "@/components/marketing/TechMarquee";
 import { ALL_SKILL_NAMES } from "@/lib/skills";
 import { professionalServiceJsonLd } from "@/lib/jsonld";
 
@@ -41,18 +41,7 @@ export default async function HomePage() {
 
       {/* Tech marquee. Dot separators keep the rhythm even and stop two names
           reading as one phrase. */}
-      <section className="hairline-y py-6" aria-label="Tools and technologies">
-        <Marquee speed={60} gap={0} className="text-secondary">
-          {ALL_SKILL_NAMES.map((name) => (
-            <span key={name} className="flex items-center whitespace-nowrap">
-              <span className="text-lg">{name}</span>
-              <span aria-hidden="true" className="px-8 text-lg opacity-40">
-                ·
-              </span>
-            </span>
-          ))}
-        </Marquee>
-      </section>
+      <TechMarquee names={ALL_SKILL_NAMES} />
 
       <About />
 
