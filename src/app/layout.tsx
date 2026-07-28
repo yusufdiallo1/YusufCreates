@@ -25,10 +25,14 @@ export default function RootLayout({
 }>) {
   const shell = (
     // Dark is the default; `data-theme="light"` on <html> flips the palette.
+    // min-h-full, never h-full. `height: 100%` pins the <html> box to the
+    // viewport while the content overflows past it, which kills touch
+    // scrolling on mobile — the wheel still works, so it only shows on a
+    // phone. min-height lets the box grow with the page.
     <html
       lang="en"
       data-theme="dark"
-      className={`${inter.variable} h-full antialiased`}
+      className={`${inter.variable} min-h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
         <a href="#main" className="skip-link">

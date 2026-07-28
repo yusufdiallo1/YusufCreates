@@ -95,14 +95,38 @@ export function InvoiceView({
           <dl className="mt-6 space-y-3 text-sm">
             <Row label="Account name" value={bank.accountName} copy />
             <Row label="Bank" value={bank.bankName} />
-            {bank.iban ? <Row label="IBAN" value={bank.iban} copy /> : null}
-            {bank.accountNumber ? (
-              <Row label="Account number" value={bank.accountNumber} copy />
+            {bank.bankAddress ? (
+              <Row label="Bank address" value={bank.bankAddress} copy />
             ) : null}
-            {bank.swift ? <Row label="SWIFT / BIC" value={bank.swift} copy /> : null}
-            {bank.country ? <Row label="Country" value={bank.country} /> : null}
             <Row label="Reference" value={invoice.reference} copy />
           </dl>
+
+          {/* One block per rail. Domestic and international details are not
+              interchangeable — handing a US payer a SWIFT code, or an
+              overseas payer an ACH number, is how a transfer bounces a week
+              later. Each rail is labelled with who it is for. */}
+          {bank.rails.map((rail) => (
+            <div key={rail.label} className="hairline-t mt-6 pt-5">
+              <h3 className="text-sm text-primary">{rail.label}</h3>
+              {rail.note ? (
+                <p className="mt-1 text-xs text-secondary">{rail.note}</p>
+              ) : null}
+              <dl className="mt-3 space-y-3 text-sm">
+                {rail.rows.map((row) => (
+                  <Row key={row.label} label={row.label} value={row.value} copy />
+                ))}
+              </dl>
+            </div>
+          ))}
+
+          {/* Only a domestic rail is configured, so say so rather than
+              leaving an overseas client to guess or send a doomed payment. */}
+          {bank.rails.length === 1 && bank.rails[0].label.includes("US") ? (
+            <p className="mt-5 text-xs text-secondary">
+              Paying from outside the US? Reply to the invoice email and
+              I&apos;ll send international details.
+            </p>
+          ) : null}
 
           <div className="mt-10">
             {confirmed ? (

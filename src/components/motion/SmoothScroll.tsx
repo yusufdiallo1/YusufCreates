@@ -30,6 +30,20 @@ export function SmoothScroll({ children }: { children: React.ReactNode }) {
     // Kill switch. No instance, no listeners, no RAF loop.
     if (reduceMotion) return;
 
+    /*
+     * Touch devices get native scrolling, full stop.
+     *
+     * syncTouch is off, so Lenis contributes nothing on touch anyway — but it
+     * still attaches touchstart/touchmove listeners and stamps classes on
+     * <html>, and that was enough to leave the page unscrollable by finger
+     * while the wheel kept working. Native momentum on iOS is better than
+     * anything we would impose, so there is nothing to lose here.
+     */
+    const isTouch =
+      window.matchMedia("(hover: none) and (pointer: coarse)").matches ||
+      navigator.maxTouchPoints > 0;
+    if (isTouch) return;
+
     const lenis = new Lenis({
       duration: 1.1,
       // Gentle expo-out: fast to settle, no long tail.
