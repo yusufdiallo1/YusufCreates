@@ -126,6 +126,9 @@ const COPY: Record<
 
 const TRACK_H = 64;
 const THUMB_W = 88;
+/** Label type scales between these to fit beside the thumb without truncating. */
+const LABEL_SIZE_MAX = 15;
+const LABEL_SIZE_MIN = 12;
 const THUMB_H = 54;
 const PAD = 5;
 const COMPLETE_AT = 0.985;
@@ -177,6 +180,10 @@ export function SlideToConfirm({
   const reduceMotion = useReducedMotion();
   const trackRef = useRef<HTMLDivElement>(null);
   const [maxX, setMaxX] = useState(0);
+  /** Measured thumb width. Shrinks on narrow tracks; see the measure effect. */
+  const [thumbW, setThumbW] = useState(THUMB_W);
+  const [labelSize, setLabelSize] = useState(LABEL_SIZE_MAX);
+  const labelRef = useRef<HTMLSpanElement>(null);
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
   const [touched, setTouched] = useState(false);
@@ -187,11 +194,19 @@ export function SlideToConfirm({
     : "var(--accent, #5e6ad2)";
   const rgb = hexish(accent, copy.danger ? [229, 72, 77] : [94, 106, 210]);
 
+  // Declared before the measure effect, which re-fits the label whenever the
+  // text changes between its resting, pending and done states.
+  const currentLabel = done
+    ? completedLabel ?? copy.done
+    : busy
+      ? pendingLabel ?? copy.pending
+      : label ?? copy.label;
+
   const x = useMotionValue(0);
   const safeMax = Math.max(maxX, 1);
 
   /** Accent trail that follows the thumb. */
-  const fillWidth = useTransform(x, (v) => `${PAD + v + THUMB_W / 2}px`);
+  const fillWidth = useTransform(x, (v) => `${PAD + v + thumbW / 2}px`);
   const fillBg = useTransform(x, [0, safeMax], [
     `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.05)`,
     `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.18)`,
@@ -207,12 +222,35 @@ export function SlideToConfirm({
   useEffect(() => {
     const measure = () => {
       if (!trackRef.current) return;
-      setMaxX(trackRef.current.clientWidth - THUMB_W - PAD * 2);
+      const width = trackRef.current.clientWidth;
+      // The thumb shrinks on narrow tracks. At the fixed 88px it covered 43%
+      // of a 320px-screen track, leaving too little room for the label beside
+      // it. Never below 64px, which is still a comfortable touch target.
+      const thumb = Math.max(64, Math.min(THUMB_W, Math.round(width * 0.28)));
+      setThumbW(thumb);
+      setMaxX(width - thumb - PAD * 2);
+
+      // Shrink the label until it fits the space beside the thumb. Measured
+      // rather than guessed from a breakpoint, because the label text varies
+      // by purpose — "Slide to start your Care Plan" needs more room than
+      // "Slide to send".
+      const el = labelRef.current;
+      if (!el) return;
+      const available = width - thumb - PAD * 2 - 16;
+      let size = LABEL_SIZE_MAX;
+      el.style.fontSize = `${size}px`;
+      while (size > LABEL_SIZE_MIN && el.scrollWidth > available) {
+        size -= 1;
+        el.style.fontSize = `${size}px`;
+      }
+      setLabelSize(size);
     };
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, []);
+    // currentLabel changes as the control moves through pending and done, and
+    // those strings differ in length, so the fit has to be recomputed.
+  }, [currentLabel]);
 
   const markTouched = () => {
     if (!touched) setTouched(true);
@@ -248,8 +286,8 @@ export function SlideToConfirm({
     markTouched();
     const rect = trackRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const local = e.clientX - rect.left - PAD - THUMB_W / 2;
-    if (local <= x.get() + THUMB_W && local >= x.get() - THUMB_W) return;
+    const local = e.clientX - rect.left - PAD - thumbW / 2;
+    if (local <= x.get() + thumbW && local >= x.get() - thumbW) return;
     animate(x, Math.max(0, Math.min(maxX, local)), {
       duration: 0.25,
       ease: EASE,
@@ -274,11 +312,6 @@ export function SlideToConfirm({
     }
   };
 
-  const currentLabel = done
-    ? completedLabel ?? copy.done
-    : busy
-      ? pendingLabel ?? copy.pending
-      : label ?? copy.label;
 
   const inert = disabled || done || busy;
   const shimmering = !touched && !inert && !reduceMotion;
@@ -329,26 +362,53 @@ export function SlideToConfirm({
           }}
         />
 
-        {/* Label never fades. The thumb is opaque and slides over it. */}
+        {/*
+          Label never fades. The thumb is opaque and slides over it.
+
+          Centred within the track MINUS the parked thumb, not within the whole
+          track. Centring across the full width puts the text under the resting
+          thumb, which on a narrow phone hides the first word or two — an 88px
+          thumb covers 43% of a 206px track at 320px. Offsetting by the thumb
+          width centres it in the space the reader can actually see, and the
+          label still passes behind the thumb as it travels, which is the
+          intended effect.
+
+          minWidth: 0 plus the ellipsis rules mean a long label degrades to a
+          truncation rather than overflowing the pill on the narrowest screens.
+        */}
         <div
           aria-hidden
           style={{
             position: "absolute",
-            inset: 0,
+            top: 0,
+            bottom: 0,
+            left: PAD + thumbW,
+            right: PAD,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: 15,
+            // Scales with the space actually left beside the thumb, so the
+            // full label fits rather than being truncated. Floors at 12px —
+            // below that it stops being readable, and the right answer then is
+            // a shorter label, not smaller type.
+            fontSize: labelSize,
             pointerEvents: "none",
+            paddingInline: 8,
           }}
         >
           <span
+            ref={labelRef}
             className={shimmering ? "yc-slide-shimmer" : undefined}
             style={{
               color: done
                 ? "var(--text-primary, #f7f8f8)"
                 : "var(--text-secondary, #8a8f98)",
               transition: "color 0.3s",
+              minWidth: 0,
+              // No ellipsis: the whole instruction has to be readable, and a
+              // half-shown "Slide to start your Care…" is worse than smaller
+              // type. Wrapping is prevented so it stays on one line.
+              whiteSpace: "nowrap",
             }}
           >
             {currentLabel}
@@ -392,7 +452,7 @@ export function SlideToConfirm({
             position: "absolute",
             top: PAD,
             left: PAD,
-            width: THUMB_W,
+            width: thumbW,
             height: THUMB_H,
             borderRadius: 9999,
             background: "linear-gradient(180deg, #ffffff 0%, #eceef1 100%)",

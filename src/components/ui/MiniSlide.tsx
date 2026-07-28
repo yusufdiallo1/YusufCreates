@@ -95,21 +95,38 @@ export function MiniSlide({
         userSelect: "none",
       }}
     >
-      {/* Label never fades; the thumb passes over it. */}
+      {/* Label never fades; the thumb passes over it.
+
+          Centred in the track minus the parked thumb, not across the whole
+          track — centring across the full width puts the text under the
+          resting thumb and hides the first word on a narrow screen. */}
       <div
         aria-hidden="true"
         style={{
           position: "absolute",
-          inset: 0,
+          top: 0,
+          bottom: 0,
+          left: PAD + THUMB_W,
+          right: PAD,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           fontSize: 13,
           color: "var(--text-secondary)",
           pointerEvents: "none",
+          paddingInline: 6,
         }}
       >
-        {current}
+        <span
+          style={{
+            minWidth: 0,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {current}
+        </span>
       </div>
 
       <motion.div

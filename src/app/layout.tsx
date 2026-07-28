@@ -7,6 +7,10 @@ import { isConvexConfigured } from "@/lib/convex-api";
 import { SITE } from "@/lib/constants";
 
 export const metadata: Metadata = {
+  // Required for opengraph-image to emit an absolute URL. Scrapers reject a
+  // relative one, which is why a share preview falls back to scavenging the
+  // first image it finds on the page.
+  metadataBase: new URL(SITE.url),
   title: {
     default: SITE.name,
     template: `%s · ${SITE.name}`,
@@ -15,6 +19,21 @@ export const metadata: Metadata = {
   icons: {
     icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
     apple: [{ url: "/apple-touch-icon.svg", sizes: "180x180" }],
+  },
+  openGraph: {
+    type: "website",
+    siteName: SITE.name,
+    title: SITE.name,
+    description: SITE.description,
+    url: SITE.url,
+    locale: "en_US",
+  },
+  twitter: {
+    // summary_large_image is what gives the wide card; the default "summary"
+    // crops to a small square and loses the headline entirely.
+    card: "summary_large_image",
+    title: SITE.name,
+    description: SITE.description,
   },
 };
 

@@ -1,6 +1,9 @@
 export const SITE = {
   name: "YusufCreates",
-  description: "YusufCreates — build, launch, and grow.",
+  // Also the share-card and search-result copy, so it says what the work is
+  // rather than three verbs that could describe anyone.
+  description:
+    "Websites and web apps for founders and teams who need it to work, not just look finished. Next.js, TypeScript and Convex.",
   url: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
 } as const;
 
