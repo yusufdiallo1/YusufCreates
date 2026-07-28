@@ -3,13 +3,14 @@ import Link from "next/link";
 import { Parallax } from "@/components/motion/Parallax";
 import { Reveal } from "@/components/motion/Reveal";
 import { TextReveal } from "@/components/motion/TextReveal";
+import { NameMark } from "@/components/ui/NameMark";
 import { personJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "About",
   description:
-    "Yusuf Diallo — independent developer in Madinah, building bilingual English and Arabic software for businesses across the Gulf.",
+    "Yusuf Diallo — independent developer building bilingual English and Arabic software for businesses across the Gulf and beyond.",
   alternates: { canonical: `${SITE.url}/about` },
 };
 
@@ -41,8 +42,12 @@ export default function AboutPage() {
       />
 
       <div className="mx-auto max-w-3xl px-6 pt-32 pb-24">
-        <TextReveal as="h1" by="word" className="block text-4xl">
-          About
+        {/* The name is set with the Y and D drawn as marks. */}
+        <h1 className="text-4xl">
+          <NameMark />
+        </h1>
+        <TextReveal as="p" by="word" className="mt-4 block text-secondary">
+          Independent developer. Here is how I work and who I work with.
         </TextReveal>
 
         <Parallax distance={28} className="mt-12">
@@ -97,12 +102,12 @@ export default function AboutPage() {
         </section>
 
         <section className="mt-16">
-          <h2 className="text-2xl">Where I am</h2>
+          <h2 className="text-2xl">How I work with clients</h2>
           <Reveal>
             <p className="mt-4 text-secondary">
-              Madinah, Saudi Arabia. I work with clients across the Gulf and
-              further out — timezone overlap with Europe is easy, and I keep
-              evening hours when a project needs the Americas.
+              Remote, with clients across the Gulf and further out. Timezone
+              overlap with Europe is easy, and I keep evening hours when a
+              project needs the Americas.
             </p>
           </Reveal>
         </section>

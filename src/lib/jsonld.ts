@@ -24,7 +24,6 @@ export const professionalServiceJsonLd = {
   availableLanguage: ["en", "ar"],
   address: {
     "@type": "PostalAddress",
-    addressLocality: "Madinah",
     addressCountry: "SA",
   },
   founder: { "@id": PERSON_ID },
@@ -43,7 +42,6 @@ export const personJsonLd = {
     "@type": "Place",
     address: {
       "@type": "PostalAddress",
-      addressLocality: "Madinah",
       addressCountry: "SA",
     },
   },

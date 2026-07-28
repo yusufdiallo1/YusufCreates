@@ -126,7 +126,7 @@ export function Footer() {
       <div className="hairline-t">
         <div className="mx-auto flex max-w-5xl flex-col gap-2 px-6 py-6 text-xs text-secondary sm:flex-row sm:items-center sm:justify-between">
           <p>© 2026 YusufCreates</p>
-          <p>Madinah, Saudi Arabia</p>
+          <p>Working with clients worldwide</p>
         </div>
       </div>
     </footer>

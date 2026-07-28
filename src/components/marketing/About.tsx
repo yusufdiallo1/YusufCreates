@@ -33,8 +33,8 @@ export function About() {
 
           <Reveal delay={0.08}>
             <p className="mt-6 text-secondary">
-              I&apos;m Yusuf. I build websites and web apps on my own, from
-              Madinah. Most of my work is for small businesses and founders who
+              I&apos;m Yusuf. I build websites and web apps on my own. Most
+              of my work is for small businesses and founders who
               have been quoted too much by an agency, or who had something built
               cheaply and now cannot change it without breaking it.
             </p>

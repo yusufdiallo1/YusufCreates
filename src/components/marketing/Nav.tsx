@@ -38,8 +38,13 @@ export function Nav() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Close the overlay on navigation.
-  useEffect(() => setOpen(false), [pathname]);
+  // Close the overlay on navigation. Adopting the new pathname during render
+  // avoids a setState in an effect body, which would cascade an extra render.
+  const [lastPath, setLastPath] = useState(pathname);
+  if (pathname !== lastPath) {
+    setLastPath(pathname);
+    if (open) setOpen(false);
+  }
 
   // Lock the page behind the overlay, and restore on close.
   useEffect(() => {
