@@ -322,4 +322,30 @@ export default defineSchema({
     type: v.string(),
     receivedAt: v.number(),
   }).index("by_event", ["stripeEventId"]),
+
+  /**
+   * Chat rate limiting.
+   *
+   * This has to live in Convex rather than the route handler: serverless
+   * instances share no memory, so an in-process counter resets on every cold
+   * start and rate-limits nothing. A Convex mutation is a serialisable
+   * transaction with automatic retry on conflict, so two simultaneous requests
+   * for the same key genuinely serialise — which is the property an in-memory
+   * limiter cannot offer.
+   */
+  chatLimits: defineTable({
+    kind: v.union(v.literal("session"), v.literal("ip")),
+    /** Session id, or a salted hash of the IP — never a raw address. */
+    key: v.string(),
+    windowStart: v.number(),
+    count: v.number(),
+  }).index("by_kind_key", ["kind", "key"]),
+
+  /** Every turn, for review. Lets me see what people actually ask. */
+  chatMessages: defineTable({
+    sessionId: v.string(),
+    role: v.union(v.literal("user"), v.literal("assistant")),
+    content: v.string(),
+    ts: v.number(),
+  }).index("by_session", ["sessionId", "ts"]),
 });

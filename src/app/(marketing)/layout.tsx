@@ -4,6 +4,7 @@ import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { Nav } from "@/components/marketing/Nav";
 import { Footer } from "@/components/marketing/Footer";
 import { Tracker } from "@/components/analytics/Tracker";
+import { ChatLauncher } from "@/components/chat/ChatLauncher";
 
 export default function MarketingLayout({
   children,
@@ -27,6 +28,9 @@ export default function MarketingLayout({
         </main>
 
         <Footer />
+
+        {/* Site assistant. Suggestions come from the KB priority field. */}
+        <ChatLauncher />
       </div>
     </SmoothScroll>
   );
