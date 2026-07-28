@@ -135,7 +135,7 @@ export function LeadDrawer({
         initial={reduceMotion ? false : { x: "100%" }}
         animate={{ x: 0 }}
         transition={{ duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
-        className="liquid-glass relative h-full w-full max-w-md overflow-y-auto border-l border-[color:var(--border-hairline)] p-6 outline-none"
+        className="glass-depth glass-near relative h-full w-full max-w-md overflow-y-auto p-6 outline-none"
       >
         {lead === undefined ? (
           <p className="text-sm text-secondary">Loading…</p>

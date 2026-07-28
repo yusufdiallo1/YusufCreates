@@ -199,11 +199,11 @@ export function CommandPalette() {
       <Command
         label="Command palette"
         loop
-        className="liquid-glass relative w-full max-w-xl overflow-hidden rounded-2xl"
+        className="glass-depth glass-near glass-panel relative w-full max-w-xl overflow-hidden p-0"
         // cmdk filters with its own fuzzy matcher over value + keywords.
         shouldFilter
       >
-        <div className="flex items-center gap-3 border-b border-[color:var(--border-hairline)] px-5">
+        <div className="flex items-center gap-3 px-5 after:pointer-events-none after:absolute after:inset-x-0 after:top-[57px] after:h-px after:bg-gradient-to-r after:from-transparent after:via-white/8 after:to-transparent">
           <SearchIcon />
           <Command.Input
             autoFocus

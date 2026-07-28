@@ -106,7 +106,50 @@
   --radius-2xl: 28px;
   --radius-full: 9999px;
 
-  /* Glass ------------------------------------------------------------------
+  /* Depth glass ------------------------------------------------------------
+     Three levels, no borders anywhere. Depth is carried by shadow length,
+     blur amount and the strength of the light catch along the top edge.
+
+     Each shadow stack does four jobs, in order:
+       1. a long, heavily negative-spread drop shadow — the deep shadow,
+          falling well below the element and staying soft
+       2. a tighter contact shadow, so the panel is anchored rather than
+          floating
+       3. inset 0 Npx 0 — the specular catch along the top edge. This is what
+          replaces the border. Nearer panels catch more light.
+       4. an inset bottom glow — light scattering up through the material
+
+     Nearer panels: more blur, more transparency, longer shadow, brighter
+     catch. Further panels: less of everything. That gradient is what makes
+     three panels read as depth rather than as three flat cards. */
+
+  --glass-near-bg: rgba(26, 23, 20, 0.32);
+  --glass-near-blur: 28px;
+  --glass-near-shadow:
+    0 48px 120px -20px rgba(0, 0, 0, 0.85),
+    0 24px 48px -12px rgba(0, 0, 0, 0.6),
+    inset 0 1.5px 0 rgba(255, 252, 248, 0.42),
+    inset 0 -30px 60px -30px rgba(255, 252, 248, 0.05);
+
+  --glass-mid-bg: rgba(22, 20, 18, 0.38);
+  --glass-mid-blur: 20px;
+  --glass-mid-shadow:
+    0 32px 80px -16px rgba(0, 0, 0, 0.75),
+    0 12px 28px -8px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 252, 248, 0.28),
+    inset 0 -24px 48px -24px rgba(255, 252, 248, 0.035);
+
+  --glass-far-bg: rgba(18, 16, 15, 0.44);
+  --glass-far-blur: 14px;
+  --glass-far-shadow:
+    0 20px 56px -12px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 252, 248, 0.16);
+
+  /* Thick glass takes generous corners. */
+  --glass-radius-panel: 28px;
+  --glass-radius-card: 24px;
+
+  /* Legacy glass ------------------------------------------------------------
      The inset highlights do the work here — the outer shadow only seats the
      panel against the canvas. */
   --glass-bg: rgba(14, 14, 22, 0.24);
@@ -870,5 +913,149 @@
 
   .badge-cold {
     color: var(--text-secondary);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Depth glass — borderless
+   -------------------------------------------------------------------------- */
+
+@layer components {
+  /* Shared material. Depth level supplies bg, blur and shadow.
+
+     No border and no outline: the specular inset along the top edge does that
+     job, and it does it better — a border is uniform, whereas real glass
+     catches light only where it faces the source. */
+  .glass-depth {
+    position: relative;
+    border: 0;
+    /* Only opacity is safe to animate on a blurred layer; the compositor
+       re-snapshots the backdrop whenever geometry or blur radius changes,
+       which is the most expensive thing available on a phone GPU. */
+    will-change: opacity;
+  }
+
+  .glass-near {
+    background-color: var(--glass-near-bg);
+    -webkit-backdrop-filter: blur(var(--glass-near-blur)) saturate(180%);
+    backdrop-filter: blur(var(--glass-near-blur)) saturate(180%);
+    box-shadow: var(--glass-near-shadow);
+  }
+
+  .glass-mid {
+    background-color: var(--glass-mid-bg);
+    -webkit-backdrop-filter: blur(var(--glass-mid-blur)) saturate(170%);
+    backdrop-filter: blur(var(--glass-mid-blur)) saturate(170%);
+    box-shadow: var(--glass-mid-shadow);
+  }
+
+  .glass-far {
+    background-color: var(--glass-far-bg);
+    -webkit-backdrop-filter: blur(var(--glass-far-blur)) saturate(160%);
+    backdrop-filter: blur(var(--glass-far-blur)) saturate(160%);
+    box-shadow: var(--glass-far-shadow);
+  }
+
+  .glass-panel {
+    border-radius: var(--glass-radius-panel);
+  }
+  .glass-card {
+    border-radius: var(--glass-radius-card);
+  }
+  .glass-pill {
+    border-radius: var(--radius-full);
+  }
+
+  /* Divider. A gradient rule that fades out at both ends rather than a solid
+     line — a hard 1px edge is exactly the border this system removes. */
+  .rule {
+    height: 1px;
+    border: 0;
+    background: linear-gradient(
+      to right,
+      transparent,
+      rgba(255, 255, 255, 0.08) 20%,
+      rgba(255, 255, 255, 0.08) 80%,
+      transparent
+    );
+  }
+
+  [data-theme="light"] .rule {
+    background: linear-gradient(
+      to right,
+      transparent,
+      rgba(10, 10, 10, 0.09) 20%,
+      rgba(10, 10, 10, 0.09) 80%,
+      transparent
+    );
+  }
+
+  /* Mobile GPUs pay the most for blur radius, and this is the single biggest
+     lever on INP for a screen with several glass surfaces. */
+  @media (hover: none) {
+    .glass-near {
+      -webkit-backdrop-filter: blur(12px) saturate(170%);
+      backdrop-filter: blur(12px) saturate(170%);
+    }
+    .glass-mid {
+      -webkit-backdrop-filter: blur(10px) saturate(160%);
+      backdrop-filter: blur(10px) saturate(160%);
+    }
+    .glass-far {
+      -webkit-backdrop-filter: blur(8px) saturate(150%);
+      backdrop-filter: blur(8px) saturate(150%);
+    }
+  }
+
+  /* Transparency off: solid surface, shadows halved. The panel must still
+     read as deliberate rather than as a failed effect. */
+  @media (prefers-reduced-transparency: reduce) {
+    .glass-near,
+    .glass-mid,
+    .glass-far {
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+      background-color: var(--bg-surface-2);
+    }
+    .glass-near {
+      box-shadow:
+        0 24px 60px -20px rgba(0, 0, 0, 0.6),
+        inset 0 1.5px 0 rgba(255, 252, 248, 0.42);
+    }
+    .glass-mid {
+      box-shadow:
+        0 16px 40px -16px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 252, 248, 0.28);
+    }
+    .glass-far {
+      box-shadow:
+        0 10px 28px -12px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 252, 248, 0.16);
+    }
+  }
+
+  /* More contrast: the material becomes nearly opaque and the light catch
+     strengthens, so text on glass stays comfortably readable. */
+  @media (prefers-contrast: more) {
+    .glass-near,
+    .glass-mid,
+    .glass-far {
+      background-color: color-mix(in srgb, var(--bg-surface-2) 90%, transparent);
+    }
+    .glass-near {
+      box-shadow:
+        0 48px 120px -20px rgba(0, 0, 0, 0.85),
+        inset 0 1.5px 0 rgba(255, 252, 248, 0.6);
+    }
+    .glass-mid {
+      box-shadow:
+        0 32px 80px -16px rgba(0, 0, 0, 0.75),
+        inset 0 1px 0 rgba(255, 252, 248, 0.6);
+    }
+    .glass-far {
+      box-shadow:
+        0 20px 56px -12px rgba(0, 0, 0, 0.65),
+        inset 0 1px 0 rgba(255, 252, 248, 0.6);
+    }
   }
 }

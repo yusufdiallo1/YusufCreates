@@ -56,7 +56,10 @@ export function useSvgBackdropSupport(): boolean {
    fall back to an opaque surface that looks identical in stillness.
    --------------------------------------------------------------------------- */
 
-const MAX_BLURRED = 6;
+/* Four is the budget for a screen: three hero slabs plus the nav. Past that,
+   instances fall back to an opaque surface that looks identical in stillness
+   and costs nothing to composite. */
+const MAX_BLURRED = 4;
 let activeBlurCount = 0;
 
 function useBlurBudget(): boolean {
@@ -89,40 +92,49 @@ function useBlurBudget(): boolean {
 
 /* ------------------------------------------------------------------------- */
 
-type Variant = "panel" | "card" | "pill";
-type Intensity = "subtle" | "medium" | "strong";
+/**
+ * Depth, not intensity. How near the panel reads is the only thing a caller
+ * chooses; blur, transparency, shadow length and light-catch strength all
+ * follow from it, defined together in globals.css so the three levels stay a
+ * coherent gradient rather than three independent knobs.
+ */
+type Depth = "near" | "mid" | "far";
+type Shape = "panel" | "card" | "pill";
 
-const VARIANT_CLASS: Record<Variant, string> = {
-  panel: "rounded-2xl p-8",
-  card: "rounded-xl p-6",
-  pill: "rounded-full px-6 py-2",
+const DEPTH_CLASS: Record<Depth, string> = {
+  near: "glass-near",
+  mid: "glass-mid",
+  far: "glass-far",
 };
 
-/**
- * Blur and displacement scale per intensity. Blur multiplies --glass-blur so
- * the token stays the single source of truth.
- */
-const INTENSITY: Record<
-  Intensity,
+const SHAPE_CLASS: Record<Shape, string> = {
+  panel: "glass-panel p-8",
+  card: "glass-card p-6",
+  pill: "glass-pill px-6 py-2",
+};
+
+/** Refraction strength per depth. Nearer glass bends light more. */
+const REFRACTION: Record<
+  Depth,
   { blur: number; displacement: number; frequency: number }
 > = {
-  subtle: { blur: 0.6, displacement: 6, frequency: 0.012 },
-  medium: { blur: 1, displacement: 12, frequency: 0.008 },
-  strong: { blur: 1.6, displacement: 20, frequency: 0.005 },
+  near: { blur: 28, displacement: 18, frequency: 0.006 },
+  mid: { blur: 20, displacement: 12, frequency: 0.008 },
+  far: { blur: 14, displacement: 7, frequency: 0.011 },
 };
 
 export interface LiquidGlassProps
   extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: Variant;
-  intensity?: Intensity;
+  depth?: Depth;
+  shape?: Shape;
   /** Opt out of refraction even on Chromium (e.g. over busy imagery). */
   refract?: boolean;
   children?: React.ReactNode;
 }
 
 export function LiquidGlass({
-  variant = "panel",
-  intensity = "medium",
+  depth = "mid",
+  shape = "panel",
   refract = true,
   className,
   children,
@@ -133,14 +145,17 @@ export function LiquidGlass({
   const svgSupported = useSvgBackdropSupport();
   const withinBudget = useBlurBudget();
 
-  const { blur, displacement, frequency } = INTENSITY[intensity];
+  const { blur, displacement, frequency } = REFRACTION[depth];
+  // Progressive enhancement only: Safari and Firefox get blur plus shadow and
+  // must still look complete, which they do — the specular inset and the
+  // shadow stack carry the material on their own.
   const useRefraction = refract && svgSupported && withinBudget;
 
-  // Layer 1 (base) + layer 3 (refraction). The SVG filter replaces the blur
-  // function entirely on Chromium, so the filter itself carries a feGaussianBlur.
-  const backdrop = useRefraction
-    ? `url(#${filterId})`
-    : `blur(calc(var(--glass-blur) * ${blur})) saturate(var(--glass-saturate))`;
+  // Only set when refracting. Otherwise the depth class in globals.css owns
+  // backdrop-filter entirely, which keeps the mobile blur reduction and the
+  // reduced-transparency override in one place instead of being overridden by
+  // an inline style.
+  const backdrop = useRefraction ? `url(#${filterId})` : undefined;
 
   return (
     <>
@@ -175,21 +190,27 @@ export function LiquidGlass({
                 result="displaced"
               />
               {/* The blur the CSS path would otherwise apply. */}
-              <feGaussianBlur in="displaced" stdDeviation={6 * blur} />
+              <feGaussianBlur in="displaced" stdDeviation={blur / 4} />
             </filter>
           </defs>
         </svg>
       ) : null}
 
       <div
-        data-variant={variant}
-        data-intensity={intensity}
+        data-depth={depth}
+        data-shape={shape}
         data-refracting={useRefraction ? "true" : undefined}
-        className={cn("liquid-glass", VARIANT_CLASS[variant], className)}
+        className={cn(
+          "glass-depth",
+          DEPTH_CLASS[depth],
+          SHAPE_CLASS[shape],
+          className,
+        )}
         style={
           {
-            "--lg-backdrop": backdrop,
-            "--lg-blur-scale": blur,
+            ...(backdrop
+              ? { backdropFilter: backdrop, WebkitBackdropFilter: backdrop }
+              : {}),
             ...style,
           } as React.CSSProperties
         }

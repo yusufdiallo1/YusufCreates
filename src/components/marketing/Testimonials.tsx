@@ -113,8 +113,10 @@ function TestimonialCard({
 }) {
   return (
     <LiquidGlass
-      variant="card"
-      intensity="subtle"
+      shape="card"
+      // Far depth: these sit in a marquee behind the page's focus, and the
+      // cheapest blur is the right one for something that is always moving.
+      depth="far"
       className={wide ? "w-full" : "w-[min(22rem,80vw)]"}
     >
       <blockquote className="text-sm text-primary">

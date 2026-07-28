@@ -240,7 +240,7 @@ function CreatePairDialog({ onClose }: { onClose: () => void }) {
         role="dialog"
         aria-modal="true"
         aria-label="Create invoice pair"
-        className="liquid-glass relative w-full max-w-md rounded-2xl p-6"
+        className="glass-depth glass-near glass-panel relative w-full max-w-md p-6"
       >
         <h2 className="text-lg text-primary">New invoice pair</h2>
         <p className="mt-1 text-xs text-secondary">

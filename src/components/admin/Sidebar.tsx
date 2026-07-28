@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { Logo } from "@/components/ui/Logo";
 
@@ -51,8 +51,30 @@ const GROUPS: { heading: string; items: { href: string; label: string }[] }[] = 
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [confirmingSignOut, setConfirmingSignOut] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const { signOut } = useAuthActions();
+
+  /**
+   * Ends the session and returns to the public site.
+   *
+   * router.replace, not push: the admin must not sit in history where the back
+   * button would return to a page whose data is already gone. Convex clears the
+   * session token, so coming back to /admin hits the middleware redirect and
+   * requires signing in again.
+   */
+  async function endSession() {
+    setSigningOut(true);
+    try {
+      await signOut();
+      router.replace("/");
+    } finally {
+      setSigningOut(false);
+      setConfirmingSignOut(false);
+    }
+  }
 
   // Exact match for the index, prefix match elsewhere — otherwise /admin
   // would stay highlighted on every child route.
@@ -61,10 +83,22 @@ export function Sidebar() {
 
   const nav = (
     <nav aria-label="Admin sections" className="flex h-full flex-col">
-      <div className="flex items-center gap-2.5 px-3 py-5">
+      {/* Inside the admin the logo signs you out rather than navigating home.
+          Everywhere else on the site it still goes to the landing page.
+
+          A confirm dialog, not SlideToConfirm: signing out is reversible — you
+          can sign straight back in — so the gesture would be friction spent
+          where it does not belong. But it is destructive enough to unsaved
+          work that it should not fire on a stray click. */}
+      <button
+        type="button"
+        onClick={() => setConfirmingSignOut(true)}
+        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-5 text-left transition-colors duration-fast hover:bg-surface-2"
+        aria-label="Sign out of the admin"
+      >
         <Logo variant="mark" className="h-6 w-auto" />
         <span className="text-sm text-primary">Admin</span>
-      </div>
+      </button>
 
       <div className="flex-1 space-y-6 overflow-y-auto px-1 pb-4">
         {GROUPS.map((group) => (
@@ -90,7 +124,7 @@ export function Sidebar() {
         ))}
       </div>
 
-      <div className="space-y-1 border-t border-[color:var(--border-hairline)] px-1 py-3">
+      <div className="space-y-1 px-1 py-3 before:mb-3 before:block before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/8 before:to-transparent">
         <Link
           href="/admin/settings"
           aria-current={isActive("/admin/settings") ? "page" : undefined}
@@ -104,7 +138,7 @@ export function Sidebar() {
         </Link>
         <button
           type="button"
-          onClick={() => void signOut()}
+          onClick={() => setConfirmingSignOut(true)}
           className="admin-nav-link w-full text-left"
         >
           Sign out
@@ -117,7 +151,7 @@ export function Sidebar() {
     <>
       {/* Desktop: always present, never collapses. An admin that hides its
           own navigation to save 240px is optimising the wrong thing. */}
-      <aside className="liquid-glass fixed inset-y-0 left-0 z-40 hidden w-60 border-r border-[color:var(--border-hairline)] lg:block">
+      <aside className="glass-depth glass-mid fixed inset-y-0 left-0 z-40 hidden w-60 lg:block">
         {nav}
       </aside>
 
@@ -127,7 +161,7 @@ export function Sidebar() {
         onClick={() => setMobileOpen(true)}
         aria-label="Open admin navigation"
         aria-expanded={mobileOpen}
-        className="liquid-glass fixed top-4 left-4 z-40 rounded-full p-2.5 lg:hidden"
+        className="glass-depth glass-near glass-pill fixed top-4 left-4 z-40 p-2.5 lg:hidden"
       >
         <svg width={16} height={16} viewBox="0 0 16 16" aria-hidden="true">
           <path
@@ -139,6 +173,49 @@ export function Sidebar() {
         </svg>
       </button>
 
+      {confirmingSignOut ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={() => setConfirmingSignOut(false)}
+            className="absolute inset-0 bg-[color:var(--bg-canvas)]/70 backdrop-blur-sm"
+          />
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="signout-title"
+            className="glass-depth glass-near glass-panel relative w-full max-w-xs p-6 text-center"
+          >
+            <h2 id="signout-title" className="text-lg text-primary">
+              Sign out?
+            </h2>
+            <p className="mt-2 text-sm text-secondary">
+              You&apos;ll need your password to get back in.
+            </p>
+
+            <div className="mt-6 flex flex-col gap-2">
+              <button
+                type="button"
+                autoFocus
+                disabled={signingOut}
+                onClick={() => void endSession()}
+                className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-60"
+              >
+                {signingOut ? "Signing out…" : "Sign out"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmingSignOut(false)}
+                className="rounded-full px-5 py-2.5 text-sm text-secondary transition-colors duration-fast hover:text-primary"
+              >
+                Stay signed in
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {mobileOpen ? (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button
@@ -147,7 +224,7 @@ export function Sidebar() {
             onClick={() => setMobileOpen(false)}
             className="absolute inset-0 bg-[color:var(--bg-canvas)]/70 backdrop-blur-sm"
           />
-          <aside className="liquid-glass absolute inset-y-0 left-0 w-64 border-r border-[color:var(--border-hairline)]">
+          <aside className="glass-depth glass-near absolute inset-y-0 left-0 w-64">
             {nav}
           </aside>
         </div>
