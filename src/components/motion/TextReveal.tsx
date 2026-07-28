@@ -57,8 +57,12 @@ export function TextReveal({
               // and the wrapper clips the rise so glyphs slide out from behind.
               style={{ display: "inline-block", overflow: "hidden" }}
             >
+              {/* No explicit will-change: this renders one span per word, so
+                  declaring it would pin a GPU layer per word for the life of
+                  the page. Motion applies and releases it around the animation
+                  itself, which is the correct lifetime. */}
               <motion.span
-                style={{ display: "inline-block", willChange: "transform" }}
+                style={{ display: "inline-block" }}
                 initial={{ y: "100%", opacity: 0 }}
                 whileInView={{ y: 0, opacity: 1 }}
                 viewport={{ once: true, margin: "-10%" }}

@@ -45,7 +45,16 @@ export function Reveal({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once, margin }}
       transition={{ duration, delay, ease: [0.16, 1, 0.3, 1] }}
-      style={{ willChange: "transform, opacity" }}
+      /*
+       * will-change is a promise to the compositor that costs a GPU layer per
+       * element for as long as it is set. Reveal is used dozens of times per
+       * page, so leaving it on permanently pinned ~77 layers on the homepage
+       * and made every later interaction — opening the nav especially — fight
+       * for compositor time on a phone.
+       *
+       * Motion sets it while animating and clears it on completion, which is
+       * exactly the correct lifetime. Declaring it here defeated that.
+       */
     >
       {children}
     </motion.div>

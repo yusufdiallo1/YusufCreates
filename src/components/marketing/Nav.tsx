@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { AnimatedLogo } from "@/components/ui/AnimatedLogo";
 import { cn } from "@/lib/utils";
 
@@ -145,33 +145,57 @@ export function Nav() {
         </motion.nav>
       </header>
 
-      {/* Full-screen overlay on mobile. */}
-      {open ? (
-        <div
-          id="mobile-nav"
-          className="fixed inset-0 z-40 flex flex-col bg-canvas/95 px-6 pt-28 pb-10 backdrop-blur-xl md:hidden"
-        >
-          <ul className="flex flex-col gap-2">
-            {NAV_ITEMS.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className="hairline-b block py-4 text-2xl text-primary"
-                >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
+      {/* Full-screen overlay on mobile.
 
-          <Link
-            href="/start"
-            className="mt-auto rounded-full bg-primary py-3 text-center text-sm font-medium text-canvas"
+          Deliberately NOT backdrop-blurred. A full-viewport backdrop-filter
+          forces the compositor to re-snapshot and blur everything behind it on
+          every frame, which is the single most expensive effect available and
+          the reason this felt slow to open on a phone. An opaque canvas fill
+          reads the same and costs nothing.
+
+          AnimatePresence gives it an exit, so dismissing does not just vanish;
+          only opacity and transform animate, both compositor-only. */}
+      <AnimatePresence>
+        {open ? (
+          <motion.div
+            id="mobile-nav"
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+            transition={{ duration: reduceMotion ? 0.12 : 0.24, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-0 z-40 flex flex-col bg-canvas px-6 pt-28 pb-10 md:hidden"
           >
-            Start a project
-          </Link>
-        </div>
-      ) : null}
+            <ul className="flex flex-col gap-2">
+              {NAV_ITEMS.map((item, index) => (
+                <motion.li
+                  key={item.href}
+                  initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.3,
+                    delay: reduceMotion ? 0 : 0.04 + index * 0.035,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
+                >
+                  <Link
+                    href={item.href}
+                    className="hairline-b block py-4 text-2xl text-primary"
+                  >
+                    {item.label}
+                  </Link>
+                </motion.li>
+              ))}
+            </ul>
+
+            <Link
+              href="/start"
+              className="mt-auto rounded-full bg-primary py-3 text-center text-sm font-medium text-canvas"
+            >
+              Start a project
+            </Link>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </>
   );
 }

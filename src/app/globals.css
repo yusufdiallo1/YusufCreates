@@ -366,6 +366,22 @@
     color: var(--text-primary);
   }
 
+  /* iOS Safari zooms the whole page whenever a focused field renders below
+     16px, and there is no way to opt out short of disabling pinch zoom, which
+     would be an accessibility regression. Fields are text-sm (14px) by design
+     on desktop, so the floor is applied only on touch — where the zoom happens
+     and where 16px is the better size anyway.
+
+     `(hover: none)` targets touch rather than a width breakpoint, so a small
+     desktop window keeps the intended 14px. */
+  @media (hover: none) {
+    input,
+    select,
+    textarea {
+      font-size: max(16px, 1em);
+    }
+  }
+
   /* Visible keyboard focus everywhere. :focus-visible keeps it off pointer
      interaction without ever leaving keyboard users without an indicator. */
   :focus-visible {

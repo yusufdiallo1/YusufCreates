@@ -51,6 +51,7 @@ export function StartForm() {
   // Time trap. Stamped on first render so it measures time on the form.
   const openedAt = useRef<number | null>(null);
   openedAt.current ??= Date.now();
+  const formRef = useRef<HTMLDivElement>(null);
 
   const tier = params.get("tier") ?? "";
   // Arriving from a pricing CTA answers step 1 already; don't ask again.
@@ -116,6 +117,29 @@ export function StartForm() {
   const CONTACT_KEYS = ["name", "email", "phone"];
   const planKeys: string[] = activePlan?.fields ?? [];
 
+  /**
+   * Moves to a step and returns the viewport to the top of the form.
+   *
+   * Without this, advancing from a long step leaves you scrolled halfway down
+   * the next one, staring at its middle with no idea the heading changed —
+   * which on a phone reads as the button having done nothing at all.
+   *
+   * Scrolls to the form, not to document top, so the page header does not eat
+   * the first field.
+   */
+  function goToStep(next: number) {
+    setStep(next);
+    if (typeof window === "undefined") return;
+    const top = formRef.current?.getBoundingClientRect().top ?? 0;
+    window.scrollTo({
+      top: Math.max(0, window.scrollY + top - 24),
+      // Honour the same preference the rest of the site does.
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+    });
+  }
+
   const planChosen = plan !== "";
   const contactValid = CONTACT_KEYS.every((k) => problemWith(k) === null);
   const detailsValid =
@@ -131,7 +155,7 @@ export function StartForm() {
   const TOTAL = 4;
 
   return (
-    <div>
+    <div ref={formRef}>
       <h1 className="text-3xl">Start a project</h1>
       <p className="mt-3 text-secondary">
         Four short steps. Nothing here is binding.
@@ -362,7 +386,7 @@ export function StartForm() {
       <div className="mt-10 flex justify-between">
         <button
           type="button"
-          onClick={() => setStep((s) => Math.max(1, s - 1))}
+          onClick={() => goToStep(Math.max(1, step - 1))}
           disabled={step === 1}
           className="rounded-full px-4 py-2 text-sm text-secondary transition-colors duration-fast hover:text-primary disabled:opacity-40"
         >
@@ -385,7 +409,7 @@ export function StartForm() {
                 revealProblems(planKeys);
                 return;
               }
-              setStep((s) => s + 1);
+              goToStep(step + 1);
             }}
             disabled={step === 1 && !planChosen}
             className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
