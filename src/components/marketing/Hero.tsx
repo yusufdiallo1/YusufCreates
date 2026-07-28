@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   motion,
   useMotionValue,
@@ -131,6 +131,23 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
 
   const shown = projects.filter((p) => p.coverUrl).slice(0, 3);
 
+  // Viewport-gated rather than CSS-hidden. `lg:hidden` still mounts the
+  // element, and a mounted glass panel still costs its backdrop-filter — the
+  // three desktop slabs were consuming the entire blur budget on a phone
+  // while being invisible. Resolved before paint, so nothing flashes.
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window === "undefined"
+      ? true
+      : window.matchMedia("(min-width: 1024px)").matches,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const onChange = () => setIsDesktop(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   return (
     <section
       ref={ref}
@@ -227,10 +244,10 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
 
         {/* Slabs. Absolutely positioned within a reserved-height stage so the
             overlap is deliberate and the layout never shifts. */}
-        {shown.length > 0 ? (
+        {shown.length > 0 && isDesktop ? (
           <motion.div
             style={reduceMotion ? undefined : { y: slabY }}
-            className="relative hidden h-[30rem] lg:col-span-7 lg:block"
+            className="relative h-[30rem] lg:col-span-7"
           >
             {(shown.length >= 3 ? SLABS : [SLABS[1]]).map((slab, i) => {
               const project = shown[shown.length >= 3 ? i : 0];
@@ -252,8 +269,8 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
         ) : null}
 
         {/* Mobile: a single slab, in flow rather than absolutely placed. */}
-        {shown.length > 0 ? (
-          <motion.div {...step(0.6)} className="lg:hidden">
+        {shown.length > 0 && !isDesktop ? (
+          <motion.div {...step(0.6)}>
             <SlabStatic project={shown[0]} />
           </motion.div>
         ) : null}
