@@ -42,9 +42,10 @@ export function About() {
 
           <Reveal delay={0.14}>
             <p className="mt-4 text-secondary">
-              I work in English and Arabic, and I build right-to-left properly
-              rather than flipping a stylesheet and hoping. If you need a site
-              that works the same in both languages, that is the part most
+              I build in English, Arabic, French, Russian, Swedish and
+              whatever else a project needs — with real right-to-left support
+              where it applies, not a flipped stylesheet. If your site has to
+              work the same in more than one language, that is the part most
               people get wrong.
             </p>
           </Reveal>

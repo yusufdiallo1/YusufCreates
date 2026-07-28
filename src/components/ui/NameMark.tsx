@@ -1,5 +1,7 @@
 "use client";
 
+import { FONT_STACK } from "./Logo";
+
 /**
  * NameMark — "YUSUF DIALLO" with the Y drawn as the logo mark.
  *
@@ -45,16 +47,19 @@ export function NameMark({
       aria-label="Yusuf Diallo"
       style={{
         display: "inline-flex",
-        alignItems: "baseline",
-        gap: "0.06em",
+        alignItems: "center",
+        gap: "0.1em",
         whiteSpace: "nowrap",
+        // SF Pro on Apple hardware, Inter everywhere else — same stack the
+        // rest of the site uses.
+        fontFamily: FONT_STACK,
       }}
     >
       {/* Y — the logo mark. */}
       <svg
         viewBox="40 30 140 155"
         aria-hidden="true"
-        style={{ height: "0.78em", width: "auto", overflow: "visible" }}
+        style={{ height: "1em", width: "auto", overflow: "visible" }}
       >
         <path d={CHEVRON} {...stroke} />
         <path d={ARM} {...stroke} />

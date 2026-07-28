@@ -88,12 +88,12 @@ export function ProjectCard({
     <Link
       href={`/work/${project.slug}`}
       data-cursor="view"
-      className="group block focus-ring-inset"
+      className="project-card group block h-full overflow-hidden rounded-xl"
     >
-      {/* Fixed frame; only the image inside it scales. */}
+      {/* Fixed frame; only the image inside it scales, so no layout moves. */}
       <div
         className={cn(
-          "hairline relative w-full overflow-hidden rounded-lg bg-surface-1",
+          "relative w-full overflow-hidden bg-surface-2",
           wide ? "aspect-[2/1]" : "aspect-[3/2]",
         )}
       >
@@ -102,22 +102,41 @@ export function ProjectCard({
             src={project.coverUrl}
             alt=""
             fill
-            sizes={wide ? "(max-width: 640px) 100vw, 960px" : "(max-width: 640px) 100vw, 480px"}
-            className="object-cover transition-transform duration-slow ease-out-expo group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+            sizes={
+              wide
+                ? "(max-width: 640px) 100vw, 960px"
+                : "(max-width: 640px) 100vw, 480px"
+            }
+            className="object-cover object-top transition-transform duration-slow ease-out-expo group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
           />
         ) : null}
+
+        {/* Keeps the metadata legible over a bright screenshot. */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-[color:var(--bg-surface-1)] to-transparent"
+        />
       </div>
 
-      <div className="mt-4 flex items-baseline justify-between gap-4">
-        <p className="text-primary">{project.title}</p>
-        <p className="shrink-0 text-sm text-secondary">{project.year}</p>
+      <div className="bg-surface-1 p-5">
+        <div className="flex items-baseline justify-between gap-4">
+          <h3 className="text-base text-primary">{project.title}</h3>
+          <span className="shrink-0 text-xs text-secondary tabular-nums">
+            {project.year}
+          </span>
+        </div>
+
+        <p className="mt-3 line-clamp-2 text-sm text-secondary">
+          {project.result ?? project.summary}
+        </p>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-[color:var(--border-hairline)] px-2.5 py-1 text-xs text-secondary">
+            {project.category}
+          </span>
+          <span className="text-xs text-secondary">{project.client}</span>
+        </div>
       </div>
-      <p className="mt-1 text-sm text-secondary">
-        {project.client} · {project.category}
-      </p>
-      <p className="mt-2 text-sm text-secondary">
-        {project.result ?? project.summary}
-      </p>
     </Link>
   );
 }

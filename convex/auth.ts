@@ -1,36 +1,33 @@
-import GitHub from "@auth/core/providers/github";
+import { Password } from "@convex-dev/auth/providers/Password";
 import { convexAuth } from "@convex-dev/auth/server";
 
 /**
- * Auth. GitHub is the only provider, and sign-in is restricted to a single
- * account via ADMIN_GITHUB_ID.
+ * Auth — Convex Auth with the Password provider.
  *
- * The check runs in the callback rather than in the UI: anything client-side
- * is advisory only, since an attacker can complete the OAuth flow directly.
- * Throwing here aborts the sign-in after the user row is removed, so no
- * account persists for a non-admin login.
+ * The password is verified server-side against a stored hash by Convex; it is
+ * never compared in the browser, so nothing sensitive reaches the JS bundle.
  *
- * ADMIN_GITHUB_ID must be set in the Convex dashboard, and must be the numeric
- * GitHub user id rather than the login handle — handles can be changed and
- * reclaimed by someone else.
+ * Sign-up is locked to a single address via ADMIN_EMAIL. Anyone else who
+ * completes the flow has their user row deleted and the sign-in aborted, so no
+ * account is ever created for a non-admin.
  */
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
-  providers: [GitHub],
+  providers: [Password],
   callbacks: {
     async afterUserCreatedOrUpdated(ctx, { userId, profile }) {
-      const allowed = process.env.ADMIN_GITHUB_ID;
+      const allowed = process.env.ADMIN_EMAIL;
 
       // Fail closed. An unset variable must never mean "allow everyone".
       if (!allowed) {
         await ctx.db.delete(userId);
-        throw new Error("ADMIN_GITHUB_ID is not configured; sign-in refused.");
+        throw new Error("ADMIN_EMAIL is not configured; sign-in refused.");
       }
 
       const incoming = String(
-        (profile as { id?: string | number }).id ?? "",
-      );
+        (profile as { email?: string }).email ?? "",
+      ).toLowerCase();
 
-      if (incoming !== String(allowed)) {
+      if (incoming !== allowed.toLowerCase()) {
         await ctx.db.delete(userId);
         throw new Error("This account is not permitted to sign in.");
       }

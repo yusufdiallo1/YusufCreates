@@ -3,6 +3,7 @@ import { InstagramIcon } from "@/components/ui/SocialIcons";
 import { Logo } from "@/components/ui/Logo";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { INSTAGRAM } from "@/lib/constants";
+import { NewsletterForm } from "@/components/marketing/NewsletterForm";
 
 /**
  * Footer — four columns collapsing to one on mobile.
@@ -95,6 +96,12 @@ export function Footer() {
               <span className="text-sm">{INSTAGRAM.handle}</span>
             </a>
           </div>
+        </div>
+      </div>
+
+      <div className="hairline-t">
+        <div className="mx-auto max-w-5xl px-6 py-10">
+          <NewsletterForm className="relative max-w-md" />
         </div>
       </div>
 

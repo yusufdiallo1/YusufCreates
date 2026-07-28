@@ -10,7 +10,7 @@ import { SITE } from "@/lib/constants";
 export const metadata: Metadata = {
   title: "About",
   description:
-    "Yusuf Diallo — independent developer building bilingual English and Arabic software for businesses across the Gulf and beyond.",
+    "Yusuf Diallo — independent developer building multilingual software for individuals and businesses, worldwide.",
   alternates: { canonical: `${SITE.url}/about` },
 };
 
@@ -78,9 +78,10 @@ export default function AboutPage() {
           </Reveal>
           <Reveal delay={0.12}>
             <p className="mt-4 text-secondary">
-              I work with founders and owner-operators: people who make the
-              decisions themselves and want to talk to whoever is building.
-              Not enterprise procurement, not committees.
+              I work with whoever is making the decision — a founder, an
+              owner-operator, or one person with an idea and no company behind
+              it. Individuals are not a smaller version of a business client;
+              often the work is clearer because there is nobody to convince.
             </p>
           </Reveal>
         </section>
@@ -105,30 +106,34 @@ export default function AboutPage() {
           <h2 className="text-2xl">How I work with clients</h2>
           <Reveal>
             <p className="mt-4 text-secondary">
-              Remote, with clients across the Gulf and further out. Timezone
-              overlap with Europe is easy, and I keep evening hours when a
-              project needs the Americas.
+              Remote, worldwide. Timezone overlap with Europe and Africa is
+              easy, and I keep evening hours when a project needs the Americas
+              or East Asia.
             </p>
           </Reveal>
         </section>
 
         <section className="mt-16">
-          <h2 className="text-2xl">English and Arabic</h2>
+          <h2 className="text-2xl">Languages</h2>
           <Reveal>
             <p className="mt-4 text-secondary">
-              I build in both languages, with real right-to-left support. That
-              means mirrored layout, correct logical properties, Arabic
-              typography that is set rather than defaulted, and numerals and
-              dates that follow the locale. Not a flipped stylesheet with
-              English assumptions underneath.
+              I build multilingual sites properly: English, Arabic, French,
+              Russian, Swedish and anything else with a translator behind it.
+              That means locale-correct dates, numbers and currency, type that
+              is set for each script rather than defaulted, and content
+              structure that survives translation instead of breaking at the
+              first long German compound.
             </p>
           </Reveal>
           <Reveal delay={0.06}>
             <p className="mt-4 text-secondary">
-              Most bilingual sites in this market are visibly an English site
-              with Arabic poured into it. If your customers read Arabic, they
-              notice immediately. Getting it right is not difficult — it just
-              has to be decided at the start rather than bolted on.
+              Right-to-left support for Arabic, Hebrew and Farsi is the part
+              most people get wrong: mirrored layout, logical properties rather
+              than hardcoded left and right, and typography that is chosen not
+              inherited. A flipped stylesheet with English assumptions
+              underneath is visible immediately to anyone who reads the
+              language. It is not difficult — it just has to be decided at the
+              start rather than bolted on.
             </p>
           </Reveal>
         </section>

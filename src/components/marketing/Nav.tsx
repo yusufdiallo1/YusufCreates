@@ -82,8 +82,14 @@ export function Nav() {
             condensed && "nav-pill-condensed",
           )}
         >
-          <Link href="/" aria-label="YusufCreates home" className="shrink-0">
-            <AnimatedLogo className="h-6 w-auto" />
+          {/* Always returns to the homepage, from any route. */}
+          <Link
+            href="/"
+            aria-label="YusufCreates, back to home"
+            className="shrink-0"
+            onClick={() => setOpen(false)}
+          >
+            <AnimatedLogo className="h-5 w-auto sm:h-6" />
           </Link>
 
           <ul className="hidden items-center gap-7 md:flex">

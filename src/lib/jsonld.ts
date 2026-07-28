@@ -17,11 +17,8 @@ export const professionalServiceJsonLd = {
   name: SITE.name,
   url: SITE.url,
   description: SITE.description,
-  areaServed: [
-    { "@type": "Country", name: "Saudi Arabia" },
-    { "@type": "Place", name: "Gulf Cooperation Council" },
-  ],
-  availableLanguage: ["en", "ar"],
+  areaServed: { "@type": "Place", name: "Worldwide" },
+  availableLanguage: ["en", "ar", "fr", "ru", "sv"],
   address: {
     "@type": "PostalAddress",
     addressCountry: "SA",
@@ -37,7 +34,7 @@ export const personJsonLd = {
   name: "Yusuf Diallo",
   url: `${SITE.url}/about`,
   jobTitle: "Software developer",
-  knowsLanguage: ["en", "ar"],
+  knowsLanguage: ["en", "ar", "fr", "ru", "sv"],
   homeLocation: {
     "@type": "Place",
     address: {

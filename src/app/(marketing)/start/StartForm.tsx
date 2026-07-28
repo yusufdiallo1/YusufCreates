@@ -48,13 +48,18 @@ export function StartForm() {
     budget: "",
     timeline: "",
     message: "",
+    projectTypeOther: "",
   });
 
   const set = (key: keyof typeof values) => (value: string) =>
     setValues((v) => ({ ...v, [key]: value }));
 
   const stepOneValid = values.name.trim() !== "" && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(values.email);
-  const isValid = stepOneValid && values.projectType !== "";
+  const needsDetail = values.projectType === "Something else";
+  const isValid =
+    stepOneValid &&
+    values.projectType !== "" &&
+    (!needsDetail || values.projectTypeOther.trim().length > 2);
 
   if (sent) {
     return (
@@ -122,6 +127,17 @@ export function StartForm() {
                   onChange={set("projectType")}
                   options={PROJECT_TYPES}
                 />
+
+                {/* "Something else" tells me nothing on its own, so it has to
+                    be described before the form can be submitted. */}
+                {values.projectType === "Something else" ? (
+                  <Field
+                    label="Tell me what you have in mind"
+                    value={values.projectTypeOther}
+                    onChange={set("projectTypeOther")}
+                    required
+                  />
+                ) : null}
                 <Select
                   label="Budget"
                   value={values.budget}

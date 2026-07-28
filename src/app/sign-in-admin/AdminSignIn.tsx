@@ -1,32 +1,32 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { Logo } from "@/components/ui/Logo";
 
 /**
- * Admin entry.
+ * Admin sign-in — Convex Auth, Password provider.
  *
- * The password field is disappearing ink: each character stays legible for a
- * moment and then fades, and the reveal toggle fades the whole value back in.
+ * The password is sent to Convex and checked against a stored hash there. It
+ * is never compared in the browser, so nothing sensitive ships in the bundle.
  *
- * The typed value is NOT the credential. Authentication is Convex Auth via
- * GitHub, checked server-side against ADMIN_GITHUB_ID — a password compared in
- * the browser would sit in the JS bundle for anyone to read, which is no
- * protection at all. This field is a deliberate speed bump in front of the
- * OAuth handoff, and it is treated as exactly that.
+ * The field is disappearing ink: characters stay legible for a moment then
+ * fade, and Reveal fades the whole value back in. That is presentation only —
+ * the security is entirely server-side.
  */
 
-const PASSPHRASE = "yusufjallow1!";
+const ADMIN_EMAIL = "committed1@gmail.com";
 
 export function AdminSignIn() {
+  const router = useRouter();
   const { signIn } = useAuthActions();
   const [value, setValue] = useState("");
   const [revealed, setRevealed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Characters recently typed, rendered as fading ghosts above the input.
+  // Recently typed characters, rendered as fading ghosts over the input.
   const [ghosts, setGhosts] = useState<{ id: number; ch: string }[]>([]);
   const nextId = useRef(0);
 
@@ -50,17 +50,32 @@ export function AdminSignIn() {
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (value !== PASSPHRASE) {
-      setError("That is not right.");
-      return;
-    }
+    if (busy || value === "") return;
+
     setBusy(true);
+    setError(null);
+
+    const attempt = async (flow: "signIn" | "signUp") => {
+      const form = new FormData();
+      form.set("email", ADMIN_EMAIL);
+      form.set("password", value);
+      form.set("flow", flow);
+      await signIn("password", form);
+    };
+
     try {
-      // The real gate. Convex verifies the GitHub account server-side.
-      await signIn("github", { redirectTo: "/admin" });
+      await attempt("signIn");
+      router.push("/admin");
     } catch {
-      setError("Could not start sign-in.");
-      setBusy(false);
+      // First run: no account exists yet, so create it. Convex still rejects
+      // any address other than ADMIN_EMAIL server-side.
+      try {
+        await attempt("signUp");
+        router.push("/admin");
+      } catch {
+        setError("That is not right.");
+        setBusy(false);
+      }
     }
   }
 
@@ -71,29 +86,26 @@ export function AdminSignIn() {
 
       <div className="relative mt-8">
         <label htmlFor="passphrase" className="sr-only">
-          Passphrase
+          Password
         </label>
         <input
           id="passphrase"
           type="text"
-          autoComplete="off"
+          autoComplete="current-password"
           spellCheck={false}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Passphrase"
+          placeholder="Password"
           className={`hairline w-full rounded-full bg-surface-1 px-5 py-3 text-center text-sm tracking-[0.3em] ink-input ${
             revealed ? "ink-visible" : ""
           }`}
         />
 
-        {/* Fading characters. Purely decorative — the real value lives in the
-            input, which screen readers read normally. */}
         {!revealed ? (
           <span
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm tracking-[0.3em]"
           >
-            <span className="invisible">{value.slice(0, -ghosts.length || undefined)}</span>
             {ghosts.map((ghost) => (
               <span key={ghost.id} className="ink-ghost">
                 {ghost.ch}
@@ -113,10 +125,10 @@ export function AdminSignIn() {
 
       <button
         type="submit"
-        disabled={busy}
+        disabled={busy || value === ""}
         className="mt-6 w-full rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-60"
       >
-        {busy ? "Continuing…" : "Continue"}
+        {busy ? "Checking…" : "Continue"}
       </button>
 
       <p role="status" aria-live="polite" className="mt-4 min-h-5 text-xs text-danger">

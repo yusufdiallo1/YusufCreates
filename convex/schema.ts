@@ -179,6 +179,14 @@ export default defineSchema({
     notes: v.optional(v.string()),
   }).index("by_status", ["status"]),
 
+  subscribers: defineTable({
+    email: v.string(),
+    source: v.string(),
+    confirmed: v.boolean(),
+    createdAt: v.number(),
+    unsubscribedAt: v.optional(v.number()),
+  }).index("by_email", ["email"]),
+
   invoices: defineTable({
     leadId: v.optional(v.id("leads")),
     projectId: v.optional(v.id("projects")),

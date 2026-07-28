@@ -685,3 +685,25 @@
     .ink-ghost { opacity: 0; }
   }
 }
+
+@layer components {
+  /* Project card. Hairline at rest, accent-tinted on hover — the image scale
+     inside the frame does the rest. */
+  .project-card {
+    border: 1px solid var(--border-hairline);
+    transition:
+      border-color var(--dur-base) var(--ease-out-expo),
+      transform var(--dur-base) var(--ease-out-expo);
+  }
+  .project-card:hover {
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    transform: translateY(-3px);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .project-card,
+    .project-card:hover {
+      transition: none;
+      transform: none;
+    }
+  }
+}
