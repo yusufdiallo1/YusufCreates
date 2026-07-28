@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { fetchMutation } from "convex/nextjs";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 import { scoreLead, suspicionFromSignals } from "@/lib/leadScoring";
+import { adminEmail, sendEmail, siteUrl } from "@/lib/email";
+import { LeadConfirmation } from "@emails/LeadConfirmation";
+import { LeadNotification } from "@emails/LeadNotification";
 
 /**
  * Lead submission.
@@ -116,7 +119,7 @@ export async function POST(request: Request) {
 
   // Layer 4 — recorded, not enforced.
   const suspicion = suspicionFromSignals(payload.slideSignals);
-  const { score } = scoreLead({
+  const { score, band } = scoreLead({
     budget: payload.budget,
     timeline: payload.timeline,
     projectType: payload.projectType,
@@ -151,8 +154,9 @@ export async function POST(request: Request) {
       ? `Something else: ${payload.projectTypeOther}`
       : payload.projectType;
 
+  let leadId: LeadId | undefined;
   try {
-    await fetchMutation(api.leads.submit, {
+    leadId = await fetchMutation(api.leads.submit, {
       name: payload.name?.trim() ?? "",
       email,
       phone: trim(payload.phone),
@@ -186,5 +190,112 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not save that." }, { status: 502 });
   }
 
+  /*
+   * Emails go out after the lead is safely stored, and no failure here changes
+   * the response. The enquiry is the thing that matters; a missing confirmation
+   * is an annoyance, a lost enquiry is lost work. Both sends are logged so a
+   * silent failure is still discoverable.
+   */
+  const name = payload.name?.trim() || "there";
+  const summary = buildSummary(payload);
+
+  await Promise.allSettled([
+    logged({
+      to: email,
+      template: "LeadConfirmation",
+      subject: "Thanks — I've got your enquiry",
+      leadId,
+      react: LeadConfirmation({
+        name,
+        planLabel: projectType,
+        summary,
+      }),
+    }),
+    (async () => {
+      const admin = adminEmail();
+      if (!admin) return;
+      await logged({
+        to: admin,
+        template: "LeadNotification",
+        subject: `${band ?? "new"} ${score} · ${projectType ?? "Enquiry"} · ${name}`,
+        leadId,
+        // Replying to the notification reaches the client directly, which is
+        // the fastest possible path from "I got a lead" to "I answered it".
+        replyTo: email,
+        react: LeadNotification({
+          name,
+          email,
+          phone: trim(payload.phone),
+          contactPreference: trim(payload.contactPreference),
+          planLabel: projectType,
+          score,
+          band,
+          fields: summary,
+          message: payload.message?.trim() || undefined,
+          adminUrl: `${siteUrl()}/admin`,
+        }),
+      });
+    })(),
+  ]);
+
   return NextResponse.json({ ok: true, score });
+}
+
+/** Id of a stored lead, as returned by the submit mutation. */
+type LeadId = (typeof api.leads.submit)["_returnType"];
+
+/** Sends and records the outcome. Never throws. */
+async function logged({
+  to,
+  template,
+  subject,
+  react,
+  replyTo,
+  leadId,
+}: {
+  to: string;
+  template: string;
+  subject: string;
+  react: React.ReactElement;
+  replyTo?: string;
+  leadId?: LeadId;
+}) {
+  const result = await sendEmail({ to, subject, react, replyTo });
+  try {
+    await fetchMutation(api.subscribers.logEmail, {
+      to,
+      template,
+      subject,
+      status: result.status,
+      providerId: result.status === "sent" ? result.id : undefined,
+      error: result.status === "failed" ? result.error : undefined,
+      leadId,
+    });
+  } catch {
+    // A logging failure must not surface either.
+  }
+}
+
+/** The submitted fields worth showing, in a stable order, skipping blanks. */
+function buildSummary(p: Payload): { label: string; value: string }[] {
+  const rows: [string, string | number | boolean | undefined][] = [
+    ["Company", p.company],
+    ["Role", p.role],
+    ["Purpose", p.projectPurpose],
+    ["Audience", p.audience],
+    ["Current state", p.currentState],
+    ["Existing site", p.existingUrl],
+    ["Pages", p.pageCount],
+    ["Budget", p.budget],
+    ["Timeline", p.timeline],
+    ["Support scope", p.supportScope],
+    ["Procurement", p.procurementProcess],
+    ["NDA required", p.ndaRequired === "yes" ? "Yes" : undefined],
+    ["Target launch", p.targetLaunch],
+    ["Sign-off", p.decisionMakers],
+  ];
+
+  return rows
+    .filter(([, v]) => v !== undefined && String(v).trim() !== "")
+    .map(([label, v]) => ({ label, value: String(v).trim() }));
 }

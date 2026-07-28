@@ -206,7 +206,38 @@ export default defineSchema({
     confirmed: v.boolean(),
     createdAt: v.number(),
     unsubscribedAt: v.optional(v.number()),
-  }).index("by_email", ["email"]),
+    /**
+     * Unguessable token behind both the confirm and unsubscribe links. Signing
+     * someone else up should never be able to confirm them, and an unsubscribe
+     * link that takes a plain email address lets anyone unsubscribe anyone.
+     */
+    token: v.optional(v.string()),
+    confirmedAt: v.optional(v.number()),
+  })
+    .index("by_email", ["email"])
+    .index("by_token", ["token"]),
+
+  /**
+   * Every send, recorded. Without this there is no way to answer "did they
+   * actually get the confirmation" when someone says they never received it,
+   * and no way to stop a retry from sending twice.
+   */
+  emailLog: defineTable({
+    to: v.string(),
+    template: v.string(),
+    subject: v.string(),
+    status: v.union(
+      v.literal("sent"),
+      v.literal("failed"),
+      v.literal("skipped"),
+    ),
+    providerId: v.optional(v.string()),
+    error: v.optional(v.string()),
+    leadId: v.optional(v.id("leads")),
+    sentAt: v.number(),
+  })
+    .index("by_to", ["to"])
+    .index("by_template", ["template"]),
 
   invoices: defineTable({
     leadId: v.optional(v.id("leads")),

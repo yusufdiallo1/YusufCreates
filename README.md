@@ -109,6 +109,46 @@ behind that prefix.
 | `RESEND_API_KEY`        | Resend API key (`re_…`).                                 |
 | `EMAIL_FROM`            | Default From address. Domain must be verified in Resend. |
 | `RESEND_WEBHOOK_SECRET` | Verifies Resend webhooks (delivery, bounce, complaint).  |
+| `ADMIN_EMAIL`           | Where enquiry notifications go. Also the only address permitted to sign in — set it on the Convex deployment too. |
+
+#### Templates
+
+React Email components live in `emails/`, imported through the `@emails/*`
+alias. `emails/components/Shell.tsx` is the shared brand layer.
+
+Two constraints shape them:
+
+- **Every style is inline and the palette is hex.** Email clients have no
+  access to the site's CSS custom properties, and `var(--x)` collapses to
+  nothing rather than falling back.
+- **The shell is light-backgrounded.** Several clients forcibly invert
+  colours in dark mode, and a near-black template can end up black-on-black.
+
+`src/lib/email.ts` renders each template to HTML **and** plaintext before
+handing it to Resend. Do not switch to Resend's `react` option: it resolves
+`@react-email/render` through a dynamic require that Next's server bundler
+cannot satisfy, and it fails at run time with "Failed to render React
+component" even though the package is installed.
+
+Sending never throws into a request path. A lead is saved to Convex first, so
+an email provider outage costs a confirmation, not the enquiry. Every send is
+recorded in the `emailLog` table with its status and provider id.
+
+#### DNS (Namecheap)
+
+Add these to `yusufcreates.com` under **Advanced DNS**, then click Verify in
+Resend. Namecheap appends the domain automatically, so enter hosts without it.
+
+| Type  | Host                | Value                                     |
+| ----- | ------------------- | ----------------------------------------- |
+| TXT   | `send`              | `v=spf1 include:amazonses.com ~all`       |
+| TXT   | `resend._domainkey` | (DKIM value from the Resend dashboard)    |
+| MX    | `send`              | `feedback-smtp.eu-west-1.amazonses.com` (priority 10) |
+| TXT   | `_dmarc`            | `v=DMARC1; p=none; rua=mailto:you@yusufcreates.com` |
+
+Start DMARC at `p=none` and watch the reports before tightening to
+`quarantine` or `reject` — a stricter policy applied before SPF and DKIM are
+confirmed aligned will send your own mail to spam.
 
 ### Stripe
 
