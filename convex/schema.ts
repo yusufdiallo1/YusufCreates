@@ -211,7 +211,68 @@ export default defineSchema({
     sentAt: v.optional(v.number()),
     signedAt: v.optional(v.number()),
     notes: v.optional(v.string()),
-  }).index("by_status", ["status"]),
+
+    /* Hosted rather than a PDF attachment: always current, and it can report
+       when it was opened. A PDF emailed out is a snapshot that goes stale and
+       tells you nothing. */
+    token: v.optional(v.string()),
+    clientName: v.optional(v.string()),
+    clientEmail: v.optional(v.string()),
+    understanding: v.optional(v.string()),
+    scope: v.optional(v.string()),
+    excluded: v.optional(v.string()),
+    timeline: v.optional(v.string()),
+    paymentTerms: v.optional(v.string()),
+    assumptions: v.optional(v.string()),
+    /** Set on first open, never reset — so silence can be read correctly. */
+    viewedAt: v.optional(v.number()),
+    acceptedAt: v.optional(v.number()),
+    declinedAt: v.optional(v.number()),
+    changeRequest: v.optional(v.string()),
+  })
+    .index("by_status", ["status"])
+    .index("by_token", ["token"])
+    .index("by_lead", ["leadId"]),
+
+  /**
+   * Free site audits. The lead magnet.
+   *
+   * Queued rather than synchronous: PageSpeed takes 15-40 seconds on a cold
+   * URL, which no serverless request should sit through.
+   */
+  audits: defineTable({
+    url: v.string(),
+    email: v.string(),
+    status: v.union(
+      v.literal("queued"),
+      v.literal("running"),
+      v.literal("complete"),
+      v.literal("failed"),
+    ),
+    score: v.optional(v.number()),
+    categories: v.optional(
+      v.object({
+        performance: v.optional(v.number()),
+        accessibility: v.optional(v.number()),
+        bestPractices: v.optional(v.number()),
+        seo: v.optional(v.number()),
+      }),
+    ),
+    fixes: v.optional(
+      v.array(
+        v.object({
+          title: v.string(),
+          detail: v.string(),
+          impact: v.string(),
+        }),
+      ),
+    ),
+    error: v.optional(v.string()),
+    leadId: v.optional(v.id("leads")),
+    createdAt: v.number(),
+  })
+    .index("by_email", ["email"])
+    .index("by_status", ["status"]),
 
   subscribers: defineTable({
     email: v.string(),

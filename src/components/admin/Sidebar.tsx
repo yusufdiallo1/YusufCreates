@@ -49,6 +49,7 @@ const GROUPS: { heading: string; items: { href: string; label: string }[] }[] = 
     items: [
       { href: "/admin/invoices", label: "Proposals and invoices" },
       { href: "/admin/promos", label: "Promotions" },
+      { href: "/admin/proposals", label: "Proposals" },
     ],
   },
 ];

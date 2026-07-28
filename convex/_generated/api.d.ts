@@ -10,6 +10,7 @@
 
 import type * as admin from "../admin.js";
 import type * as analytics from "../analytics.js";
+import type * as audits from "../audits.js";
 import type * as auth from "../auth.js";
 import type * as broadcasts from "../broadcasts.js";
 import type * as chat from "../chat.js";
@@ -40,6 +41,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   analytics: typeof analytics;
+  audits: typeof audits;
   auth: typeof auth;
   broadcasts: typeof broadcasts;
   chat: typeof chat;
