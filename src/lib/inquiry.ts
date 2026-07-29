@@ -16,6 +16,7 @@ export type PlanId =
   | "one-page"
   | "multi-page"
   | "web-app"
+  | "native"
   | "enterprise"
   | "support";
 
@@ -28,6 +29,8 @@ export type FieldId =
   | "budget"
   | "timeline"
   | "pageCount"
+  | "onePagePurpose"
+  | "platforms"
   | "procurementProcess"
   | "ndaRequired"
   | "targetLaunch"
@@ -58,7 +61,17 @@ export const PLANS: Plan[] = [
     id: "one-page",
     label: "One-page site",
     hint: "A single scrolling page. Launch, portfolio, or a landing page.",
-    fields: ["projectPurpose", "audience", "currentState", "budget", "timeline"],
+    /* No pageCount — the answer is one. Asking anyway reads as a form that
+       was not listening to the previous question. What matters on a single
+       page is what it is FOR and what someone should do at the end of it. */
+    fields: [
+      "onePagePurpose",
+      "projectPurpose",
+      "audience",
+      "currentState",
+      "budget",
+      "timeline",
+    ],
     messagePrompt:
       "What has to be on the page, and what should someone do after reading it?",
     skipsPricing: false,
@@ -94,6 +107,23 @@ export const PLANS: Plan[] = [
     ],
     messagePrompt:
       "What does someone do once they are logged in? The core job the product does is what I need most.",
+    skipsPricing: false,
+  },
+  {
+    id: "native",
+    label: "iOS or macOS app",
+    hint: "A real native app, distributed straight to your users.",
+    fields: [
+      "projectPurpose",
+      "audience",
+      "platforms",
+      "currentState",
+      "existingUrl",
+      "budget",
+      "timeline",
+    ],
+    messagePrompt:
+      "What does someone do in the app, and does it need to work offline?",
     skipsPricing: false,
   },
   {
@@ -140,6 +170,11 @@ export function planFromTier(tier: string | undefined): PlanId | undefined {
   if (t.includes("care") || t.includes("support")) return "support";
   if (t.includes("growth")) return "multi-page";
   if (t.includes("launch") || t.includes("starter")) return "one-page";
+  // "native" before "app": the native tier id contains neither, but a future
+  // id like "native-app" would otherwise match the web-app branch first.
+  if (t.includes("native") || t.includes("ios") || t.includes("macos"))
+    return "native";
+  if (t.includes("app") || t.includes("saas")) return "web-app";
   return undefined;
 }
 
@@ -223,8 +258,36 @@ export const FIELDS: Record<FieldId, FieldDef> = {
   pageCount: {
     id: "pageCount",
     label: "Roughly how many pages?",
-    kind: "number",
+    /*
+     * A select, not a number input.
+     *
+     * type="number" renders a spinner with hit targets a few pixels tall, and
+     * on a phone it opens a numeric keypad for a question whose real answer is
+     * "about five". Bands match how pricing actually works — one price from
+     * four pages to nine — so the answer maps onto a quote directly.
+     */
+    kind: "select",
+    options: ["1", "2 or 3", "4 to 6", "7 to 9", "10 or more", "Not sure yet"],
     help: "An estimate. It does not lock anything in.",
+  },
+  onePagePurpose: {
+    id: "onePagePurpose",
+    label: "What is the page for?",
+    kind: "select",
+    options: [
+      "Launching something new",
+      "Landing page for a campaign",
+      "Portfolio or personal site",
+      "Event or booking",
+      "Something else",
+    ],
+  },
+  platforms: {
+    id: "platforms",
+    label: "Which platforms?",
+    kind: "select",
+    options: ["iOS only", "macOS only", "Both iOS and macOS", "Not sure yet"],
+    help: "No App Store listing — builds go straight to your users.",
   },
   procurementProcess: {
     id: "procurementProcess",

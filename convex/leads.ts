@@ -23,7 +23,10 @@ export const submit = mutation({
     tier: v.optional(v.string()),
     budget: v.optional(v.string()),
     timeline: v.optional(v.string()),
-    pageCount: v.optional(v.number()),
+    /** A band ("4 to 6"), not a number — see the schema comment. */
+    pageCount: v.optional(v.string()),
+    onePagePurpose: v.optional(v.string()),
+    platforms: v.optional(v.string()),
     message: v.optional(v.string()),
     procurementProcess: v.optional(v.string()),
     ndaRequired: v.optional(v.boolean()),

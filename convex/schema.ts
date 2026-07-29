@@ -64,7 +64,15 @@ export default defineSchema({
     tier: v.optional(v.string()),
     budget: v.optional(v.string()),
     timeline: v.optional(v.string()),
-    pageCount: v.optional(v.number()),
+    /*
+     * A string, not a number. The form asks in bands ("4 to 6", "Not sure
+     * yet") because that is how the question is actually answered and how the
+     * pricing works — one price from four pages to nine. A number column
+     * cannot hold "not sure", which is a real and common answer.
+     */
+    pageCount: v.optional(v.string()),
+    onePagePurpose: v.optional(v.string()),
+    platforms: v.optional(v.string()),
     message: v.optional(v.string()),
 
     /* Enterprise path only. These are the questions that decide whether a

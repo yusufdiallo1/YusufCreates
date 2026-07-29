@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Reveal } from "@/components/motion/Reveal";
 import { CountUp } from "@/components/motion/CountUp";
+import Image from "next/image";
 
 /**
  * About — the short homepage version. The full story lives at /about.
@@ -20,8 +21,20 @@ export function About() {
     >
       <div className="grid gap-12 lg:grid-cols-[280px_1fr] lg:gap-16">
         <Reveal>
-          {/* TODO: swap for a real portrait at public/portrait-square.jpg */}
-          <div className="hairline aspect-square w-full overflow-hidden rounded-lg bg-surface-1" />
+          <div className="hairline aspect-square w-full overflow-hidden rounded-lg bg-surface-1">
+            <Image
+              src="/about-desk.png"
+              alt="Yusuf at a two-screen desk, code on one side and this site on the other"
+              width={952}
+              height={505}
+              /* object-cover on a square frame: the source is landscape, so
+                 without this it letterboxes with dead bars top and bottom.
+                 object-left keeps the subject rather than centring on the
+                 empty right of the desk. */
+              className="size-full object-cover object-left"
+              sizes="(min-width: 1024px) 280px, 100vw"
+            />
+          </div>
         </Reveal>
 
         <div>

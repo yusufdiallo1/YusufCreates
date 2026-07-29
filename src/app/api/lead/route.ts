@@ -56,6 +56,8 @@ interface Payload {
   currentState?: string;
   existingUrl?: string;
   pageCount?: string | number;
+  onePagePurpose?: string;
+  platforms?: string;
   procurementProcess?: string;
   /** Sent as "yes"/"no" by the checkbox; stored as a boolean. */
   ndaRequired?: string;
@@ -140,13 +142,18 @@ export async function POST(request: Request) {
       ? undefined
       : payload.ndaRequired === "yes";
 
-  // Number input arrives as a string, and "" must not become 0.
-  const rawPages =
-    typeof payload.pageCount === "number"
-      ? payload.pageCount
-      : Number(payload.pageCount);
+  /*
+   * Stored as the band the visitor picked ("4 to 6", "Not sure yet"), not a
+   * number. Coercing it with Number() turned every band into NaN and dropped
+   * the answer on the floor.
+   *
+   * A legacy numeric value is still accepted, because leads submitted before
+   * this changed are numbers.
+   */
   const pageCount =
-    Number.isFinite(rawPages) && rawPages > 0 ? Math.round(rawPages) : undefined;
+    payload.pageCount === undefined || payload.pageCount === ""
+      ? undefined
+      : String(payload.pageCount).slice(0, 40);
 
   // "Something else" carries its description into the stored project type so
   // the notification email is readable without opening the record.
@@ -170,6 +177,8 @@ export async function POST(request: Request) {
       currentState: trim(payload.currentState),
       existingUrl: trim(payload.existingUrl),
       pageCount,
+      onePagePurpose: trim(payload.onePagePurpose),
+      platforms: trim(payload.platforms),
       procurementProcess: trim(payload.procurementProcess),
       ndaRequired,
       targetLaunch: trim(payload.targetLaunch),
