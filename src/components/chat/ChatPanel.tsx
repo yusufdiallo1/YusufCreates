@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { sessionId, track } from "@/lib/track";
+import { ThinkingMark } from "@/components/chat/ThinkingMark";
 
 /**
  * Site assistant.
@@ -233,7 +234,11 @@ export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
                   }
                 >
                   {turn.content ||
-                    (turn.role === "assistant" && busy ? "…" : "")}
+                    (turn.role === "assistant" && busy ? (
+                      <ThinkingMark className="size-7 text-accent" />
+                    ) : (
+                      ""
+                    ))}
                 </div>
               ))}
 
@@ -288,7 +293,11 @@ export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
                 disabled={busy || draft.trim() === ""}
                 className="shrink-0 rounded-full bg-primary px-4 py-2.5 text-xs font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
               >
-                {busy ? "…" : "Send"}
+                {busy ? (
+                  <ThinkingMark className="size-4" />
+                ) : (
+                  "Send"
+                )}
               </button>
             </form>
           </motion.div>

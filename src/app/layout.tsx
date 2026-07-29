@@ -5,6 +5,7 @@ import { ConvexClientProvider } from "./ConvexClientProvider";
 import { inter } from "@/lib/fonts";
 import { isConvexConfigured } from "@/lib/convex-api";
 import { SITE } from "@/lib/constants";
+import { Watermark } from "@/components/ui/Watermark";
 
 export const metadata: Metadata = {
   // Required for opengraph-image to emit an absolute URL. Scrapers reject a
@@ -78,6 +79,10 @@ export default function RootLayout({
           Skip to content
         </a>
         <ConvexClientProvider>{children}</ConvexClientProvider>
+
+        {/* Every page, including the portal and the token-authed pages that
+            sit outside the marketing layout. */}
+        <Watermark />
       </body>
     </html>
   );
