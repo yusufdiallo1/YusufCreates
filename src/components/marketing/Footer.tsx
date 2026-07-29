@@ -4,6 +4,7 @@ import { Logo } from "@/components/ui/Logo";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { INSTAGRAM } from "@/lib/constants";
 import { NewsletterForm } from "@/components/marketing/NewsletterForm";
+import { AvailabilityBadge } from "@/components/marketing/AvailabilityBadge";
 
 /**
  * Footer — four columns collapsing to one on mobile.
@@ -34,13 +35,9 @@ export function Footer() {
             <p className="mt-4 max-w-56 text-sm text-secondary">
               Fast, considered software for people who care how it feels.
             </p>
-            <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-[color:var(--border-hairline)] px-3 py-1 text-xs text-secondary">
-              <span
-                aria-hidden="true"
-                className="size-1.5 rounded-full bg-accent"
-              />
-              Available for new work
-            </p>
+            <div className="mt-4">
+              <AvailabilityBadge />
+            </div>
           </div>
 
           {/* 2. Navigation */}
@@ -80,6 +77,12 @@ export function Footer() {
                 {/* The lead magnet. Footer rather than nav — six top-level
                     items is already the limit before a nav starts to read as
                     a list. */}
+                <Link
+                  href="/waitlist"
+                  className="block text-sm text-secondary transition-colors duration-fast hover:text-primary"
+                >
+                  Hold a slot
+                </Link>
                 <Link
                   href="/audit"
                   className="block text-sm text-secondary transition-colors duration-fast hover:text-primary"

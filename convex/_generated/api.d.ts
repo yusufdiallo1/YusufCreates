@@ -13,6 +13,7 @@ import type * as analytics from "../analytics.js";
 import type * as audits from "../audits.js";
 import type * as auth from "../auth.js";
 import type * as broadcasts from "../broadcasts.js";
+import type * as capacity from "../capacity.js";
 import type * as chat from "../chat.js";
 import type * as crons from "../crons.js";
 import type * as events from "../events.js";
@@ -46,6 +47,7 @@ declare const fullApi: ApiFromModules<{
   audits: typeof audits;
   auth: typeof auth;
   broadcasts: typeof broadcasts;
+  capacity: typeof capacity;
   chat: typeof chat;
   crons: typeof crons;
   events: typeof events;

@@ -14,6 +14,7 @@ import {
 import { LiquidGlass } from "@/components/ui/LiquidGlass";
 import { TextReveal } from "@/components/motion/TextReveal";
 import { track } from "@/lib/track";
+import { AvailabilityBadge } from "@/components/marketing/AvailabilityBadge";
 
 /**
  * Hero — glass slabs over a warm near-black void.
@@ -188,16 +189,11 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
           style={reduceMotion ? undefined : { y: textY, opacity: textOpacity }}
           className="lg:col-span-5"
         >
-          <motion.p
-            {...step(0.1)}
-            className="flex items-center gap-2.5 font-mono text-xs tracking-[0.1em] text-secondary uppercase"
-          >
-            <span className="relative flex size-1.5">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-[color:var(--text-notice)] opacity-60 motion-reduce:hidden" />
-              <span className="relative inline-flex size-1.5 rounded-full bg-[color:var(--text-notice)]" />
-            </span>
-            Available for new projects
-          </motion.p>
+          {/* Live, not a claim. Reads the same capacity as the waitlist, so
+              the hero cannot advertise work that is already booked. */}
+          <motion.div {...step(0.1)}>
+            <AvailabilityBadge className="inline-flex items-center gap-2.5 font-mono text-xs tracking-[0.1em] text-secondary uppercase transition-colors duration-fast hover:text-primary" />
+          </motion.div>
 
           <h1
             id="hero-heading"

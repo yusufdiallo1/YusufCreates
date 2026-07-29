@@ -413,6 +413,42 @@ export default defineSchema({
   }).index("by_kind_key", ["kind", "key"]),
 
   /**
+   * Waitlist.
+   *
+   * Two build slots and two care plans at a time — a real constraint, not a
+   * scarcity tactic, so capacity is DERIVED from live work rather than a flag
+   * I have to remember to flip. A toggle goes stale the moment a project
+   * finishes at 11pm.
+   *
+   * Each entry picks a start month. Months are offered rather than exact days
+   * because a build start is a week, not an appointment, and promising a
+   * specific Tuesday six weeks out is a promise you cannot keep.
+   */
+  waitlist: defineTable({
+    name: v.string(),
+    email: v.string(),
+    company: v.optional(v.string()),
+    projectType: v.optional(v.string()),
+    note: v.optional(v.string()),
+    kind: v.union(v.literal("build"), v.literal("care")),
+    /** First day of the chosen month, UTC. */
+    slotMonth: v.number(),
+    status: v.union(
+      v.literal("waiting"),
+      v.literal("offered"),
+      v.literal("converted"),
+      v.literal("declined"),
+      v.literal("expired"),
+    ),
+    /** Set when a slot is offered, so an unanswered offer can lapse. */
+    offeredAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_month", ["slotMonth"])
+    .index("by_email", ["email"]),
+
+  /**
    * Client portal.
    *
    * projectIds is the ONLY thing that decides what a client can see. Every
