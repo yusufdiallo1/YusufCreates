@@ -23,6 +23,7 @@ import {
   type FieldId,
   type PlanId,
 } from "@/lib/inquiry";
+import { PhoneField } from "@/components/ui/PhoneField";
 
 /**
  * Four-step lead form, branching by plan.
@@ -248,13 +249,9 @@ export function StartForm() {
                   error={errorFor("email")}
                   required
                 />
-                <Field
+                <PhoneField
                   id="phone"
                   label={wantsCall ? "Phone number" : "Phone number (optional)"}
-                  type="tel"
-                  autoComplete="tel"
-                  placeholder="+966 …"
-                  help="Include the country code."
                   value={values.phone ?? ""}
                   onChange={set("phone")}
                   onBlur={() => markTouched("phone")}
