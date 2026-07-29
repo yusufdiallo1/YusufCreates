@@ -18,6 +18,16 @@ import Stripe from "stripe";
 import { readFileSync } from "node:fs";
 
 const dry = process.argv.includes("--dry");
+/*
+ * Archive a mismatched price and create a replacement.
+ *
+ * Opt-in, because it changes what customers are billed: a subscription on the
+ * archived price keeps its old amount until moved, so replacing the Care Plan
+ * price does NOT re-price anyone already on it. Existing one-off payment links
+ * pointing at the archived price stop working, which is the intended outcome
+ * when a figure was published wrongly.
+ */
+const replace = process.argv.includes("--replace");
 
 function env(key) {
   const raw = readFileSync(".env.local", "utf8");
@@ -47,21 +57,29 @@ const stripe = new Stripe(secret, { apiVersion: "2026-06-24.dahlia" });
  * Enterprise is a deposit rather than the full figure, because the total comes
  * out of a scoping call and varies per engagement.
  */
+/*
+ * Mirrors src/lib/pricing.ts. When a figure changes there it changes here too,
+ * and the script creates a NEW price — Stripe prices are immutable, so the old
+ * one is archived rather than edited.
+ *
+ * Keys are stable across price changes; the key identifies the product, the
+ * price id identifies the amount.
+ */
 const CATALOGUE = [
   {
     key: "launch",
     name: "Launch",
     description:
-      "One page, done properly. Landing page or one-pager, blog, contact form, SEO basics, deployed and handed over.",
-    amount: 600_00,
+      "One page, done properly. Landing page or one-pager, contact form, SEO basics, auth and admin where needed, deployed and handed over.",
+    amount: 400_00,
     recurring: null,
   },
   {
     key: "growth_3",
-    name: "Growth — 3 pages",
+    name: "Growth — up to 3 pages",
     description:
-      "A full site at three pages. CMS, multi-page structure, analytics.",
-    amount: 1200_00,
+      "A full site at three pages. Blog and pages you edit yourself, analytics, auth and admin.",
+    amount: 750_00,
     recurring: null,
   },
   {
@@ -69,15 +87,23 @@ const CATALOGUE = [
     name: "Growth — 4 to 9 pages",
     description:
       "A full site, four to nine pages. Same price whether it is four pages or nine.",
-    amount: 1500_00,
+    amount: 950_00,
     recurring: null,
   },
   {
     key: "app",
-    name: "Web app / SaaS MVP",
+    name: "Web app / SaaS",
     description:
-      "Software, not a brochure. Authentication, database, payments, dashboards, integrations. Starting figure.",
-    amount: 4000_00,
+      "Software, not a brochure. Accounts and roles, database, card payments, dashboards, integrations. Starting figure.",
+    amount: 2500_00,
+    recurring: null,
+  },
+  {
+    key: "native",
+    name: "iOS and macOS app",
+    description:
+      "A real native app, not a wrapped website. Shares one backend with the web build, works offline, push notifications, signed builds distributed straight to your users. No App Store listing. Starting figure.",
+    amount: 3200_00,
     recurring: null,
   },
   {
@@ -85,7 +111,7 @@ const CATALOGUE = [
     name: "Enterprise — deposit",
     description:
       "Starting figure for enterprise work. Final scope and total are set in the proposal.",
-    amount: 8000_00,
+    amount: 5500_00,
     recurring: null,
   },
   {
@@ -93,7 +119,7 @@ const CATALOGUE = [
     name: "Care Plan",
     description:
       "Hosting and maintenance, unlimited small edits, SEO monitoring, monthly report, priority support. Cancel any time.",
-    amount: 300_00,
+    amount: 180_00,
     recurring: { interval: "month" },
   },
 ];
@@ -160,16 +186,46 @@ async function main() {
 
     if (existingPrice) {
       if (existingPrice.unit_amount !== item.amount) {
-        // Refused rather than fixed: prices are immutable, so "updating" one
-        // means archiving and replacing it, which changes what existing
-        // subscriptions are billed. That is a decision, not a script's call.
-        console.log(
-          `  ⚠ price MISMATCH      ${lookupKey}: Stripe has ` +
-            `${(existingPrice.unit_amount / 100).toFixed(2)}, ` +
-            `code says ${(item.amount / 100).toFixed(2)}\n` +
-            `    Prices cannot be edited. Archive the old one in the ` +
-            `dashboard and re-run, or change the amount in this script.`,
-        );
+        const was = (existingPrice.unit_amount / 100).toFixed(2);
+        const now = (item.amount / 100).toFixed(2);
+
+        if (!replace) {
+          // Refused rather than fixed by default: prices are immutable, so
+          // "updating" one means archiving and replacing it, which changes
+          // what new customers are billed. Pass --replace to do it.
+          console.log(
+            `  ⚠ price MISMATCH      ${lookupKey}: Stripe has ${was}, ` +
+              `code says ${now}\n` +
+              `    Re-run with --replace to archive the old price and ` +
+              `create the new one.`,
+          );
+          results.push([item.key, existingPrice.id]);
+          continue;
+        }
+
+        if (dry) {
+          console.log(`  would replace price   ${lookupKey}: ${was} → ${now}`);
+          continue;
+        }
+
+        // The lookup_key has to be freed before it can be reused, and the old
+        // price archived so nothing new can be sold at the wrong figure.
+        await stripe.prices.update(existingPrice.id, {
+          active: false,
+          lookup_key: `${lookupKey}_archived_${existingPrice.id.slice(-8)}`,
+        });
+
+        const fresh = await stripe.prices.create({
+          product: product.id,
+          unit_amount: item.amount,
+          currency: CURRENCY,
+          lookup_key: lookupKey,
+          ...(item.recurring ? { recurring: item.recurring } : {}),
+        });
+
+        console.log(`  replaced price        ${lookupKey}: ${was} → ${now}`);
+        results.push([item.key, fresh.id]);
+        continue;
       } else {
         console.log(`  price exists          ${lookupKey}`);
       }
