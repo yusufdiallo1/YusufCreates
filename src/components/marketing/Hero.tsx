@@ -104,13 +104,23 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
    * hero briefly appeared finished and then never animated.
    */
   const [firstVisit, setFirstVisit] = useState(false);
+  /*
+   * The read and the write are deliberately separate.
+   *
+   * Doing both in one effect broke under React's double-invoked effects: the
+   * first pass wrote the flag, the second pass read it back as already set,
+   * and the animation never ran. A ref that survives the second invocation
+   * makes the decision once, and the flag is written afterwards.
+   */
+  const decided = useRef(false);
 
   useIsomorphicLayoutEffect(() => {
+    if (decided.current) return;
+    decided.current = true;
+
     const seen = sessionStorage.getItem(SESSION_KEY);
-    if (!seen) {
-      sessionStorage.setItem(SESSION_KEY, "1");
-      setFirstVisit(true);
-    }
+    if (!seen) setFirstVisit(true);
+    sessionStorage.setItem(SESSION_KEY, "1");
   }, []);
 
   // Reduced motion means no load sequence at all — the composed resting state
@@ -219,7 +229,15 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
             className="mt-6 text-[clamp(2.75rem,5.5vw,4.75rem)] leading-[1.02] font-semibold tracking-[-0.03em] text-primary"
           >
             {play && !reduceMotion ? (
-              <TextReveal as="span" by="word" delay={0.2} className="block">
+              <TextReveal
+                as="span"
+                by="word"
+                delay={0.2}
+                /* Above the fold, so it animates on mount — whileInView is
+                   already satisfied here and would snap. */
+                onMount
+                className="block"
+              >
                 Websites and web apps,
               </TextReveal>
             ) : (

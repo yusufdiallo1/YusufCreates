@@ -20,6 +20,14 @@ interface TextRevealProps {
   stagger?: number;
   className?: string;
   as?: "h1" | "h2" | "h3" | "p" | "span";
+  /**
+   * Animate on mount instead of on scroll into view.
+   *
+   * Required for anything above the fold. `whileInView` on a hero is already
+   * satisfied the instant it is observed, so it snaps to the finished state
+   * with no visible transition — which is why the hero headline looked static.
+   */
+  onMount?: boolean;
 }
 
 export function TextReveal({
@@ -29,13 +37,9 @@ export function TextReveal({
   stagger = by === "letter" ? 0.018 : 0.05,
   className,
   as: Tag = "span",
+  onMount = false,
 }: TextRevealProps) {
   const reduceMotion = useReducedMotion();
-
-  // Resting state: the plain string, no spans, no animation.
-  if (reduceMotion) {
-    return <Tag className={className}>{children}</Tag>;
-  }
 
   const fragments =
     by === "letter" ? Array.from(children) : children.split(/(\s+)/);
@@ -63,14 +67,28 @@ export function TextReveal({
                   itself, which is the correct lifetime. */}
               <motion.span
                 style={{ display: "inline-block" }}
-                initial={{ y: "100%", opacity: 0 }}
-                whileInView={{ y: 0, opacity: 1 }}
-                viewport={{ once: true, margin: "-10%" }}
-                transition={{
-                  duration: 0.6,
-                  delay: delay + index * stagger,
-                  ease: [0.16, 1, 0.3, 1],
-                }}
+                /*
+                 * Reduced motion keeps this component mounted and simply
+                 * renders at rest. Returning a plain string instead changed
+                 * the element tree between the server and the client, which
+                 * failed hydration and re-rendered the whole page.
+                 */
+                initial={reduceMotion ? false : { y: "100%", opacity: 0 }}
+                {...(onMount
+                  ? { animate: { y: 0, opacity: 1 } }
+                  : {
+                      whileInView: { y: 0, opacity: 1 },
+                      viewport: { once: true, margin: "-10%" },
+                    })}
+                transition={
+                  reduceMotion
+                    ? { duration: 0 }
+                    : {
+                        duration: 0.6,
+                        delay: delay + index * stagger,
+                        ease: [0.16, 1, 0.3, 1],
+                      }
+                }
               >
                 {fragment}
               </motion.span>
