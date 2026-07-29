@@ -141,7 +141,15 @@ function PinnedShowcase({ projects }: { projects: Project[] }) {
        * appears. Sticking below the heading and subtracting it from the height
        * centres the panel in the space that is actually free.
        */}
-      <div className="sticky top-24 flex h-[calc(100dvh-6rem)] items-center">
+      {/*
+       * min-h with a cap, not a fixed h-screen box.
+       *
+       * A full-height container centring content that is only about half that
+       * tall leaves a large void above and below the card. Sizing to the
+       * content and capping it keeps the panel pinned without the panel being
+       * mostly empty.
+       */}
+      <div className="sticky top-24 flex max-h-[calc(100dvh-7rem)] items-start py-4">
         <div className="grid w-full grid-cols-12 items-center gap-10">
           {/* Text column. Keyed on slug so Motion treats each project as a
               new element and runs the exit animation. */}
@@ -216,7 +224,12 @@ function PinnedShowcase({ projects }: { projects: Project[] }) {
               work — mounting on scroll would decode mid-transition and flash
               an empty frame. */}
           <div className="col-span-8">
-            <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-surface-2">
+            {/* Height-driven, not aspect-driven.
+                aspect-[16/10] derives height from width, so on a wide viewport
+                the box grew past the pinned panel and the screenshot was cut
+                off at the fold. Fixing the height and letting object-cover
+                crop keeps the whole card on screen. */}
+            <div className="relative h-[min(52dvh,26rem)] w-full overflow-hidden rounded-xl bg-surface-2">
               {projects.map((p, i) => (
                 <motion.div
                   key={p.slug}
