@@ -6,6 +6,7 @@ import { fetchQuery } from "convex/nextjs";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 import { SITE } from "@/lib/constants";
 import { ScrollProgress } from "@/components/motion/ScrollProgress";
+import { JsonLd } from "@/components/seo/JsonLd";
 
 /**
  * Blog post.
@@ -66,10 +67,7 @@ export default async function BlogPostPage({
       <article className="mx-auto max-w-2xl px-6 py-24">
         {/* BlogPosting structured data, so the post can appear as an article
             rather than a generic page in search results. */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
+        <JsonLd data={{
               "@context": "https://schema.org",
               "@type": "BlogPosting",
               headline: post.title,
@@ -78,9 +76,7 @@ export default async function BlogPostPage({
               author: { "@type": "Person", name: "Yusuf Diallo" },
               mainEntityOfPage: `${SITE.url}/blog/${post.slug}`,
               image: post.coverUrl ? [post.coverUrl] : undefined,
-            }),
-          }}
-        />
+            }} />
 
         <Link
           href="/blog"

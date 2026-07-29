@@ -80,19 +80,23 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
 
   // Play the load sequence once per session. Returning to the page mid-visit
   // should feel like coming back to something already there.
-  // Resolved during render rather than in an effect: a setState in an effect
-  // body cascades an extra render, and this value is needed by the very first
-  // paint. sessionStorage is only read on the client, so the initial server
-  // render and first client render agree on `checked: false`.
-  // Lazy initialiser: runs once, on the first client render, before paint.
-  // An effect would cascade a second render, and this decides the very first
-  // frame. Returns false on the server so SSR and first client render agree.
-  const [firstVisit] = useState(() => {
-    if (typeof window === "undefined") return false;
+  //
+  // Decided in an effect, not a lazy useState initialiser. The initialiser
+  // runs during the FIRST client render, so on a genuine first visit it
+  // returned true while the server had already rendered false — React saw
+  // opacity 0 against opacity 1 and hydration failed, throwing away the whole
+  // tree and re-rendering it. An effect runs after hydration has committed,
+  // so both passes start from the same resting state and the animation is
+  // applied a frame later.
+  const [firstVisit, setFirstVisit] = useState(false);
+
+  useEffect(() => {
     const seen = sessionStorage.getItem(SESSION_KEY);
-    if (!seen) sessionStorage.setItem(SESSION_KEY, "1");
-    return !seen;
-  });
+    if (!seen) {
+      sessionStorage.setItem(SESSION_KEY, "1");
+      setFirstVisit(true);
+    }
+  }, []);
 
   // Reduced motion means no load sequence at all — the composed resting state
   // renders immediately.

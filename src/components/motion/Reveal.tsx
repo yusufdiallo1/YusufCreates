@@ -33,18 +33,29 @@ export function Reveal({
 }: RevealProps) {
   const reduceMotion = useReducedMotion();
 
-  // Resting state: rendered in place, fully visible.
-  if (reduceMotion) {
-    return <div className={className}>{children}</div>;
-  }
-
+  /*
+   * One element type in both passes.
+   *
+   * Returning a plain <div> for reduced motion and a motion.div otherwise
+   * broke hydration: useReducedMotion is null on the server and resolves to a
+   * boolean on the client, so the server sent a <div> where the client wanted
+   * a motion.div. React cannot patch a changed element type — it throws the
+   * subtree away and re-renders it, on every Reveal on the page.
+   *
+   * Keeping the component stable and varying only the animation props means
+   * reduced motion still renders at rest, without the mismatch.
+   */
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={reduceMotion ? false : { opacity: 0, y }}
+      whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
       viewport={{ once, margin }}
-      transition={{ duration, delay, ease: [0.16, 1, 0.3, 1] }}
+      transition={
+        reduceMotion
+          ? { duration: 0 }
+          : { duration, delay, ease: [0.16, 1, 0.3, 1] }
+      }
       /*
        * will-change is a promise to the compositor that costs a GPU layer per
        * element for as long as it is set. Reveal is used dozens of times per

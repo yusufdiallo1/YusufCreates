@@ -5,6 +5,7 @@ import { convexAuthNextjsToken } from "@convex-dev/auth/nextjs/server";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 import { CaseStudy } from "./CaseStudy";
 import { SITE } from "@/lib/constants";
+import { JsonLd } from "@/components/seo/JsonLd";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -71,11 +72,7 @@ export default async function CaseStudyPage({ params }: Params) {
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        // JSON.stringify output is escaped by React; this is our own data.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <JsonLd data={jsonLd} />
       <CaseStudy project={project} preloadedAll={preloadedAll} />
     </>
   );

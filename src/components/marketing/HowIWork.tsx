@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Reveal } from "@/components/motion/Reveal";
 
 /**
@@ -48,10 +48,18 @@ const START_UTC = 6;
 const END_UTC = 15;
 
 export function HowIWork() {
-  // Computed on the client only. Rendering a timezone-derived string on the
-  // server would produce the server's zone and then mismatch on hydration.
-  const [local] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
+  /*
+   * Computed after hydration, not in a lazy initialiser.
+   *
+   * The initialiser runs during the first CLIENT render, so it produced the
+   * timezone line on the client while the server had rendered null — the tree
+   * differed and hydration failed, discarding and re-rendering the page. An
+   * effect runs once hydration has committed, so both passes start identical
+   * and the real local time appears a frame later.
+   */
+  const [local, setLocal] = useState<string | null>(null);
+
+  useEffect(() => {
     try {
       const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const fmt = (utcHour: number) => {
@@ -70,11 +78,11 @@ export function HowIWork() {
         })
           .formatToParts(new Date())
           .find((p) => p.type === "timeZoneName")?.value ?? zone;
-      return `${fmt(START_UTC)} – ${fmt(END_UTC)} ${label}`;
+      setLocal(`${fmt(START_UTC)} – ${fmt(END_UTC)} ${label}`);
     } catch {
-      return null;
+      // Leaves the static fallback in place rather than an empty line.
     }
-  });
+  }, []);
 
   return (
     <section

@@ -6,6 +6,7 @@ import { TextReveal } from "@/components/motion/TextReveal";
 import { NameMark } from "@/components/ui/NameMark";
 import { personJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/lib/constants";
+import { JsonLd } from "@/components/seo/JsonLd";
 
 export const metadata: Metadata = {
   title: "About",
@@ -36,10 +37,7 @@ const WORKING_WITH_ME = [
 export default function AboutPage() {
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }}
-      />
+      <JsonLd data={personJsonLd} />
 
       <div className="mx-auto max-w-3xl px-6 pt-32 pb-24">
         {/* The name is set with the Y and D drawn as marks. */}

@@ -14,6 +14,7 @@ import { WhatIDo } from "@/components/marketing/WhatIDo";
 import { Faq } from "@/components/marketing/Faq";
 import { ALL_SKILL_NAMES } from "@/lib/skills";
 import { professionalServiceJsonLd } from "@/lib/jsonld";
+import { JsonLd } from "@/components/seo/JsonLd";
 
 export default async function HomePage() {
   const token = isConvexConfigured ? await convexAuthNextjsToken() : undefined;
@@ -48,12 +49,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(professionalServiceJsonLd),
-        }}
-      />
+      <JsonLd data={professionalServiceJsonLd} />
 
       {/* The hero's slabs hold real project screenshots. Fetched separately
           from the preload the Projects section uses, because the hero needs
