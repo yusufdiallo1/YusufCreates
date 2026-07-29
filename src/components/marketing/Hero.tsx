@@ -175,14 +175,22 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
   // element, and a mounted glass panel still costs its backdrop-filter — the
   // three desktop slabs were consuming the entire blur budget on a phone
   // while being invisible. Resolved before paint, so nothing flashes.
-  const [isDesktop, setIsDesktop] = useState(() =>
-    typeof window === "undefined"
-      ? true
-      : window.matchMedia("(min-width: 1024px)").matches,
-  );
+  /*
+   * null until the viewport is known, rather than assuming desktop.
+   *
+   * The lazy initialiser returned true on the server and the real match on the
+   * client, so a phone rendered SlabStack where the server had sent the
+   * desktop slab container — a changed element tree, and hydration failed.
+   *
+   * Resolved in a layout effect, which runs before paint, so the correct
+   * variant is on screen in the first painted frame and neither is rendered
+   * against the wrong markup.
+   */
+  const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const mq = window.matchMedia("(min-width: 1024px)");
+    setIsDesktop(mq.matches);
     const onChange = () => setIsDesktop(mq.matches);
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
@@ -295,7 +303,7 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
 
         {/* Slabs. Absolutely positioned within a reserved-height stage so the
             overlap is deliberate and the layout never shifts. */}
-        {shown.length > 0 && isDesktop ? (
+        {shown.length > 0 && isDesktop === true ? (
           <motion.div
             style={reduceMotion ? undefined : { y: slabY }}
             className="relative h-[30rem] lg:col-span-7"
@@ -321,7 +329,7 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
 
         {/* Mobile: the same stacked composition, scaled down.
             Only the front slab is a link — see SlabStack. */}
-        {shown.length > 0 && !isDesktop ? (
+        {shown.length > 0 && isDesktop === false ? (
           <motion.div {...step(0.6)}>
             <SlabStack projects={shown} />
           </motion.div>
