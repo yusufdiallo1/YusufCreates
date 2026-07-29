@@ -2,7 +2,8 @@ import { NextResponse, after } from "next/server";
 import { fetchMutation } from "convex/nextjs";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 import { AuditResults } from "@emails/AuditResults";
-import { sendEmail } from "@/lib/email";
+import { AuditFailed } from "@emails/AuditFailed";
+import { adminEmail, sendEmail } from "@/lib/email";
 import { logEmailSend } from "@/lib/emailLog";
 import { SITE } from "@/lib/constants";
 
@@ -185,12 +186,36 @@ async function runAudit(id: string, url: string, email: string) {
   const key = process.env.PAGESPEED_API_KEY;
   if (!secret) return;
 
-  const finish = (fields: Record<string, unknown>) =>
-    fetchMutation(api.audits.complete, {
+  const finish = async (fields: Record<string, unknown>) => {
+    await fetchMutation(api.audits.complete, {
       secret,
       id: id as never,
       ...fields,
     }).catch(() => {});
+
+    /*
+     * A failed audit still asked someone for their email, so it must not end
+     * in silence — that is a lead who tried to hire me and got nothing.
+     *
+     * Notifying myself means I can run it by hand and reply with real numbers,
+     * which is a better first contact than the automated report would have
+     * been. Sent for failures only; the success path sends the results.
+     */
+    if (!fields.error) return;
+
+    const admin = adminEmail();
+    if (!admin) return;
+
+    try {
+      await sendEmail({
+        to: admin,
+        subject: `Audit failed — ${url}`,
+        react: AuditFailed({ url, email, reason: String(fields.error) }),
+      });
+    } catch {
+      // Nothing further to do: the row already records the failure.
+    }
+  };
 
 
   try {
