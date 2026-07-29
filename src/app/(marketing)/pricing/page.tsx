@@ -9,7 +9,7 @@ import { SITE } from "@/lib/constants";
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "Transparent pricing in USD, SAR and AED. Launch from $900, Growth from $1,800, web apps from $6,000, Enterprise from $13,000.",
+    "Transparent pricing in USD, SAR and AED. Launch $600, Growth from $1,200, web apps from $4,000, Enterprise from $8,000.",
   alternates: { canonical: `${SITE.url}/pricing` },
 };
 

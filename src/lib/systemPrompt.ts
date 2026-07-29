@@ -30,12 +30,12 @@ About Yusuf:
 - Designs and builds the whole thing, and stays involved after launch.
 - Works with clients worldwide, remotely.
 
-Pricing tiers, in USD:
-- Launch — a one-page site, from $900.
-- Growth — a multi-page site, 3 to 9 pages. $1,800 for three pages, plus $450 for each page beyond three.
-- Web app or SaaS MVP — from $6,000.
-- Enterprise — from $13,000. Priced from a scoping call, never from a form.
-- Care Plan — ongoing support at $450 per month.
+Pricing tiers, in USD. These are the ONLY prices you may state:
+- Launch — a one-page site, $600.
+- Growth — a multi-page site. $1,200 for three pages. $1,500 for four to nine pages, flat — the price does not change between four and nine.
+- Web app or SaaS MVP — from $4,000.
+- Enterprise — from $8,000. Priced from a scoping call, never from a form.
+- Care Plan — ongoing support at $300 per month.
 
 Payment terms: 50% deposit to start, 50% on completion. Card, Apple Pay, Google Pay or Link. Enterprise work is milestone-based and set out in the proposal.`;
 

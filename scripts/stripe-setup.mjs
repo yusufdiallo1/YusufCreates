@@ -37,56 +37,63 @@ if (!secret) {
 const stripe = new Stripe(secret, { apiVersion: "2026-06-24.dahlia" });
 
 /**
- * One-off tiers plus the recurring care plan.
+ * The five plans, matching src/lib/pricing.ts exactly.
  *
- * Growth is deliberately absent: its price is 1800 + 450 per page above three,
- * so it is computed per client rather than a fixed price. Enterprise is
- * absent for the same reason — it is quoted from a scoping call.
+ * Growth is TWO prices rather than a base plus per-page add-on: three pages is
+ * one figure, four through nine is another, flat. That is a real product
+ * decision, not a rounding — a client adding a page should not trigger a
+ * conversation about money.
+ *
+ * Enterprise is a deposit rather than the full figure, because the total comes
+ * out of a scoping call and varies per engagement.
  */
 const CATALOGUE = [
   {
     key: "launch",
-    name: "Launch — one-page site",
-    description: "A single scrolling page. Launch, portfolio, or a landing page.",
-    amount: 900_00,
-    recurring: null,
-  },
-  {
-    key: "growth_base",
-    name: "Growth — multi-page site (base, 3 pages)",
+    name: "Launch",
     description:
-      "Three pages included. Additional pages are added as separate line items.",
-    amount: 1800_00,
+      "One page, done properly. Landing page or one-pager, blog, contact form, SEO basics, deployed and handed over.",
+    amount: 600_00,
     recurring: null,
   },
   {
-    key: "growth_page",
-    name: "Growth — additional page",
-    description: "Each page beyond the first three.",
-    amount: 450_00,
+    key: "growth_3",
+    name: "Growth — 3 pages",
+    description:
+      "A full site at three pages. CMS, multi-page structure, analytics.",
+    amount: 1200_00,
+    recurring: null,
+  },
+  {
+    key: "growth_4_9",
+    name: "Growth — 4 to 9 pages",
+    description:
+      "A full site, four to nine pages. Same price whether it is four pages or nine.",
+    amount: 1500_00,
     recurring: null,
   },
   {
     key: "app",
-    name: "Web app or SaaS MVP",
-    description: "Accounts, data, billing — something people log into.",
-    amount: 6000_00,
+    name: "Web app / SaaS MVP",
+    description:
+      "Software, not a brochure. Authentication, database, payments, dashboards, integrations. Starting figure.",
+    amount: 4000_00,
     recurring: null,
   },
   {
     key: "enterprise_deposit",
     name: "Enterprise — deposit",
     description:
-      "Starting figure for enterprise work. Final scope is set in the proposal.",
-    amount: 13000_00,
+      "Starting figure for enterprise work. Final scope and total are set in the proposal.",
+    amount: 8000_00,
     recurring: null,
   },
   {
     key: "care_monthly",
     name: "Care Plan",
     description:
-      "Ongoing support: fixes, uptime, and regular changes. Cancel any time.",
-    amount: 450_00,
+      "Hosting and maintenance, unlimited small edits, SEO monitoring, monthly report, priority support. Cancel any time.",
+    amount: 300_00,
     recurring: { interval: "month" },
   },
 ];
@@ -126,6 +133,11 @@ async function main() {
       if (dry) {
         console.log(`  would create product  ${item.name}`);
       } else {
+        // Idempotency keys mean a repeat call returns the ORIGINAL object
+        // rather than creating a second one. Comparing the timestamp is how
+        // we report honestly instead of claiming to have created something
+        // Stripe simply handed back.
+        const before = Math.floor(Date.now() / 1000) - 5;
         product = await stripe.products.create(
           {
             name: item.name,
@@ -134,7 +146,11 @@ async function main() {
           },
           { idempotencyKey: `product:${item.key}` },
         );
-        console.log(`  created product       ${item.name}`);
+        console.log(
+          product.created >= before
+            ? `  created product       ${item.name}`
+            : `  product exists        ${item.name}`,
+        );
       }
     } else {
       console.log(`  product exists        ${item.name}`);
@@ -168,6 +184,7 @@ async function main() {
       continue;
     }
 
+    const priceBefore = Math.floor(Date.now() / 1000) - 5;
     const price = await stripe.prices.create(
       {
         product: product.id,
@@ -180,7 +197,9 @@ async function main() {
     );
 
     console.log(
-      `  created price         ${lookupKey} @ ${(item.amount / 100).toFixed(2)} ${CURRENCY.toUpperCase()}`,
+      price.created >= priceBefore
+        ? `  created price         ${lookupKey} @ ${(item.amount / 100).toFixed(2)} ${CURRENCY.toUpperCase()}`
+        : `  price exists          ${lookupKey}`,
     );
     results.push([item.key, price.id]);
   }

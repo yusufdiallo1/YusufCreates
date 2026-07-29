@@ -16,9 +16,22 @@ export const metadata: Metadata = {
     template: `%s · ${SITE.name}`,
   },
   description: SITE.description,
+  /*
+   * PNG first, SVG second.
+   *
+   * Google's favicon crawler does not use SVG, and neither do several
+   * contexts that show a site icon — which is why the search listing rendered
+   * a generic globe. The PNGs are drawn on the brand canvas rather than
+   * transparent, because Google composites favicons onto a white card and a
+   * transparent dark mark vanishes into it.
+   */
   icons: {
-    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/apple-touch-icon.svg", sizes: "180x180" }],
+    icon: [
+      { url: "/favicon-32.png", type: "image/png", sizes: "32x32" },
+      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
   },
   // Feed autodiscovery. Without this a reader has to be handed the URL by
   // hand, which nobody does.

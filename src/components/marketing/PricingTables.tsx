@@ -130,6 +130,16 @@ export function PricingTables() {
                         aria-valuetext={`${pages} pages`}
                         className="mt-2 w-full accent-[color:var(--accent)]"
                       />
+
+                      {/* Said plainly, because the slider otherwise implies a
+                          per-page charge. Knowing the price stops moving at
+                          four is the point — it means adding a page later is
+                          a decision about the site, not about money. */}
+                      <p className="mt-2 text-xs text-secondary">
+                        {pages >= GROWTH.flatFrom
+                          ? "Four to nine pages is the same price — add pages without the cost changing."
+                          : "Three pages. Four or more is a single flat price, however many you end up needing."}
+                      </p>
                     </div>
                   ) : null}
 

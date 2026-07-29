@@ -25,20 +25,46 @@ export const CURRENCY_SYMBOL: Record<Currency, string> = {
 
 export const CURRENCIES: Currency[] = ["USD", "SAR", "AED"];
 
-/** Growth tier page bounds and the formula constants. */
+/**
+ * Growth tier.
+ *
+ * TWO prices, not a per-page formula. Three pages is one figure; four through
+ * nine is another, flat.
+ *
+ * The old model charged 450 for every page above three, so nine pages came to
+ * 4,500 — more than the web-app tier, which is absurd. It also made the price
+ * unpredictable: a client adding one page mid-project triggered a
+ * conversation about money rather than a decision about the site.
+ *
+ * Flat pricing above four removes both problems. The honest reason it works
+ * commercially is that most of the cost is design, build setup and deployment,
+ * which do not scale with page count — the ninth page genuinely is not much
+ * more work than the fifth.
+ */
 export const GROWTH = {
   minPages: 3,
   maxPages: 9,
-  basePrice: 1800,
-  perExtraPage: 450,
+  /** Exactly three pages. */
+  basePrice: 1200,
+  /** Four through nine, flat. */
+  extendedPrice: 1500,
+  /** Above which the flat price applies. */
+  flatFrom: 4,
 } as const;
 
-/** USD base prices. Anything shown in another currency derives from these. */
+/**
+ * USD base prices.
+ *
+ * Lowered across the board. The previous ladder started at 900 and reached
+ * 13,000, which reads as agency pricing from a one-person studio — and the
+ * site's own positioning is "founders who were quoted too much by an agency".
+ * The numbers now match the pitch.
+ */
 const BASE_USD = {
-  launch: 900,
-  app: 6000,
-  enterprise: 13000,
-  care: 450,
+  launch: 600,
+  app: 4000,
+  enterprise: 8000,
+  care: 300,
 } as const;
 
 /**
@@ -50,10 +76,11 @@ const BASE_USD = {
  * listed here (notably the Growth slider, which is genuinely computed).
  */
 const PUBLISHED: Partial<Record<TierId, Record<Currency, number>>> = {
-  launch: { USD: 900, SAR: 3375, AED: 3300 },
-  app: { USD: 6000, SAR: 22500, AED: 22000 },
-  enterprise: { USD: 13000, SAR: 49000, AED: 48000 },
-  care: { USD: 450, SAR: 1690, AED: 1650 },
+  launch: { USD: 600, SAR: 2250, AED: 2200 },
+  growth: { USD: 1200, SAR: 4500, AED: 4400 },
+  app: { USD: 4000, SAR: 15000, AED: 14700 },
+  enterprise: { USD: 8000, SAR: 30000, AED: 29400 },
+  care: { USD: 300, SAR: 1125, AED: 1100 },
 };
 
 /** Published price for a fixed tier, falling back to the pegged conversion. */
@@ -78,7 +105,9 @@ export function growthPriceUsd(pages: number): number {
     GROWTH.maxPages,
     Math.max(GROWTH.minPages, Math.round(pages)),
   );
-  return GROWTH.basePrice + GROWTH.perExtraPage * (clamped - GROWTH.minPages);
+  // Two steps, not a slope. Four pages and nine pages cost the same, so a
+  // client can add a page without it becoming a negotiation.
+  return clamped >= GROWTH.flatFrom ? GROWTH.extendedPrice : GROWTH.basePrice;
 }
 
 /**
