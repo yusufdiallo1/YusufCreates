@@ -56,16 +56,29 @@ export default function OpengraphImage() {
           }}
         />
 
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <div
-            style={{
-              width: 12,
-              height: 12,
-              borderRadius: 9999,
-              backgroundColor: ACCENT,
-              display: "flex",
-            }}
-          />
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          {/* The real mark, not a placeholder dot. Geometry mirrors
+              src/components/ui/Logo.tsx — if that changes, change this too.
+              Inlined because the OG renderer cannot import a component that
+              uses motion, and cannot fetch an asset over the network. */}
+          <svg width={56} height={56} viewBox="0 0 220 220">
+            <path
+              d="M61 48 L92 79 L61 110"
+              fill="none"
+              stroke={PRIMARY}
+              strokeWidth={15}
+              strokeLinecap="square"
+            />
+            <path
+              d="M159 48 L115 92 L115 137"
+              fill="none"
+              stroke={PRIMARY}
+              strokeWidth={15}
+              strokeLinecap="square"
+            />
+            <rect x={99} y={155} width={34} height={17} fill={ACCENT} />
+          </svg>
+
           <div style={{ fontSize: 26, color: SECONDARY, letterSpacing: "0.02em" }}>
             yusufcreates.com
           </div>
@@ -84,8 +97,11 @@ export default function OpengraphImage() {
             }}
           >
             <span>Websites and web apps,</span>
-            <span>
-              built{" "}
+            {/* A flex row with an explicit gap, not `built{" "}`: the OG
+                renderer collapses that whitespace expression and the two words
+                render touching. */}
+            <span style={{ display: "flex", gap: 22 }}>
+              <span>built</span>
               <span style={{ color: ACCENT }}>properly.</span>
             </span>
           </div>

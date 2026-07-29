@@ -251,6 +251,7 @@ function Drawer({
             help="Linked from their quote. https:// is added if you leave it off."
           />
           <ImageUpload
+            shape="avatar"
             label="Avatar"
             value={draft.avatarUrl}
             onChange={(v) => set("avatarUrl", v)}

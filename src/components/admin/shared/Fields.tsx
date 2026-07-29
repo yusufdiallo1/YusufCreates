@@ -233,10 +233,19 @@ export function ImageUpload({
   label,
   value,
   onChange,
+  shape = "wide",
 }: {
   label: string;
   value: string;
   onChange: (url: string) => void;
+  /**
+   * How the preview is framed.
+   *
+   * "avatar" previews as the circle it will actually render as. A square logo
+   * shown in a 2:1 box reads as squashed and invites cropping a file that was
+   * already correct.
+   */
+  shape?: "wide" | "avatar";
 }) {
   const convex = useConvex();
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
@@ -256,7 +265,11 @@ export function ImageUpload({
         <img
           src={value}
           alt=""
-          className="hairline mt-2 aspect-[2/1] w-full rounded-lg object-cover"
+          className={
+            shape === "avatar"
+              ? "hairline mt-2 aspect-square size-28 rounded-full object-cover"
+              : "hairline mt-2 aspect-[2/1] w-full rounded-lg object-cover"
+          }
         />
       ) : null}
 

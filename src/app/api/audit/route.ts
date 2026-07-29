@@ -1,6 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { fetchMutation } from "convex/nextjs";
 import { api, isConvexConfigured } from "@/lib/convex-api";
+import { AuditResults } from "@emails/AuditResults";
+import { sendEmail } from "@/lib/email";
+import { logEmailSend } from "@/lib/emailLog";
+import { SITE } from "@/lib/constants";
 
 /**
  * Free site audit.
@@ -21,6 +25,13 @@ import { api, isConvexConfigured } from "@/lib/convex-api";
  */
 
 export const runtime = "nodejs";
+
+/*
+ * PageSpeed regularly takes 30-60s on a slow site. The default cap would abort
+ * the run partway and leave the row unfinished, which is the same stuck state
+ * from the caller's point of view.
+ */
+export const maxDuration = 120;
 
 /** Private ranges, loopback, link-local and anything not obviously public. */
 function isPrivateHost(hostname: string): boolean {
@@ -150,14 +161,26 @@ export async function POST(request: Request) {
     );
   }
 
-  // Run in the background: the client subscribes to the row and fills in when
-  // this finishes. Awaiting a 40-second PageSpeed call here would time out.
-  void runAudit(queued.id, url.toString());
+  /*
+   * after(), not a floating promise.
+   *
+   * `void runAudit(...)` looked like it backgrounded the work, but on a
+   * serverless platform the instance is frozen the moment the response is
+   * returned — so the PageSpeed call was killed mid-flight and the row sat at
+   * "queued" forever. That is the audit that never appears.
+   *
+   * after() keeps the invocation alive until the callback settles, bounded by
+   * maxDuration below. The client is subscribed to the row either way, so it
+   * fills in the moment the mutation lands.
+   */
+  after(async () => {
+    await runAudit(queued.id, url.toString(), email);
+  });
 
   return NextResponse.json({ ok: true, id: queued.id });
 }
 
-async function runAudit(id: string, url: string) {
+async function runAudit(id: string, url: string, email: string) {
   const secret = process.env.EMAIL_LOG_SECRET;
   const key = process.env.PAGESPEED_API_KEY;
   if (!secret) return;
@@ -169,17 +192,19 @@ async function runAudit(id: string, url: string) {
       ...fields,
     }).catch(() => {});
 
-  if (!key) {
-    await finish({ error: "The audit service is not configured yet." });
-    return;
-  }
 
   try {
     const endpoint = new URL(
       "https://www.googleapis.com/pagespeedonline/v5/runPagespeed",
     );
     endpoint.searchParams.set("url", url);
-    endpoint.searchParams.set("key", key);
+    /*
+     * The key is optional. PageSpeed serves keyless requests at a much lower
+     * quota, which is fine at this volume — and a missing key failing every
+     * audit outright is worse than an occasional rate limit. Set
+     * PAGESPEED_API_KEY to raise the ceiling.
+     */
+    if (key) endpoint.searchParams.set("key", key);
     // Mobile only. Running both strategies doubles the quota cost, and mobile
     // is the stricter and more representative of the two.
     endpoint.searchParams.set("strategy", "mobile");
@@ -193,7 +218,9 @@ async function runAudit(id: string, url: string) {
         error:
           res.status === 400
             ? "That site could not be reached — check the address is public and loads."
-            : "The audit service is busy. Try again shortly.",
+            : res.status === 429
+              ? "The audit service is rate limited right now. Try again in a few minutes."
+              : "The audit service is busy. Try again shortly.",
       });
       return;
     }
@@ -255,6 +282,38 @@ async function runAudit(id: string, url: string) {
       });
 
     await finish({ score, categories, fixes });
+
+    /*
+     * The form says "where to send the results", so this is what makes that
+     * true — it was collecting an address and sending nothing.
+     *
+     * After finish(), not before: the report page has to exist before the
+     * email links to it. A send failure is swallowed deliberately, because the
+     * results are already saved and visible on screen — failing the whole
+     * audit over an email would lose work that succeeded.
+     */
+    const subject =
+      typeof score === "number"
+        ? `${new URL(url).hostname.replace(/^www\./, "")} scored ${score}/100`
+        : "Your site audit is ready";
+
+    try {
+      const result = await sendEmail({
+        to: email,
+        subject,
+        react: AuditResults({
+          url,
+          score,
+          categories,
+          fixes,
+          reportUrl: `${SITE.url}/audit?id=${id}`,
+        }),
+      });
+      await logEmailSend({ to: email, template: "AuditResults", subject, result });
+    } catch {
+      // Swallowed on purpose: the results are already saved and on screen.
+      // Failing the audit over a bounced email would lose work that worked.
+    }
   } catch (err) {
     await finish({
       error:

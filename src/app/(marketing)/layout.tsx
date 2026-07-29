@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { CustomCursor } from "@/components/ui/CustomCursor";
 import { SmoothScroll } from "@/components/motion/SmoothScroll";
 import { ScrollProgress } from "@/components/motion/ScrollProgress";
@@ -6,6 +7,8 @@ import { Footer } from "@/components/marketing/Footer";
 import { Tracker } from "@/components/analytics/Tracker";
 import { ChatLauncher } from "@/components/chat/ChatLauncher";
 import { PromoBanner } from "@/components/marketing/PromoBanner";
+import { CookieNotice } from "@/components/marketing/CookieNotice";
+import { ReferralWelcome } from "@/components/marketing/ReferralWelcome";
 
 export default function MarketingLayout({
   children,
@@ -33,6 +36,16 @@ export default function MarketingLayout({
 
         {/* Site assistant. Suggestions come from the KB priority field. */}
         <ChatLauncher />
+
+        {/* useSearchParams needs a Suspense boundary or the whole route opts
+            out of static rendering. */}
+        <Suspense fallback={null}>
+          <ReferralWelcome />
+        </Suspense>
+
+        {/* A notice, not a consent gate — there is no tracking cookie to
+            consent to. See the component for why that distinction matters. */}
+        <CookieNotice />
       </div>
     </SmoothScroll>
   );

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   motion,
   useMotionValue,
@@ -37,6 +37,14 @@ import { AvailabilityBadge } from "@/components/marketing/AvailabilityBadge";
  */
 
 const EASE = [0.16, 1, 0.3, 1] as const;
+/*
+ * useLayoutEffect logs a warning when React renders on the server, where it
+ * cannot run. Neither can fire there, so aliasing to useEffect keeps the
+ * server render silent while the client keeps its before-paint timing.
+ */
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
 const SESSION_KEY = "yc.hero.played";
 
 export type HeroProject = {
@@ -81,16 +89,23 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
   // Play the load sequence once per session. Returning to the page mid-visit
   // should feel like coming back to something already there.
   //
-  // Decided in an effect, not a lazy useState initialiser. The initialiser
-  // runs during the FIRST client render, so on a genuine first visit it
-  // returned true while the server had already rendered false — React saw
-  // opacity 0 against opacity 1 and hydration failed, throwing away the whole
-  // tree and re-rendering it. An effect runs after hydration has committed,
-  // so both passes start from the same resting state and the animation is
-  // applied a frame later.
+  /*
+   * Decided in a LAYOUT effect, not a lazy useState initialiser.
+   *
+   * The initialiser runs during the first client render, so on a genuine first
+   * visit it returned true while the server had rendered false — React saw
+   * opacity 0 against opacity 1, hydration failed, and the whole tree was
+   * thrown away and re-rendered.
+   *
+   * useLayoutEffect runs after hydration has committed but BEFORE the browser
+   * paints. So the server and the first client render agree on the resting
+   * state, and the animation still starts from its initial frame with nothing
+   * visible in between. A plain useEffect fires after paint, which is why the
+   * hero briefly appeared finished and then never animated.
+   */
   const [firstVisit, setFirstVisit] = useState(false);
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const seen = sessionStorage.getItem(SESSION_KEY);
     if (!seen) {
       sessionStorage.setItem(SESSION_KEY, "1");
@@ -286,10 +301,11 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
           </motion.div>
         ) : null}
 
-        {/* Mobile: a single slab, in flow rather than absolutely placed. */}
+        {/* Mobile: the same stacked composition, scaled down.
+            Only the front slab is a link — see SlabStack. */}
         {shown.length > 0 && !isDesktop ? (
           <motion.div {...step(0.6)}>
-            <SlabStatic project={shown[0]} />
+            <SlabStack projects={shown} />
           </motion.div>
         ) : null}
       </div>
@@ -437,26 +453,83 @@ function Slab({
 }
 
 /** Mobile and reduced-motion variant: one slab, no drift, no tilt. */
-function SlabStatic({ project }: { project: HeroProject }) {
+
+/**
+ * Mobile slab stack.
+ *
+ * The same three-slab composition as desktop, scaled to fit a phone. It was a
+ * single flat card, which lost the one thing that makes the hero look like
+ * anything — the depth.
+ *
+ * Only the FRONT slab is a link. Three overlapping tap targets on a phone
+ * means the two behind are mostly covered, so tapping "a card" would sometimes
+ * open whichever project happened to own that sliver. The two behind are
+ * decorative and aria-hidden, which also keeps them out of the tab order
+ * rather than leaving two unreachable links in it.
+ *
+ * No drift, no tilt, and blur is left to the glass tokens: this is the mobile
+ * blur budget, and animating three backdrop-filtered elements on a phone is
+ * what made the old hero stutter.
+ */
+function SlabStack({ projects }: { projects: HeroProject[] }) {
+  const front = projects[0];
+  if (!front) return null;
+
+  // Behind, then in front — the front slab is last so it wins on paint order
+  // without needing a z-index on every layer.
+  const behind = projects.slice(1, 3);
+
   return (
-    <Link
-      href={`/work/${project.slug}`}
-      data-cursor="view"
-      aria-label={`${project.title} — view case study`}
-      className="block"
-    >
-      <LiquidGlass depth="near" shape="panel" className="overflow-hidden !p-2">
-        <div className="relative aspect-[16/10] overflow-hidden rounded-[20px] bg-surface-2">
-          <Image
-            src={project.coverUrl!}
-            alt={project.title}
-            fill
-            sizes="90vw"
-            priority
-            className="object-cover object-top"
-          />
+    <div className="relative h-[19rem] sm:h-[24rem]">
+      {behind.map((project, i) => (
+        <div
+          key={project.slug}
+          aria-hidden="true"
+          className={
+            i === 0
+              ? "absolute top-0 left-0 w-[72%] opacity-70"
+              : "absolute top-[18%] right-0 w-[64%] opacity-55"
+          }
+          style={{ transform: `scale(${i === 0 ? 0.94 : 0.88})` }}
+        >
+          <LiquidGlass depth={i === 0 ? "far" : "mid"} shape="panel" className="overflow-hidden !p-1.5">
+            <div className="relative aspect-[16/10] overflow-hidden rounded-[16px] bg-surface-2">
+              {project.coverUrl ? (
+                <Image
+                  src={project.coverUrl}
+                  alt=""
+                  fill
+                  sizes="70vw"
+                  className="object-cover object-top opacity-60"
+                />
+              ) : null}
+            </div>
+          </LiquidGlass>
         </div>
-      </LiquidGlass>
-    </Link>
+      ))}
+
+      <Link
+        href={`/work/${front.slug}`}
+        data-cursor="view"
+        aria-label={`${front.title} — view case study`}
+        className="absolute top-[30%] left-[8%] block w-[86%]"
+      >
+        <LiquidGlass depth="near" shape="panel" className="overflow-hidden !p-2">
+          <div className="relative aspect-[16/10] overflow-hidden rounded-[20px] bg-surface-2">
+            {front.coverUrl ? (
+              <Image
+                src={front.coverUrl}
+                alt={front.title}
+                fill
+                sizes="90vw"
+                priority
+                className="object-cover object-top"
+              />
+            ) : null}
+          </div>
+        </LiquidGlass>
+      </Link>
+    </div>
   );
 }
+

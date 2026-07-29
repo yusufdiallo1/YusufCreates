@@ -30,6 +30,7 @@ import type * as posts from "../posts.js";
 import type * as projects from "../projects.js";
 import type * as promos from "../promos.js";
 import type * as proposals from "../proposals.js";
+import type * as referrals from "../referrals.js";
 import type * as seed from "../seed.js";
 import type * as settings from "../settings.js";
 import type * as subscribers from "../subscribers.js";
@@ -64,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   projects: typeof projects;
   promos: typeof promos;
   proposals: typeof proposals;
+  referrals: typeof referrals;
   seed: typeof seed;
   settings: typeof settings;
   subscribers: typeof subscribers;

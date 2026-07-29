@@ -121,12 +121,27 @@ function PinnedShowcase({ projects }: { projects: Project[] }) {
   return (
     <div
       ref={ref}
-      className="relative mt-12"
-      // One viewport of scroll per project. Any less and the crossfades run
-      // into each other; any more and it feels like the page has stalled.
-      style={{ height: `${projects.length * 100}vh` }}
+      className="relative mt-8"
+      /*
+       * One viewport of scroll per project. Any less and the crossfades run
+       * into each other; any more and it feels like the page has stalled.
+       *
+       * dvh, not vh: on mobile Safari vh is the tallest possible viewport, so
+       * the container is taller than what is actually on screen and the last
+       * project never reaches full progress.
+       */
+      style={{ height: `${projects.length * 100}dvh` }}
     >
-      <div className="sticky top-0 flex h-screen items-center">
+      {/*
+       * Offset by the heading's height rather than sticking to top-0.
+       *
+       * At top-0 with h-screen the panel centres itself in the full viewport,
+       * which sits BELOW the heading that is already occupying the top of the
+       * section — leaving most of a screen of dead space before the first card
+       * appears. Sticking below the heading and subtracting it from the height
+       * centres the panel in the space that is actually free.
+       */}
+      <div className="sticky top-24 flex h-[calc(100dvh-6rem)] items-center">
         <div className="grid w-full grid-cols-12 items-center gap-10">
           {/* Text column. Keyed on slug so Motion treats each project as a
               new element and runs the exit animation. */}

@@ -1,10 +1,8 @@
 /**
- * YusufCreates Instagram carousel renderer — liquid glass, right-to-left.
+ * YusufCreates Instagram carousel renderer — liquid glass.
  *
- * Layout is mirrored: the logo lockup sits top-right, all type is
- * right-aligned, progress runs right-to-left, and the CTA arrow points left
- * (the direction of travel). Copy stays English — this is a mirrored
- * composition, not a translation.
+ * Standard left-to-right layout: logo lockup top-left, type left-aligned,
+ * progress running left from the edge, CTA arrows pointing right.
  *
  * The glass is genuine: the real backdrop-filter chain from globals.css and
  * the SVG refraction filter from LiquidGlass.tsx. Headless Chromium supports
@@ -76,9 +74,9 @@ function verifiedBadge(px) {
   </svg>`;
 }
 
-/** Stacked-cards glyph, mirrored so the stack opens toward the page centre. */
+/** The stacked-cards glyph that marks a post as swipeable. */
 function carouselGlyph() {
-  return `<svg viewBox="0 0 32 30" style="height:34px;width:auto;transform:scaleX(-1)" aria-hidden="true">
+  return `<svg viewBox="0 0 32 30" style="height:34px;width:auto" aria-hidden="true">
     <rect x="9.5" y="1.5" width="21" height="21" rx="5" fill="none" stroke="${C.text}" stroke-width="2.2" opacity="0.45"/>
     <rect x="1.5" y="7.5" width="21" height="21" rx="5" fill="${C.text}"/>
   </svg>`;
@@ -107,10 +105,8 @@ function glass(radius = 28, hi = false) {
     border-radius:${radius}px;`;
 }
 
-/**
- * Progress indicator. Rendered right-to-left via row-reverse so slide one
- * reads from the right edge, matching the direction of the layout.
- */
+/** Progress indicator. The active step is a glass capsule rather than a plain
+ *  bar so it belongs to the same material as the rest of the slide. */
 function dots(index, total) {
   const items = Array.from({ length: total }, (_, i) => {
     const on = i === index;
@@ -121,19 +117,14 @@ function dots(index, total) {
     return `<span style="display:block;width:10px;height:10px;border-radius:99px;
       background:rgba(255,255,255,0.18);box-shadow:inset 0 0 0 1px rgba(255,255,255,0.10)"></span>`;
   }).join("");
-  // direction is pinned to ltr before reversing, otherwise the RTL parent
-  // flips the row a second time and the active dot ends up on the wrong side.
-  return `<div style="display:flex;direction:ltr;flex-direction:row-reverse;
-    align-items:center;gap:10px">${items}</div>`;
+  return `<div style="display:flex;align-items:center;gap:10px">${items}</div>`;
 }
 
-/** Top bar. Lockup on the right, carousel glyph on the left. */
+/** Top bar. Lockup on the left, carousel glyph on the right. */
 function topBar() {
-  return `<header style="display:flex;direction:ltr;align-items:center;justify-content:space-between;flex-direction:row-reverse">
-    <!-- The lockup itself is never mirrored: mark, wordmark, then badge, in
-         that order. Only its position on the slide moves to the right. -->
+  return `<header style="display:flex;align-items:center;justify-content:space-between">
     <div style="display:flex;flex-direction:row;align-items:center;gap:16px;
-        padding:16px 28px 16px 22px;${glass(99)}direction:ltr">
+        padding:16px 22px 16px 28px;${glass(99)}">
       ${markSvg(40)}
       <div style="display:flex;flex-direction:row;align-items:center;gap:9px">
         <span style="font-size:33px;letter-spacing:-0.022em;line-height:1">
@@ -148,19 +139,19 @@ function topBar() {
   </header>`;
 }
 
-/** Footer. Progress on the right, handle on the left. */
+/** Footer. Progress on the left, handle on the right. */
 function footer(index, total, handle) {
-  return `<footer style="display:flex;direction:ltr;align-items:center;justify-content:space-between;flex-direction:row-reverse">
+  return `<footer style="display:flex;align-items:center;justify-content:space-between">
     ${dots(index, total)}
     <span style="font-size:27px;color:${C.secondary};letter-spacing:-0.01em">${handle}</span>
   </footer>`;
 }
 
-/** Glass CTA chip. The arrow points left — the RTL direction of travel. */
+/** Glass CTA chip. */
 function pill(label, hi = false) {
-  return `<div style="display:inline-flex;direction:ltr;align-items:center;gap:13px;padding:20px 34px;
+  return `<div style="display:inline-flex;align-items:center;gap:13px;padding:20px 34px;
       ${glass(99, hi)}font-size:28px;font-weight:500;color:${C.text}">
-    <span style="opacity:0.8">&larr;</span><span>${label}</span>
+    <span>${label}</span><span style="opacity:0.8">&rarr;</span>
   </div>`;
 }
 
@@ -176,7 +167,7 @@ function tone(t) {
 }
 
 /**
- * Renders one slide, right-aligned throughout.
+ * Renders one slide.
  *
  * Headline entries are one per line so a coloured clause never straddles a
  * line break; each may carry its own tone.
@@ -204,10 +195,10 @@ function slide(s, index, total, handle) {
     })
     .join("");
 
-  // Eyebrow tab, anchored to the right edge with the dot on its right.
+  // Eyebrow tab, anchored to the left edge with a status dot.
   const eyebrow = s.eyebrow
-    ? `<div style="display:inline-flex;direction:ltr;flex-direction:row-reverse;align-items:center;gap:13px;
-          align-self:flex-end;padding:13px 24px;margin-bottom:38px;${glass(99)}">
+    ? `<div style="display:inline-flex;align-items:center;gap:13px;
+          align-self:flex-start;padding:13px 24px;margin-bottom:38px;${glass(99)}">
         <span style="width:11px;height:11px;border-radius:99px;background:${eyebrowColor};
           box-shadow:0 0 14px ${eyebrowColor}"></span>
         <span style="font-size:23px;font-weight:600;letter-spacing:0.13em;
@@ -217,16 +208,16 @@ function slide(s, index, total, handle) {
 
   const body = s.body
     ? `<p style="margin:40px 0 0;font-size:33px;line-height:1.5;color:${C.secondary};
-        max-width:840px;letter-spacing:-0.005em;margin-left:auto">${s.body}</p>`
+        max-width:840px;letter-spacing:-0.005em">${s.body}</p>`
     : "";
 
   const cta = s.cta
-    ? `<div style="margin-top:50px;display:flex;justify-content:flex-end">${pill(s.cta, s.ctaHi)}</div>`
+    ? `<div style="margin-top:50px;display:flex;justify-content:flex-start">${pill(s.cta, s.ctaHi)}</div>`
     : "";
 
-  // Stat tiles. row-reverse so the first entry sits rightmost.
+  // Stat tiles.
   const stats = s.stats
-    ? `<div style="display:flex;direction:ltr;flex-direction:row-reverse;gap:20px;margin-top:56px">${s.stats
+    ? `<div style="display:flex;gap:20px;margin-top:56px">${s.stats
         .map(
           (st) => `<div style="flex:1;padding:34px 30px;${glass(24)}">
             <div style="font-size:66px;font-weight:600;color:${C.text};letter-spacing:-0.03em;line-height:1">${st.value}</div>
@@ -236,13 +227,13 @@ function slide(s, index, total, handle) {
         .join("")}</div>`
     : "";
 
-  // List rows. Index chip on the right, label flowing leftward.
+  // List rows, index chip first.
   const rows = s.rows
     ? `<div style="display:flex;flex-direction:column;gap:18px;margin-top:50px">${s.rows
         .map(
-          (r) => `<div style="display:flex;direction:ltr;flex-direction:row-reverse;align-items:center;gap:24px;
+          (r) => `<div style="display:flex;align-items:center;gap:24px;
               padding:28px 32px;${glass(22)}">
-            <span style="font-size:27px;font-weight:600;color:${C.accent};min-width:44px;text-align:right">${r.k}</span>
+            <span style="font-size:27px;font-weight:600;color:${C.accent};min-width:44px">${r.k}</span>
             <span style="font-size:30px;color:${C.text};letter-spacing:-0.01em">${r.v}</span>
           </div>`
         )
@@ -267,7 +258,7 @@ function slide(s, index, total, handle) {
                     box-shadow:0 6px 24px ${C.accentGlow}">${t.badge}</span>`
                 : ""
             }
-            <div style="display:flex;direction:ltr;flex-direction:row-reverse;align-items:baseline;justify-content:space-between;gap:20px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:20px">
               <span style="font-size:36px;font-weight:600;color:${C.text};letter-spacing:-0.02em">${t.name}</span>
               <span style="font-size:44px;font-weight:700;color:${t.featured ? C.accent : C.text};letter-spacing:-0.03em">${t.price}</span>
             </div>
@@ -277,11 +268,11 @@ function slide(s, index, total, handle) {
         .join("")}</div>`
     : "";
 
-  /** Feature checklist — a tick per line, ticks on the right. */
+  /** Feature checklist — a tick per line. */
   const checks = s.checks
     ? `<div style="display:flex;flex-direction:column;gap:20px;margin-top:48px">${s.checks
         .map(
-          (c) => `<div style="display:flex;direction:ltr;flex-direction:row-reverse;align-items:center;gap:20px">
+          (c) => `<div style="display:flex;align-items:center;gap:20px">
             <span style="display:flex;align-items:center;justify-content:center;width:46px;height:46px;
               border-radius:99px;flex:none;${glass(99)}">
               <svg viewBox="0 0 24 24" style="width:24px;height:24px" aria-hidden="true">
@@ -297,7 +288,7 @@ function slide(s, index, total, handle) {
 
   /** Oversized offer figure, for the promo deck. */
   const bigNote = s.bigNote
-    ? `<div style="margin-top:46px;padding:40px 44px;${glass(28, true)}text-align:right">
+    ? `<div style="margin-top:46px;padding:40px 44px;${glass(28, true)}">
         <div style="font-size:110px;font-weight:700;color:${C.accent};letter-spacing:-0.04em;
           line-height:1;text-shadow:0 0 70px ${C.accentGlow}">${s.bigNote.value}</div>
         <div style="font-size:29px;color:${C.text};margin-top:18px;line-height:1.4">${s.bigNote.label}</div>
@@ -318,7 +309,7 @@ function slide(s, index, total, handle) {
     <main>
       ${eyebrow}
       <h1 style="margin:0;font-size:${size}px;font-weight:700;line-height:1.04;
-          letter-spacing:-0.032em;max-width:910px;margin-left:auto">${headline}</h1>
+          letter-spacing:-0.032em;max-width:910px">${headline}</h1>
       ${body}
       ${stats}
       ${rows}
@@ -332,10 +323,7 @@ function slide(s, index, total, handle) {
   </section>`;
 }
 
-/**
- * Page CSS. `direction:rtl` sets the base flow; `text-align:right` and the
- * row-reverse flex containers above carry the mirroring through every block.
- */
+/** Page CSS: layout pinning, the colour field, and grain. */
 const PAGE_CSS = `
   ${FONT_FACE}
   *{box-sizing:border-box}
@@ -350,20 +338,11 @@ const PAGE_CSS = `
     margin:0 auto;
     overflow:hidden;
     isolation:isolate;
-    direction:rtl;
-    text-align:right;
+    direction:ltr;
+    text-align:left;
   }
-  /* Latin copy is still LTR internally — only the composition is mirrored.
-     `isolate` is what keeps a sentence-final period attached to its own run:
-     without it the bidi algorithm treats trailing neutral punctuation as
-     belonging to the surrounding RTL paragraph and flips it to the far left,
-     rendering ".deployed" instead of "deployed." */
   section.slide h1,
-  section.slide p,
-  section.slide span,
-  section.slide div{unicode-bidi:isolate}
-  section.slide h1,
-  section.slide p{direction:ltr;text-align:right}
+  section.slide p{text-align:left}
   section.slide main{
     flex:1 1 auto;min-height:0;
     display:flex;flex-direction:column;justify-content:center;
@@ -374,23 +353,22 @@ const PAGE_CSS = `
 
   .bg{position:absolute;inset:0;z-index:0;overflow:hidden}
   .orb{position:absolute;border-radius:50%;filter:blur(90px)}
-  /* Mirrored to match the layout: the dominant bloom now falls top-left. */
   .orb-a{
-    top:-340px;left:-260px;width:1120px;height:1120px;
-    background:radial-gradient(circle at 65% 35%,
+    top:-340px;right:-260px;width:1120px;height:1120px;
+    background:radial-gradient(circle at 35% 35%,
       rgba(94,106,210,0.50) 0%,
       rgba(94,106,210,0.20) 38%,
       transparent 70%);
   }
   .orb-b{
-    bottom:-420px;right:-320px;width:1180px;height:1180px;
-    background:radial-gradient(circle at 40% 40%,
+    bottom:-420px;left:-320px;width:1180px;height:1180px;
+    background:radial-gradient(circle at 60% 40%,
       rgba(124,92,220,0.34) 0%,
       rgba(60,80,190,0.14) 42%,
       transparent 72%);
   }
   .orb-c{
-    top:640px;right:44%;width:820px;height:820px;
+    top:640px;left:44%;width:820px;height:820px;
     background:radial-gradient(circle at center,
       rgba(255,255,255,0.075) 0%,
       rgba(255,255,255,0.022) 40%,
@@ -406,7 +384,7 @@ function page(slides, handle) {
   const body = slides
     .map((s, i) => slide(s, i, slides.length, handle))
     .join("");
-  return `<!doctype html><html dir="rtl"><head><meta charset="utf-8">
+  return `<!doctype html><html><head><meta charset="utf-8">
     <style>${PAGE_CSS}</style>
   </head><body>${refractionFilter()}${body}</body></html>`;
 }

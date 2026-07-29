@@ -16,8 +16,14 @@ import type { QueryCtx } from "./_generated/server";
 export const BUILD_SLOTS = 2;
 export const CARE_SLOTS = 2;
 
-/** How many months ahead a visitor can book. */
-const HORIZON = 6;
+/**
+ * How many months ahead a visitor can book.
+ *
+ * Four, not six. A start date half a year out is not a booking, it is a maybe
+ * — and a grid of distant months makes the near ones look less scarce than
+ * they are.
+ */
+const HORIZON = 4;
 
 /** An offer that goes unanswered stops holding a slot after this long. */
 const OFFER_TTL_MS = 7 * 24 * 60 * 60 * 1000;

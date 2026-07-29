@@ -136,8 +136,17 @@ export function SlotPicker({
       <fieldset className="mt-8">
         <legend className="text-sm text-secondary">Pick a start month</legend>
 
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {months.map((slot) => {
+        {/*
+         * A calendar of the actual slots, not a row of identical cards.
+         *
+         * Every month showing "2 places left" told you nothing and made a full
+         * month look the same as an empty one. Here each slot is drawn
+         * individually: taken ones are visibly struck out and unselectable, so
+         * scarcity is something you can see rather than read.
+         */}
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {months.map((slot, i) => {
+            const total = kind === "build" ? data?.buildSlots ?? 2 : data?.careSlots ?? 2;
             const open = kind === "build" ? slot.buildOpen : slot.careOpen;
             const full = open === 0;
             const selected = month === slot.month;
@@ -148,29 +157,66 @@ export function SlotPicker({
                 type="button"
                 disabled={full}
                 aria-pressed={selected}
+                aria-label={`${MONTH_FMT.format(new Date(slot.month))} — ${
+                  full ? "fully booked" : `${open} of ${total} places open`
+                }`}
                 onClick={() => setMonth(slot.month)}
-                className={`hairline rounded-xl px-4 py-3 text-left transition-colors duration-fast ${
+                className={`hairline rounded-xl p-4 text-left transition-all duration-fast ${
                   selected
-                    ? "border-[color:var(--accent)] bg-surface-2"
+                    ? "bg-surface-2 ring-1 ring-[color:var(--accent)]"
                     : full
-                      ? "cursor-not-allowed opacity-40"
+                      ? "cursor-not-allowed opacity-45"
                       : "bg-surface-1 hover:bg-surface-2"
                 }`}
               >
-                <span className="block text-sm text-primary">
-                  {MONTH_FMT.format(new Date(slot.month))}
-                </span>
-                <span className="mt-0.5 block text-xs text-secondary">
-                  {/* The count, not just "available" — one slot left reads
-                      very differently from two, and it is true either way. */}
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-sm text-primary">
+                    {MONTH_FMT.format(new Date(slot.month))}
+                  </span>
+                  {i === 0 ? (
+                    <span className="text-[10px] tracking-[0.1em] text-secondary uppercase">
+                      Soonest
+                    </span>
+                  ) : null}
+                </div>
+
+                {/* One pip per slot. Filled means available. */}
+                <div className="mt-3 flex gap-1.5" aria-hidden="true">
+                  {Array.from({ length: total }, (_, s) => {
+                    const taken = s >= open;
+                    return (
+                      <span
+                        key={s}
+                        className={`h-1.5 flex-1 rounded-full ${
+                          taken
+                            ? "bg-surface-3"
+                            : selected
+                              ? "bg-[color:var(--accent)]"
+                              : "bg-[color:var(--accent)]/60"
+                        }`}
+                      />
+                    );
+                  })}
+                </div>
+
+                <span className="mt-2.5 block text-xs text-secondary">
                   {full
-                    ? "Full"
-                    : `${open} ${open === 1 ? "place" : "places"} left`}
+                    ? "Fully booked"
+                    : `${open} of ${total} ${open === 1 ? "place" : "places"} open`}
                 </span>
               </button>
             );
           })}
         </div>
+
+        {months.length > 0 && months.every((m) =>
+          (kind === "build" ? m.buildOpen : m.careOpen) === 0,
+        ) ? (
+          <p className="mt-4 text-sm text-secondary">
+            Everything in the next few months is taken. Join anyway and
+            you&apos;ll be first to hear when something frees up.
+          </p>
+        ) : null}
       </fieldset>
 
       <div className="mt-8 space-y-4">

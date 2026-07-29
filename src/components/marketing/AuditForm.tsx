@@ -9,6 +9,7 @@ import { FieldError } from "@/components/ui/FieldError";
 import { validateEmail, validateUrl } from "@/lib/validate";
 import { playConfirmation } from "@/lib/sound";
 import type { Id } from "@convex/_generated/dataModel";
+import { AuditProgress } from "@/components/marketing/AuditProgress";
 
 /**
  * Free audit.
@@ -159,15 +160,7 @@ function Result({
   const reduceMotion = useReducedMotion();
 
   if (!audit || audit.status === "queued" || audit.status === "running") {
-    return (
-      <div className="mt-12 text-center">
-        <p className="text-lg text-primary">Running the audit…</p>
-        <p className="mt-2 text-sm text-secondary">
-          This takes up to a minute. The results appear here on their own —
-          no need to refresh.
-        </p>
-      </div>
-    );
+    return <AuditProgress />;
   }
 
   if (audit.status === "failed") {
@@ -177,13 +170,32 @@ function Result({
         <p className="mt-2 text-sm text-secondary">
           {audit.error ?? "The site could not be reached."}
         </p>
-        <button
-          type="button"
-          onClick={onReset}
-          className="mt-6 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas"
-        >
-          Try another address
-        </button>
+
+        {/* A rate limit is temporary and not their fault, so it gets a
+            different next step to a URL that genuinely cannot be reached —
+            telling someone to "try another address" when the address was
+            fine is how a working lead gets thrown away. */}
+        <p className="mt-3 text-sm text-secondary">
+          {audit.error?.includes("rate limited")
+            ? "Nothing to do with your site — the measuring service is busy. Try again in a few minutes, or email me and I'll run it by hand."
+            : "If the address is right and public, send it over and I'll take a look myself."}
+        </p>
+
+        <div className="mt-6 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={onReset}
+            className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas"
+          >
+            Try again
+          </button>
+          <a
+            href="mailto:hello@yusufcreates.com?subject=Site%20audit"
+            className="hairline rounded-full px-5 py-2.5 text-sm text-primary transition-colors duration-fast hover:bg-surface-2"
+          >
+            Email me instead
+          </a>
+        </div>
       </div>
     );
   }

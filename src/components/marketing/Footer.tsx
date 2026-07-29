@@ -4,6 +4,7 @@ import { Logo } from "@/components/ui/Logo";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { INSTAGRAM } from "@/lib/constants";
 import { NewsletterForm } from "@/components/marketing/NewsletterForm";
+import { ShareWithFriend } from "@/components/marketing/ShareWithFriend";
 import { AvailabilityBadge } from "@/components/marketing/AvailabilityBadge";
 
 /**
@@ -112,8 +113,9 @@ export function Footer() {
       </div>
 
       <div className="hairline-t">
-        <div className="mx-auto max-w-5xl px-6 py-10">
+        <div className="mx-auto grid max-w-5xl gap-10 px-6 py-10 md:grid-cols-2">
           <NewsletterForm className="relative max-w-md" />
+          <ShareWithFriend />
         </div>
       </div>
 
