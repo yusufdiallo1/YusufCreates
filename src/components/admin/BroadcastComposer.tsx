@@ -25,6 +25,13 @@ export function BroadcastComposer() {
   const [body, setBody] = useState("");
   const [ctaLabel, setCtaLabel] = useState("");
   const [ctaUrl, setCtaUrl] = useState("");
+  // Explicit, not inferred from whether the fields are filled — a button
+  // should be removable without clearing text you may want back.
+  const [includeButton, setIncludeButton] = useState(false);
+
+  const [brief, setBrief] = useState("");
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
 
   const [html, setHtml] = useState("");
   const [testState, setTestState] = useState<"idle" | "sending" | "sent">(
@@ -46,7 +53,12 @@ export function BroadcastComposer() {
         const res = await fetch("/api/broadcast/preview", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subject, body, ctaLabel, ctaUrl }),
+          body: JSON.stringify({
+            subject,
+            body,
+            ctaLabel: includeButton ? ctaLabel : "",
+            ctaUrl: includeButton ? ctaUrl : "",
+          }),
         });
         if (res.ok) setHtml((await res.json()).html);
       } catch {
@@ -58,7 +70,7 @@ export function BroadcastComposer() {
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [subject, body, ctaLabel, ctaUrl]);
+  }, [subject, body, ctaLabel, ctaUrl, includeButton]);
 
   // Derived, so clearing the fields blanks the preview without an effect
   // writing state on every keystroke.
@@ -82,6 +94,65 @@ export function BroadcastComposer() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-4">
+          {/* Describe it, and the model fills the fields in — including
+              whether a button belongs here at all. Everything it writes is
+              editable; nothing sends without you reading it. */}
+          <div className="admin-card">
+            <p className="text-sm text-primary">Draft it for me</p>
+            <p className="mt-1 text-xs text-secondary">
+              Say what you want to tell people. Mention a link if there should
+              be a button — it will not invent one.
+            </p>
+            <TextArea
+              label="Brief"
+              rows={3}
+              value={brief}
+              onChange={setBrief}
+            />
+            <button
+              type="button"
+              disabled={brief.trim() === "" || drafting}
+              onClick={async () => {
+                setDrafting(true);
+                setDraftError(null);
+                try {
+                  const res = await fetch("/api/compose", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ brief }),
+                  });
+                  const json = await res.json();
+                  if (!res.ok) {
+                    setDraftError(json.error ?? "Could not draft that.");
+                    return;
+                  }
+                  setSubject(json.subject ?? "");
+                  setBody(json.body ?? "");
+                  setIncludeButton(Boolean(json.includeButton));
+                  setCtaLabel(json.buttonLabel ?? "");
+                  setCtaUrl(json.buttonUrl ?? "");
+                  // A fresh draft invalidates the previous test send.
+                  setTestState("idle");
+                } catch {
+                  setDraftError("Could not reach the drafting service.");
+                } finally {
+                  setDrafting(false);
+                }
+              }}
+              className="mt-3 rounded-full bg-[color:var(--accent-solid)] px-4 py-2 text-xs font-medium text-white transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+            >
+              {drafting ? "Drafting…" : "Draft with AI"}
+            </button>
+            {draftError ? (
+              <p
+                role="alert"
+                className="mt-2 text-xs text-[color:var(--text-notice)]"
+              >
+                {draftError}
+              </p>
+            ) : null}
+          </div>
+
           <Field label="Subject" value={subject} onChange={setSubject} />
           <TextArea
             label="Body"
@@ -90,19 +161,37 @@ export function BroadcastComposer() {
             onChange={setBody}
             help="A blank line starts a new paragraph."
           />
-          <div className="grid grid-cols-2 gap-3">
-            <Field
-              label="Button label"
-              value={ctaLabel}
-              onChange={setCtaLabel}
-              help="Optional."
-            />
-            <Field
-              label="Button URL"
-              value={ctaUrl}
-              onChange={setCtaUrl}
-              placeholder="https://"
-            />
+          <div>
+            <label className="flex items-center gap-2.5 text-sm text-secondary">
+              <input
+                type="checkbox"
+                checked={includeButton}
+                onChange={(e) => setIncludeButton(e.target.checked)}
+                className="size-4 rounded"
+              />
+              Include a button
+            </label>
+
+            {includeButton ? (
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <Field
+                  label="Button label"
+                  value={ctaLabel}
+                  onChange={setCtaLabel}
+                />
+                <Field
+                  label="Button URL"
+                  value={ctaUrl}
+                  onChange={setCtaUrl}
+                  placeholder="https://"
+                />
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-secondary">
+                Most updates do not need one — a newsletter that always ends in
+                a call to action reads as marketing.
+              </p>
+            )}
           </div>
 
           <div className="admin-card space-y-4">
@@ -125,8 +214,8 @@ export function BroadcastComposer() {
                       body: JSON.stringify({
                         subject,
                         body,
-                        ctaLabel,
-                        ctaUrl,
+                        ctaLabel: includeButton ? ctaLabel : "",
+                        ctaUrl: includeButton ? ctaUrl : "",
                         test: true,
                       }),
                     });
@@ -167,7 +256,12 @@ export function BroadcastComposer() {
                     const res = await fetch("/api/broadcast/send", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ subject, body, ctaLabel, ctaUrl }),
+                      body: JSON.stringify({
+                        subject,
+                        body,
+                        ctaLabel: includeButton ? ctaLabel : "",
+                        ctaUrl: includeButton ? ctaUrl : "",
+                      }),
                     });
                     const json = await res.json().catch(() => ({}));
                     if (!res.ok) {

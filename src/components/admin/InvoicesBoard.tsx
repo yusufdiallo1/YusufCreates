@@ -27,6 +27,7 @@ export function InvoicesBoard() {
   const data = useQuery(api.admin.invoices, {});
   const setStatus = useMutation(api.invoices.setStatus);
   const [creating, setCreating] = useState(false);
+  const [linking, setLinking] = useState(false);
 
   const money = (n: number, currency: string) =>
     new Intl.NumberFormat("en-US", {
@@ -45,13 +46,24 @@ export function InvoicesBoard() {
             together.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setCreating(true)}
-          className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
-        >
-          New invoice pair
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {/* For amounts that are not a project instalment — a deposit agreed
+              on a call, an extra day, a small fixed piece. */}
+          <button
+            type="button"
+            onClick={() => setLinking(true)}
+            className="hairline rounded-full px-4 py-2 text-sm text-primary transition-colors duration-fast hover:bg-surface-2"
+          >
+            Custom payment link
+          </button>
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+          >
+            New invoice pair
+          </button>
+        </div>
       </div>
 
       {data === undefined ? (
@@ -147,6 +159,7 @@ export function InvoicesBoard() {
       )}
 
       {creating ? <CreatePairDialog onClose={() => setCreating(false)} /> : null}
+      {linking ? <PaymentLinkDialog onClose={() => setLinking(false)} /> : null}
     </div>
   );
 }
@@ -407,6 +420,166 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         className="hairline mt-2 w-full rounded-lg bg-surface-1 px-3 py-2.5 text-sm text-primary"
       />
+    </div>
+  );
+}
+
+/**
+ * One-off payment link for an arbitrary amount.
+ *
+ * A Payment Link rather than a Checkout Session, because a session expires
+ * after 24 hours and a link emailed over is routinely opened days later.
+ */
+function PaymentLinkDialog({ onClose }: { onClose: () => void }) {
+  const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState("USD");
+  const [description, setDescription] = useState("");
+  const [url, setUrl] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const value = Number(amount);
+  const valid =
+    Number.isFinite(value) && value > 0 && description.trim() !== "";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <button
+        type="button"
+        aria-label="Cancel"
+        onClick={onClose}
+        className="absolute inset-0 bg-[color:var(--bg-canvas)]/70 backdrop-blur-sm"
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Custom payment link"
+        className="glass-depth glass-near glass-panel relative w-full max-w-md p-6"
+      >
+        <h2 className="text-lg text-primary">Custom payment link</h2>
+        <p className="mt-1 text-xs text-secondary">
+          For anything that is not a project instalment. Card, Apple Pay,
+          Google Pay and Link all work on it.
+        </p>
+
+        {url ? (
+          <div className="mt-6">
+            <p className="text-sm text-primary">Link ready</p>
+            <p className="mt-1 text-xs break-all text-secondary">{url}</p>
+            <div className="mt-4 flex items-center gap-3">
+              <CopyButton value={url} label="Copy payment link" />
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-sm text-secondary hover:text-primary"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="mt-5 space-y-3">
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label htmlFor="link-amount" className="text-sm text-secondary">
+                    Amount
+                  </label>
+                  <input
+                    id="link-amount"
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="hairline mt-2 w-full rounded-lg bg-surface-1 px-3.5 py-2.5 text-sm text-primary"
+                  />
+                </div>
+                <div className="w-28">
+                  <label htmlFor="link-ccy" className="text-sm text-secondary">
+                    Currency
+                  </label>
+                  <select
+                    id="link-ccy"
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                    className="hairline mt-2 w-full rounded-lg bg-surface-1 px-3 py-2.5 text-sm text-primary"
+                  >
+                    {["USD", "GBP", "EUR", "AED", "SAR"].map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="link-desc" className="text-sm text-secondary">
+                  What it is for
+                </label>
+                <input
+                  id="link-desc"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Additional page — Acme site"
+                  className="hairline mt-2 w-full rounded-lg bg-surface-1 px-3.5 py-2.5 text-sm text-primary"
+                />
+                <p className="mt-1.5 text-xs text-secondary">
+                  The client sees this on the payment page.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-sm text-secondary hover:text-primary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!valid || busy}
+                onClick={async () => {
+                  setBusy(true);
+                  setError(null);
+                  try {
+                    const res = await fetch("/api/stripe/payment-link", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        amount: value,
+                        currency,
+                        description: description.trim(),
+                      }),
+                    });
+                    const json = await res.json();
+                    if (!res.ok) {
+                      setError(json.error ?? "Could not create that.");
+                      return;
+                    }
+                    setUrl(json.url);
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+                className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas disabled:opacity-40"
+              >
+                {busy ? "Creating…" : "Create link"}
+              </button>
+            </div>
+
+            {error ? (
+              <p
+                role="alert"
+                className="mt-3 text-xs text-[color:var(--text-notice)]"
+              >
+                {error}
+              </p>
+            ) : null}
+          </>
+        )}
+      </div>
     </div>
   );
 }

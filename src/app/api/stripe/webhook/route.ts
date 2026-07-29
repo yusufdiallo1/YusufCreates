@@ -12,6 +12,7 @@ import { sendEmail } from "@/lib/email";
 import { logEmailSend } from "@/lib/emailLog";
 import { PaymentFailed } from "@emails/PaymentFailed";
 import { PaymentReceived } from "@emails/PaymentReceived";
+import { RefundIssued } from "@emails/RefundIssued";
 
 /**
  * Stripe webhook. This is the only thing that marks an invoice paid.
@@ -146,7 +147,7 @@ export async function POST(request: Request) {
         // through the payment intent that created the charge.
         const invoiceId = await invoiceIdForCharge(stripe, charge);
         if (invoiceId) {
-          await fetchMutation(api.invoices.applyStripeEvent, {
+          const result = await fetchMutation(api.invoices.applyStripeEvent, {
             secret: serverSecret,
             stripeEventId: event.id,
             eventType: event.type,
@@ -154,6 +155,25 @@ export async function POST(request: Request) {
             // Refunded money is not revenue, and it is not owed either.
             status: "void",
           });
+
+          // A refund with no email reads as a mistake, or as fraud. The
+          // client sees money move either way; they should hear why.
+          if (!result.duplicate && result.matched) {
+            await notify({
+              to: result.clientEmail,
+              template: "RefundIssued",
+              subject: `Refund issued — ${result.reference}`,
+              react: RefundIssued({
+                name: result.clientName,
+                reference: result.reference,
+                amount: fromMinorUnits(
+                  charge.amount_refunded ?? 0,
+                  charge.currency,
+                ),
+                currency: charge.currency.toUpperCase(),
+              }),
+            });
+          }
         }
         break;
       }
@@ -181,6 +201,24 @@ export async function POST(request: Request) {
             }),
           });
         }
+        break;
+      }
+
+      /*
+       * Marked overdue by Stripe's own dunning, which fires when an invoice
+       * passes its due date without payment. Without this the record stays
+       * "sent" forever and the outstanding figure on the dashboard is wrong.
+       */
+      case "invoice.marked_uncollectible":
+      case "invoice.overdue": {
+        const invoice = event.data.object as Stripe.Invoice;
+        await fetchMutation(api.invoices.applyStripeEvent, {
+          secret: serverSecret,
+          stripeEventId: event.id,
+          eventType: event.type,
+          stripeInvoiceId: invoice.id ?? "",
+          status: "overdue",
+        });
         break;
       }
 
