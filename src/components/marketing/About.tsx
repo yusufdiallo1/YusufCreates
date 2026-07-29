@@ -23,7 +23,7 @@ export function About() {
         <Reveal>
           <div className="hairline aspect-square w-full overflow-hidden rounded-lg bg-surface-1">
             <Image
-              src="/about-desk.png"
+              src="/about-desk.webp"
               alt="Yusuf at a two-screen desk, code on one side and this site on the other"
               width={952}
               height={505}
