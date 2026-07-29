@@ -6,6 +6,8 @@ import { api } from "@/lib/convex-api";
 import { Field, TextArea } from "@/components/admin/shared/Fields";
 import { Empty, Skeleton } from "@/components/admin/ProjectsAdmin";
 import { CopyButton } from "@/components/ui/CopyButton";
+import { ProjectPanel } from "@/components/admin/ProjectPanel";
+import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
 import type { Id } from "@convex/_generated/dataModel";
 
 /**
@@ -37,6 +39,12 @@ export function ClientsAdmin() {
 
   const [adding, setAdding] = useState(false);
   const [addingTo, setAddingTo] = useState<Id<"clients"> | null>(null);
+  /** Project whose milestones, files and chat are open. */
+  const [managing, setManaging] = useState<{
+    id: Id<"clientProjects">;
+    name: string;
+  } | null>(null);
+  const [removing, setRemoving] = useState<Id<"clients"> | null>(null);
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
@@ -101,7 +109,7 @@ export function ClientsAdmin() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => void remove({ id: client._id })}
+                    onClick={() => setRemoving(client._id)}
                     className="text-xs text-secondary transition-colors duration-fast hover:text-[color:var(--text-notice)]"
                   >
                     Remove
@@ -126,6 +134,18 @@ export function ClientsAdmin() {
                           </p>
                         ) : null}
                       </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setManaging({
+                            id: project._id,
+                            name: project.name,
+                          })
+                        }
+                        className="hairline shrink-0 rounded-full px-3 py-1 text-xs text-primary transition-colors duration-fast hover:bg-surface-2"
+                      >
+                        Manage
+                      </button>
                       <select
                         value={project.status}
                         aria-label={`Status for ${project.name}`}
@@ -163,6 +183,25 @@ export function ClientsAdmin() {
           onCreate={async (d) => {
             await create(d);
             setAdding(false);
+          }}
+        />
+      ) : null}
+
+      {managing ? (
+        <ProjectPanel
+          projectId={managing.id}
+          projectName={managing.name}
+          onClose={() => setManaging(null)}
+        />
+      ) : null}
+
+      {removing ? (
+        <RemoveClientDialog
+          client={clients?.find((c) => c._id === removing)}
+          onClose={() => setRemoving(null)}
+          onConfirm={async () => {
+            await remove({ id: removing });
+            setRemoving(null);
           }}
         />
       ) : null}
@@ -358,6 +397,64 @@ function Actions({
       >
         {label}
       </button>
+    </div>
+  );
+}
+
+/**
+ * Removing a client takes their projects, milestones, files and messages with
+ * it, and revokes their sign-in. That is not recoverable, so it gets the
+ * slide gesture rather than a click that a mis-tap can trigger.
+ */
+function RemoveClientDialog({
+  client,
+  onClose,
+  onConfirm,
+}: {
+  client?: { name: string; email: string; projects: unknown[] };
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <button
+        type="button"
+        aria-label="Cancel"
+        onClick={onClose}
+        className="absolute inset-0 bg-[color:var(--bg-canvas)]/70 backdrop-blur-sm"
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Remove client"
+        className="glass-depth glass-near glass-panel relative w-full max-w-md p-6"
+      >
+        <h2 className="text-lg text-primary">
+          Remove {client?.name ?? "this client"}?
+        </h2>
+        <p className="mt-3 text-sm text-secondary">
+          This deletes their {client?.projects.length ?? 0} project
+          {client?.projects.length === 1 ? "" : "s"} along with every milestone,
+          file and message, and stops {client?.email} from signing in. Invoices
+          are kept — those are financial records.
+        </p>
+
+        <div className="mt-6">
+          <SlideToConfirm
+            purpose="delete"
+            ariaLabel={`Slide to remove ${client?.name ?? "client"}`}
+            onConfirm={onConfirm}
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-4 w-full text-center text-sm text-secondary transition-colors duration-fast hover:text-primary"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }

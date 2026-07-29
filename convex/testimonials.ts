@@ -2,6 +2,32 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireAdmin } from "./lib/auth";
 
+/**
+ * Normalises a client-supplied website into something safe to put in an href.
+ *
+ * Returns undefined for anything that is not plain http(s). A stored
+ * "javascript:..." string would execute when the link is clicked, and this
+ * value is rendered as a real anchor on a public page — so the check happens
+ * on write, where it cannot be skipped by a different caller later.
+ */
+function cleanWebsite(raw: string | undefined): string | undefined {
+  const trimmed = raw?.trim();
+  if (!trimmed) return undefined;
+
+  // Bare domains are what people actually type; assume https rather than
+  // rejecting "acme.com" as invalid.
+  const candidate = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+
+  try {
+    const url = new URL(candidate);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return undefined;
+    if (!url.hostname.includes(".")) return undefined;
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
 export const listFeatured = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
@@ -34,6 +60,7 @@ export const create = mutation({
     role: v.optional(v.string()),
     company: v.optional(v.string()),
     quote: v.string(),
+    website: v.optional(v.string()),
     avatarUrl: v.optional(v.string()),
     projectId: v.optional(v.id("projects")),
     featured: v.boolean(),
@@ -47,6 +74,7 @@ export const create = mutation({
     // public mutation that always sets approved: false.
     return await ctx.db.insert("testimonials", {
       ...args,
+      website: cleanWebsite(args.website),
       approved: args.approved ?? true,
     });
   },
@@ -65,6 +93,7 @@ export const submitByToken = mutation({
     role: v.optional(v.string()),
     company: v.optional(v.string()),
     quote: v.string(),
+    website: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const invite = await ctx.db
@@ -79,6 +108,7 @@ export const submitByToken = mutation({
       role: args.role?.slice(0, 120),
       company: args.company?.slice(0, 120),
       quote: args.quote.slice(0, 1200),
+      website: cleanWebsite(args.website),
       approved: false,
       // Consumed, so the link cannot be reused to overwrite the submission.
       requestToken: undefined,
@@ -103,6 +133,7 @@ export const update = mutation({
     role: v.optional(v.string()),
     company: v.optional(v.string()),
     quote: v.optional(v.string()),
+    website: v.optional(v.string()),
     avatarUrl: v.optional(v.string()),
     featured: v.optional(v.boolean()),
     order: v.optional(v.number()),
@@ -110,7 +141,15 @@ export const update = mutation({
   },
   handler: async (ctx, { id, ...patch }) => {
     await requireAdmin(ctx);
-    await ctx.db.patch(id, patch);
+    await ctx.db.patch(id, {
+      ...patch,
+      // Only touched when supplied — spreading an absent key would be a no-op,
+      // but sanitising unconditionally would blank a saved URL on any edit
+      // that did not resend it.
+      ...(patch.website !== undefined
+        ? { website: cleanWebsite(patch.website) }
+        : {}),
+    });
   },
 });
 

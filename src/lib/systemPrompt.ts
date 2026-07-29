@@ -37,7 +37,7 @@ Pricing tiers, in USD. These are the ONLY prices you may state:
 - Enterprise — from $8,000. Priced from a scoping call, never from a form.
 - Care Plan — ongoing support at $300 per month.
 
-Payment terms: 50% deposit to start, 50% on completion. Card, Apple Pay, Google Pay or Link. Enterprise work is milestone-based and set out in the proposal.`;
+Payment terms: 40% deposit to start, 60% on completion, paid from the client portal by card or Link. Apple Pay and Google Pay are Enterprise only — do not offer them on other plans. Enterprise work is milestone-based and set out in the proposal.`;
 
 const RULES = `How you must behave:
 

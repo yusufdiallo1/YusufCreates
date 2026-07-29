@@ -182,6 +182,14 @@ export const invoices = query({
         currency: i.currency,
         status: i.status,
         stage: i.stage,
+        /*
+         * The token drives the embedded payment: the client pays here rather
+         * than being sent to Stripe's hosted page. It is unguessable and only
+         * ever reaches the person whose email matches the invoice, which the
+         * filter above has already established.
+         */
+        token: i.token,
+        /* Kept as a fallback for anything issued before embedded pay. */
         payUrl: i.stripeHostedUrl ?? null,
         paidAt: i.paidAt ?? null,
       }));
@@ -389,5 +397,76 @@ export const adminReply = mutation({
       body: args.body.trim().slice(0, 4000),
       createdAt: Date.now(),
     });
+  },
+});
+
+/**
+ * Files for a project, admin side.
+ *
+ * Separate from the client query because that one refuses anything the signed
+ * in client does not own — correct for them, useless for me.
+ */
+export const adminDeliverables = query({
+  args: { projectId: v.id("clientProjects") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    return await ctx.db
+      .query("deliverables")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .order("desc")
+      .collect();
+  },
+});
+
+/**
+ * Publishes a file to the client's portal.
+ *
+ * Version is derived here rather than supplied: two uploads of the same name
+ * should read as v1 and v2 without me having to remember which was which.
+ */
+export const addDeliverable = mutation({
+  args: {
+    projectId: v.id("clientProjects"),
+    name: v.string(),
+    url: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const existing = await ctx.db
+      .query("deliverables")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    const sameName = existing.filter((d) => d.name === args.name.trim());
+
+    return await ctx.db.insert("deliverables", {
+      projectId: args.projectId,
+      name: args.name.trim().slice(0, 200),
+      url: args.url,
+      version: sameName.length + 1,
+      uploadedAt: Date.now(),
+    });
+  },
+});
+
+export const removeDeliverable = mutation({
+  args: { id: v.id("deliverables") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    await ctx.db.delete(args.id);
+  },
+});
+
+/** Milestones for the admin editor, in display order. */
+export const adminMilestones = query({
+  args: { projectId: v.id("clientProjects") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    return await ctx.db
+      .query("milestones")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .order("asc")
+      .collect();
   },
 });

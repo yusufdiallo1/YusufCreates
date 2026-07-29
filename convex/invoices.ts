@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { requireAdmin } from "./lib/auth";
 
 /**
- * Invoices — bank transfer, split 50% deposit and 50% on completion.
+ * Invoices — 40% deposit up front, 60% balance on completion.
  *
  * Bank details never appear on a public route. Each invoice carries an
  * unguessable token and is reachable only at /invoice/<token>, which is
@@ -27,6 +27,9 @@ function makeToken(): string {
 }
 
 /** Human-readable reference the client quotes on the transfer. */
+/** 40% up front. Mirrored in src/lib/pricing.ts — keep the two in step. */
+const DEPOSIT_SHARE = 0.4;
+
 function makeReference(stage: "deposit" | "balance"): string {
   const n = Math.floor(Math.random() * 9000) + 1000;
   return `YC-${stage === "deposit" ? "D" : "B"}${n}`;
@@ -102,15 +105,25 @@ export const createPair = mutation({
     clientName: v.string(),
     clientEmail: v.string(),
     description: v.string(),
-    /** Full project value; each instalment is half. */
+    /** Full project value; split 40% deposit, 60% on completion. */
     amount: v.number(),
     currency: v.string(),
+    /** Plan id — decides whether wallets are offered. Enterprise only. */
+    tier: v.optional(v.string()),
     dueDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
 
-    const half = Math.round(args.amount / 2);
+    /*
+     * The balance is the remainder, not a second rounded percentage.
+     * Rounding both independently lets the two instalments sum to a penny
+     * either side of the agreed total — a client who adds up their invoices
+     * and gets a different number to their quote is right to ask why.
+     */
+    const deposit = Math.round(args.amount * DEPOSIT_SHARE);
+    const amounts = { deposit, balance: args.amount - deposit };
+
     const stages: ("deposit" | "balance")[] = ["deposit", "balance"];
     const ids: string[] = [];
 
@@ -122,9 +135,10 @@ export const createPair = mutation({
           clientName: args.clientName,
           clientEmail: args.clientEmail,
           description: args.description,
-          amount: half,
+          amount: amounts[stage],
           currency: args.currency,
           stage,
+          tier: args.tier,
           status: stage === "deposit" ? "sent" : "draft",
           token: makeToken(),
           reference: makeReference(stage),
@@ -173,6 +187,12 @@ export const applyStripeEvent = mutation({
     stripeEventId: v.string(),
     eventType: v.string(),
     stripeInvoiceId: v.string(),
+    /*
+     * Set instead of stripeInvoiceId when the payment came from the embedded
+     * portal, which uses a PaymentIntent and so has no Stripe invoice to
+     * match on. The intent carries our own id in its metadata.
+     */
+    convexInvoiceId: v.optional(v.id("invoices")),
     status: v.optional(
       v.union(
         v.literal("sent"),
@@ -209,12 +229,14 @@ export const applyStripeEvent = mutation({
       receivedAt: Date.now(),
     });
 
-    const invoice = await ctx.db
-      .query("invoices")
-      .withIndex("by_stripe_invoice", (q) =>
-        q.eq("stripeInvoiceId", args.stripeInvoiceId),
-      )
-      .unique();
+    const invoice = args.convexInvoiceId
+      ? await ctx.db.get(args.convexInvoiceId)
+      : await ctx.db
+          .query("invoices")
+          .withIndex("by_stripe_invoice", (q) =>
+            q.eq("stripeInvoiceId", args.stripeInvoiceId),
+          )
+          .unique();
 
     // The event is still recorded above, so a retry does not reprocess an
     // invoice that simply does not exist here.

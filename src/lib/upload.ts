@@ -21,6 +21,27 @@ export async function uploadImage(
     throw new Error("That image is over 8MB — compress it first.");
   }
 
+  return uploadFile(file, generateUploadUrl, resolveUrl);
+}
+
+/**
+ * Uploads any file type — client deliverables are PDFs, zips and design
+ * exports, not only images.
+ *
+ * The 50MB ceiling is a deliberate stop rather than a technical limit: a
+ * deliverable larger than that wants a proper file host and a link, and
+ * discovering the limit halfway through a slow upload is worse than being
+ * told up front.
+ */
+export async function uploadFile(
+  file: File,
+  generateUploadUrl: () => Promise<string>,
+  resolveUrl: (storageId: string) => Promise<string | null>,
+): Promise<{ url: string; storageId: string }> {
+  if (file.size > 50 * 1024 * 1024) {
+    throw new Error("That file is over 50MB — send it as a link instead.");
+  }
+
   const uploadUrl = await generateUploadUrl();
 
   const res = await fetch(uploadUrl, {
@@ -32,7 +53,7 @@ export async function uploadImage(
 
   const { storageId } = (await res.json()) as { storageId: string };
   const url = await resolveUrl(storageId);
-  if (!url) throw new Error("The image uploaded but could not be read back.");
+  if (!url) throw new Error("It uploaded but could not be read back.");
 
   return { url, storageId };
 }

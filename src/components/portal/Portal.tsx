@@ -10,6 +10,7 @@ import {
 } from "convex/react";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 import { Logo } from "@/components/ui/Logo";
+import { PayPanel } from "@/components/portal/PayPanel";
 import type { Id } from "@convex/_generated/dataModel";
 
 /**
@@ -64,6 +65,8 @@ function PortalContent() {
   const data = useQuery(api.portal.overview, {});
   const invoices = useQuery(api.portal.invoices, {});
   const [active, setActive] = useState<Id<"clientProjects"> | null>(null);
+  /** Which invoice has its payment panel open. Only one at a time. */
+  const [paying, setPaying] = useState<string | null>(null);
 
   if (data === undefined) {
     return (
@@ -192,10 +195,8 @@ function PortalContent() {
           </h2>
           <ul className="mt-4 space-y-2">
             {invoices.map((inv) => (
-              <li
-                key={inv._id}
-                className="hairline flex items-center justify-between gap-4 rounded-xl bg-surface-1 p-4"
-              >
+              <li key={inv._id} className="hairline rounded-xl bg-surface-1">
+                <div className="flex items-center justify-between gap-4 p-4">
                 <div className="min-w-0">
                   <p className="text-sm text-primary">
                     {new Intl.NumberFormat("en-US", {
@@ -214,16 +215,29 @@ function PortalContent() {
                 </div>
                 {inv.status === "paid" ? (
                   <span className="badge badge-warm shrink-0">paid</span>
-                ) : inv.payUrl ? (
-                  <a
-                    href={inv.payUrl}
-                    className="shrink-0 rounded-full bg-[color:var(--accent-solid)] px-4 py-2 text-xs font-medium text-white"
-                  >
-                    Pay
-                  </a>
                 ) : (
-                  <span className="badge shrink-0">{inv.status}</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPaying((cur) => (cur === inv._id ? null : inv._id))
+                    }
+                    aria-expanded={paying === inv._id}
+                    className="shrink-0 rounded-full bg-[color:var(--accent-solid)] px-4 py-2 text-xs font-medium text-white transition-opacity duration-fast hover:opacity-90"
+                  >
+                    {paying === inv._id ? "Close" : "Pay"}
+                  </button>
                 )}
+                </div>
+
+                {/* Payment opens in place. Sending a client to another domain
+                    to hand over a deposit is the moment the whole thing feels
+                    least like a business and most like a link someone sent. */}
+                {paying === inv._id && inv.status !== "paid" ? (
+                  <div className="border-t border-transparent px-4 pb-4">
+                    <div className="rule mb-4" />
+                    <PayPanel token={inv.token} />
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>

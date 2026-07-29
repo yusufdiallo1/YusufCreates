@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
+import type { Id } from "@convex/_generated/dataModel";
 import { fetchMutation } from "convex/nextjs";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 import {
@@ -103,6 +104,65 @@ export async function POST(request: Request) {
                 invoice.currency,
               ),
               currency: invoice.currency.toUpperCase(),
+            }),
+          });
+        }
+        break;
+      }
+
+      /*
+       * Paid from the embedded portal. A PaymentIntent, not an invoice, so it
+       * is matched by the id we put in its metadata rather than by a Stripe
+       * invoice id — which does not exist for this route.
+       */
+      case "payment_intent.succeeded": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        const convexInvoiceId = pi.metadata?.convexInvoiceId;
+
+        // A PaymentIntent raised outside the portal has no id of ours to
+        // match; recording it against a guessed invoice would be worse than
+        // ignoring it.
+        if (!convexInvoiceId) break;
+
+        const charge =
+          typeof pi.latest_charge === "string"
+            ? await stripe.charges.retrieve(pi.latest_charge, {
+                expand: ["balance_transaction"],
+              })
+            : null;
+
+        const balance =
+          charge && typeof charge.balance_transaction !== "string"
+            ? charge.balance_transaction
+            : null;
+
+        const result = await fetchMutation(api.invoices.applyStripeEvent, {
+          secret: serverSecret,
+          stripeEventId: event.id,
+          eventType: event.type,
+          stripeInvoiceId: "",
+          convexInvoiceId: convexInvoiceId as Id<"invoices">,
+          status: "paid",
+          amountReceived: fromMinorUnits(pi.amount_received ?? 0, pi.currency),
+          stripeFee: balance
+            ? fromMinorUnits(balance.fee, balance.currency)
+            : undefined,
+          netReceived: balance
+            ? fromMinorUnits(balance.net, balance.currency)
+            : undefined,
+          paymentMethodUsed: charge ? readPaymentMethod(charge) : undefined,
+        });
+
+        if (!result.duplicate && result.matched) {
+          await notify({
+            to: result.clientEmail,
+            template: "PaymentReceived",
+            subject: `Payment received — ${result.reference}`,
+            react: PaymentReceived({
+              name: result.clientName,
+              reference: result.reference,
+              amount: fromMinorUnits(pi.amount_received ?? 0, pi.currency),
+              currency: pi.currency.toUpperCase(),
             }),
           });
         }

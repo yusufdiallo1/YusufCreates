@@ -53,7 +53,7 @@ export function InvoiceIssued({
       <P>
         Hi {first} — here&apos;s the{" "}
         {stage === "deposit"
-          ? "50% deposit to get started"
+          ? "40% deposit to get started"
           : "balance now the work is delivered"}
         . Card, Apple Pay, Google Pay or Link all work.
       </P>

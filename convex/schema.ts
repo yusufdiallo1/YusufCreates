@@ -134,6 +134,12 @@ export default defineSchema({
     role: v.optional(v.string()),
     company: v.optional(v.string()),
     quote: v.string(),
+    /**
+     * The client's own site. Shown as a link on their testimonial — it is
+     * corroboration as much as courtesy: a quote you can click through and
+     * check is worth more than one you cannot.
+     */
+    website: v.optional(v.string()),
     avatarUrl: v.optional(v.string()),
     projectId: v.optional(v.id("projects")),
     featured: v.boolean(),
@@ -323,8 +329,20 @@ export default defineSchema({
     amount: v.number(),
     currency: v.string(),
     vatAmount: v.optional(v.number()),
-    /** "deposit" is the first 50%, "balance" the second on completion. */
+    /** "deposit" is the first 40%, "balance" the 60% on completion. */
     stage: v.union(v.literal("deposit"), v.literal("balance")),
+    /*
+     * Which plan this invoice is for.
+     *
+     * Drives wallet availability: Apple Pay and Google Pay are Enterprise
+     * only. Stored rather than inferred from the amount, because a discounted
+     * Enterprise deposit can land below a full-price web app and the payment
+     * methods offered must not depend on a coincidence of figures.
+     *
+     * Optional: invoices raised before this field existed have no tier, and
+     * those correctly fall through to card and Link.
+     */
+    tier: v.optional(v.string()),
     status: v.union(
       v.literal("draft"),
       v.literal("sent"),

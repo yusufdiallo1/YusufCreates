@@ -30,6 +30,7 @@ type Testimonial = {
   role?: string;
   company?: string;
   quote: string;
+  website?: string;
   avatarUrl?: string;
 };
 
@@ -146,7 +147,29 @@ function TestimonialCard({
         <span className="text-xs text-secondary">
           {item.author}
           {item.role ? `, ${item.role}` : ""}
-          {item.company ? ` · ${item.company}` : ""}
+          {item.company ? (
+            <>
+              {" · "}
+              {/* The company links to their site when there is one. A quote
+                  you can click through and verify carries more weight than
+                  one you have to take on trust.
+
+                  noopener because the target is a third-party site: without
+                  it the opened page can reach back through window.opener. */}
+              {item.website ? (
+                <a
+                  href={item.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent transition-opacity duration-fast hover:opacity-80"
+                >
+                  {item.company}
+                </a>
+              ) : (
+                item.company
+              )}
+            </>
+          ) : null}
         </span>
       </figcaption>
     </LiquidGlass>

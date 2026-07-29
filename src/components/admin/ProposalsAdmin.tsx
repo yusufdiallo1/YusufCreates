@@ -176,7 +176,7 @@ function Drawer({
     timeline: proposal?.timeline ?? "",
     paymentTerms:
       proposal?.paymentTerms ??
-      "50% to start, 50% on completion. Card, Apple Pay, Google Pay or Link.",
+      "40% to start, 60% on completion. Pay by card or Link from your portal.",
     assumptions: proposal?.assumptions ?? "",
   });
   const [saving, setSaving] = useState(false);

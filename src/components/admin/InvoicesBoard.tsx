@@ -23,6 +23,20 @@ import type { Doc } from "@convex/_generated/dataModel";
 const STATUSES = ["draft", "sent", "paid", "overdue", "void"] as const;
 type Status = (typeof STATUSES)[number];
 
+/**
+ * Plan is recorded on the invoice because it decides what the client is
+ * offered at payment time — wallets are Enterprise only, and that has to be
+ * knowable from the invoice alone when they open the portal weeks later.
+ */
+const TIER_OPTIONS = [
+  { id: "launch", label: "Launch" },
+  { id: "growth", label: "Growth" },
+  { id: "app", label: "Web app" },
+  { id: "native", label: "iOS and macOS" },
+  { id: "enterprise", label: "Enterprise" },
+  { id: "care", label: "Care plan" },
+] as const;
+
 export function InvoicesBoard() {
   const data = useQuery(api.admin.invoices, {});
   const setStatus = useMutation(api.invoices.setStatus);
@@ -42,7 +56,7 @@ export function InvoicesBoard() {
         <div>
           <h1 className="text-2xl">Invoices</h1>
           <p className="mt-1 text-sm text-secondary">
-            50% deposit, 50% on completion. Both instalments are created
+            40% deposit, 60% on completion. Both instalments are created
             together.
           </p>
         </div>
@@ -269,6 +283,7 @@ function CreatePairDialog({ onClose }: { onClose: () => void }) {
     description: "",
     amount: "",
     currency: "USD",
+    tier: "growth",
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -299,7 +314,7 @@ function CreatePairDialog({ onClose }: { onClose: () => void }) {
       >
         <h2 className="text-lg text-primary">New invoice pair</h2>
         <p className="mt-1 text-xs text-secondary">
-          Enter the full project value. Each instalment is half.
+          Enter the full project value. Split 40% now, 60% on completion.
         </p>
 
         <div className="mt-5 space-y-3">
@@ -338,12 +353,40 @@ function CreatePairDialog({ onClose }: { onClose: () => void }) {
               </select>
             </div>
           </div>
+
+          <div>
+            <label htmlFor="inv-tier" className="text-sm text-secondary">
+              Plan
+            </label>
+            <select
+              id="inv-tier"
+              value={values.tier}
+              onChange={(e) => set("tier")(e.target.value)}
+              className="hairline mt-2 w-full rounded-lg bg-surface-1 px-3 py-2.5 text-sm text-primary"
+            >
+              {TIER_OPTIONS.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1.5 text-xs text-secondary">
+              {/* Stated here because it is decided here — the plan chosen on
+                  this form is what the client is offered when they pay. */}
+              {values.tier === "enterprise"
+                ? "Apple Pay and Google Pay available in the portal."
+                : "Card and Link in the portal. Wallets are Enterprise only."}
+            </p>
+          </div>
         </div>
 
         {valid ? (
           <p className="mt-4 text-xs text-secondary">
-            Creates {new Intl.NumberFormat("en-US", { style: "currency", currency: values.currency, maximumFractionDigits: 0 }).format(Math.round(amount / 2))}{" "}
-            deposit (issued now) and the same again on completion (draft).
+            Creates a{" "}
+            {new Intl.NumberFormat("en-US", { style: "currency", currency: values.currency, maximumFractionDigits: 0 }).format(Math.round(amount * 0.4))}{" "}
+            deposit (issued now) and a{" "}
+            {new Intl.NumberFormat("en-US", { style: "currency", currency: values.currency, maximumFractionDigits: 0 }).format(amount - Math.round(amount * 0.4))}{" "}
+            balance on completion (draft).
           </p>
         ) : null}
 
@@ -366,6 +409,7 @@ function CreatePairDialog({ onClose }: { onClose: () => void }) {
                   description: values.description.trim(),
                   amount,
                   currency: values.currency,
+                  tier: values.tier,
                 });
                 onClose();
               } catch {

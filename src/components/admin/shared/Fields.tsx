@@ -3,8 +3,9 @@
 import { useRef, useState } from "react";
 import { useMutation, useConvex } from "convex/react";
 import { api } from "@/lib/convex-api";
-import { uploadImage } from "@/lib/upload";
+import { uploadFile, uploadImage } from "@/lib/upload";
 import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
+import { FieldError } from "@/components/ui/FieldError";
 
 /**
  * Form primitives shared by every admin CRUD screen.
@@ -337,6 +338,73 @@ export function DeleteRow({
         ariaLabel={`Slide to permanently delete ${what}`}
         onConfirm={onDelete}
       />
+    </div>
+  );
+}
+
+/**
+ * Uploads any file and hands back its URL.
+ *
+ * Unlike ImageUpload this holds no value of its own — the caller decides what
+ * to do with the URL, which for deliverables means inserting a row rather than
+ * setting a field.
+ */
+export function FileUpload({
+  label,
+  onUploaded,
+}: {
+  label: string;
+  onUploaded: (url: string) => Promise<void> | void;
+}) {
+  const convex = useConvex();
+  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <div>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => inputRef.current?.click()}
+        className="hairline rounded-full px-3.5 py-1.5 text-xs text-primary transition-colors duration-fast hover:bg-surface-2 disabled:opacity-50"
+      >
+        {busy ? "Uploading…" : label}
+      </button>
+
+      <input
+        ref={inputRef}
+        type="file"
+        className="sr-only"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          setBusy(true);
+          setError(null);
+          try {
+            const { url } = await uploadFile(
+              file,
+              () => generateUploadUrl(),
+              (storageId) =>
+                convex.query(api.files.getUrl, {
+                  storageId: storageId as never,
+                }),
+            );
+            await onUploaded(url);
+          } catch (err) {
+            setError(
+              err instanceof Error ? err.message : "That upload failed.",
+            );
+          } finally {
+            setBusy(false);
+            // Cleared so the same file can be picked again after a failure.
+            if (inputRef.current) inputRef.current.value = "";
+          }
+        }}
+      />
+
+      {error ? <FieldError>{error}</FieldError> : null}
     </div>
   );
 }

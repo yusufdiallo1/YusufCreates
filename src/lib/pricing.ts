@@ -164,10 +164,11 @@ export interface BuildTier {
 }
 
 /**
- * Every plan includes authentication and an admin area where the project
- * needs one. That is not an upsell — a site whose owner cannot change their
- * own content is a site that decays, and handing over something you have to
- * email me to edit is not finished work.
+ * In every plan.
+ *
+ * Auth and an admin area are not an upsell. A site whose owner cannot change
+ * their own content decays within months, and handing over something you have
+ * to email me to edit is not finished work.
  */
 const EVERY_PLAN = [
   "Sign-in and accounts where the project needs them",
@@ -184,7 +185,7 @@ export const BUILD_TIERS: BuildTier[] = [
     features: [
       "Landing page or one-pager",
       "Contact form that reaches you",
-      "SEO basics and social preview",
+      "SEO basics and social preview card",
       "Fast on a phone, not just a laptop",
       "Deployed and handed over",
       ...EVERY_PLAN,
@@ -197,7 +198,7 @@ export const BUILD_TIERS: BuildTier[] = [
     popular: true,
     features: [
       "Everything in Launch",
-      "Blog and pages you can edit yourself",
+      "Blog and pages you edit yourself",
       "Multi-page structure and navigation",
       "Analytics without a cookie banner",
       "Same price from four pages to nine",
@@ -212,7 +213,7 @@ export const BUILD_TIERS: BuildTier[] = [
     from: true,
     features: [
       "Accounts, roles and permissions",
-      "Database and real-time updates",
+      "Database with real-time updates",
       "Card payments and subscriptions",
       "Dashboards and reporting",
       "Third-party integrations",
@@ -221,36 +222,43 @@ export const BUILD_TIERS: BuildTier[] = [
   },
   {
     id: "native",
-    name: "iOS and macOS app",
+    name: "iOS and macOS",
     blurb: "A real native app, not a wrapped website.",
     priceUsd: BASE_USD.native,
     from: true,
     features: [
       "Native iOS, macOS, or both",
-      "Shares its backend with your web app",
-      "Offline support and local storage",
+      "Shares one backend with your web app",
+      "Works offline, syncs when it reconnects",
       "Push notifications",
-      "Signed builds, distributed directly to your users",
-      "Not published to the App Store — no review, no store fees",
+      "Signed builds distributed straight to your users",
+      "No App Store listing — no review queue, no store cut",
       ...EVERY_PLAN,
     ],
   },
 ];
 
+
 export const ENTERPRISE_FEATURES = [
-  "Up to 25 pages, scoped in the proposal",
+  "Everything in the other plans",
+  "Up to 25 pages, or an app of matching scope",
   "Bilingual English and Arabic with full RTL mirroring",
-  "Design system and component library handover",
-  "CMS with multi-user roles and approval workflows",
+  "Design system and component library handed over",
+  "Multi-user roles and approval workflows",
   "WCAG 2.2 AA accessibility",
-  "Custom integrations, CRM and ERP",
+  "Custom integrations — CRM, ERP, internal systems",
   "Staging environment and staged rollout",
+  // The only tier that gets it: wallet payments need domain verification and
+  // an account configured for them, which is setup done once per client
+  // rather than per project.
+  "Apple Pay and Google Pay on your own checkout",
   "Security questionnaire support, NDA, SSO",
-  "Dedicated Slack channel, priority response",
-  "Team training session plus written documentation",
+  "Dedicated channel with priority response",
+  "Team training plus written documentation",
   "30 days post-launch support",
   "Uptime and performance SLA with an active Care Plan",
 ];
+
 
 export const CARE_FEATURES = [
   "Hosting and maintenance",

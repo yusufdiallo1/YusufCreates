@@ -45,8 +45,8 @@ export function InvoiceView({ invoice }: { invoice: Invoice }) {
 
   const stageLabel =
     invoice.stage === "deposit"
-      ? "50% deposit — due before work starts"
-      : "50% balance — due on completion";
+      ? "40% deposit — due before work starts"
+      : "60% balance — due on completion";
 
   const paid = invoice.status === "paid";
 

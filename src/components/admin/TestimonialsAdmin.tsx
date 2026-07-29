@@ -26,6 +26,7 @@ const EMPTY = {
   role: "",
   company: "",
   quote: "",
+  website: "",
   avatarUrl: "",
   featured: false,
 };
@@ -187,6 +188,7 @@ function Drawer({
           role: item.role ?? "",
           company: item.company ?? "",
           quote: item.quote,
+          website: item.website ?? "",
           avatarUrl: item.avatarUrl ?? "",
           featured: item.featured,
         }
@@ -240,6 +242,13 @@ function Drawer({
             rows={4}
             value={draft.quote}
             onChange={(v) => set("quote", v)}
+          />
+          <Field
+            label="Website"
+            value={draft.website}
+            onChange={(v) => set("website", v)}
+            placeholder="thecuratedroute.com"
+            help="Linked from their quote. https:// is added if you leave it off."
           />
           <ImageUpload
             label="Avatar"

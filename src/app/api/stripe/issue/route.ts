@@ -22,6 +22,22 @@ import { InvoiceIssued } from "@emails/InvoiceIssued";
 
 export const runtime = "nodejs";
 
+/*
+ * NOTE ON WALLETS — why the tier is not consulted here.
+ *
+ * Apple Pay and Google Pay have no value in `payment_method_types`; they are
+ * card-backed and ride on "card". Stripe states plainly that they cannot be
+ * excluded per transaction via the API, and the `wallets` hash that would
+ * control them is an Elements-level parameter the Invoices API does not
+ * expose. So on a Stripe-HOSTED invoice, offering card necessarily offers
+ * Apple Pay to anyone whose device has it.
+ *
+ * Wallet gating therefore lives in the embedded portal payment
+ * (see src/app/api/stripe/intent/route.ts), which uses Elements and can
+ * actually enforce it. This route stays the fallback rail for anyone paying
+ * from an emailed link, where the distinction is not enforceable.
+ */
+
 export async function POST(request: Request) {
   const stripe = getStripe();
   if (!stripe || !isConvexConfigured) {
@@ -88,8 +104,6 @@ export async function POST(request: Request) {
         // saved card automatically would be wrong for project work.
         collection_method: "send_invoice",
         days_until_due: 14,
-        // Wallets do NOT appear on a hosted invoice by default — Apple Pay,
-        // Google Pay and Link only show up once this is enabled.
         automatic_tax: { enabled: false },
         payment_settings: {
           payment_method_types: ["card", "link"],
@@ -111,7 +125,7 @@ export async function POST(request: Request) {
         invoice: stripeInvoice.id,
         amount: toMinorUnits(invoice.amount, invoice.currency),
         currency: invoice.currency.toLowerCase(),
-        description: `${invoice.description} — ${invoice.stage === "deposit" ? "50% deposit" : "balance on completion"}`,
+        description: `${invoice.description} — ${invoice.stage === "deposit" ? "40% deposit" : "balance on completion"}`,
       },
       { idempotencyKey: `item:${invoice._id}` },
     );
