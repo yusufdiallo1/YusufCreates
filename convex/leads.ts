@@ -24,7 +24,7 @@ export const submit = mutation({
     budget: v.optional(v.string()),
     timeline: v.optional(v.string()),
     /** A band ("4 to 6"), not a number — see the schema comment. */
-    pageCount: v.optional(v.string()),
+    pageCount: v.optional(v.union(v.string(), v.number())),
     onePagePurpose: v.optional(v.string()),
     platforms: v.optional(v.string()),
     message: v.optional(v.string()),

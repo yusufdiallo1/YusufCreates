@@ -65,12 +65,15 @@ export default defineSchema({
     budget: v.optional(v.string()),
     timeline: v.optional(v.string()),
     /*
-     * A string, not a number. The form asks in bands ("4 to 6", "Not sure
-     * yet") because that is how the question is actually answered and how the
-     * pricing works — one price from four pages to nine. A number column
-     * cannot hold "not sure", which is a real and common answer.
+     * New submissions are a band string ("4 to 6", "Not sure yet") — that is
+     * how the question is actually answered, and how the pricing works, since
+     * one price covers four pages to nine. A number cannot hold "not sure".
+     *
+     * The union accepts numbers because leads captured before this changed
+     * stored one, and rewriting historical records to fit a new form is worse
+     * than reading both.
      */
-    pageCount: v.optional(v.string()),
+    pageCount: v.optional(v.union(v.string(), v.number())),
     onePagePurpose: v.optional(v.string()),
     platforms: v.optional(v.string()),
     message: v.optional(v.string()),
