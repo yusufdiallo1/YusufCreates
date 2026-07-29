@@ -8,7 +8,13 @@
  */
 
 export type Currency = "USD" | "SAR" | "AED";
-export type TierId = "launch" | "growth" | "app" | "enterprise" | "care";
+export type TierId =
+  | "launch"
+  | "growth"
+  | "app"
+  | "native"
+  | "enterprise"
+  | "care";
 
 /** Pegged rates. Both currencies are fixed against the dollar. */
 export const RATES: Record<Currency, number> = {
@@ -45,9 +51,9 @@ export const GROWTH = {
   minPages: 3,
   maxPages: 9,
   /** Exactly three pages. */
-  basePrice: 1200,
+  basePrice: 750,
   /** Four through nine, flat. */
-  extendedPrice: 1500,
+  extendedPrice: 950,
   /** Above which the flat price applies. */
   flatFrom: 4,
 } as const;
@@ -61,10 +67,17 @@ export const GROWTH = {
  * The numbers now match the pitch.
  */
 const BASE_USD = {
-  launch: 600,
-  app: 4000,
-  enterprise: 8000,
-  care: 300,
+  launch: 400,
+  app: 2500,
+  /**
+   * Native iOS and macOS. Priced above the web app because it is a second
+   * codebase with its own build, signing and distribution — but deliberately
+   * not double, since the backend, auth and admin are shared with the web
+   * build rather than rebuilt.
+   */
+  native: 3200,
+  enterprise: 5500,
+  care: 180,
 } as const;
 
 /**
@@ -76,11 +89,12 @@ const BASE_USD = {
  * listed here (notably the Growth slider, which is genuinely computed).
  */
 const PUBLISHED: Partial<Record<TierId, Record<Currency, number>>> = {
-  launch: { USD: 600, SAR: 2250, AED: 2200 },
-  growth: { USD: 1200, SAR: 4500, AED: 4400 },
-  app: { USD: 4000, SAR: 15000, AED: 14700 },
-  enterprise: { USD: 8000, SAR: 30000, AED: 29400 },
-  care: { USD: 300, SAR: 1125, AED: 1100 },
+  launch: { USD: 400, SAR: 1500, AED: 1475 },
+  growth: { USD: 750, SAR: 2800, AED: 2750 },
+  app: { USD: 2500, SAR: 9375, AED: 9175 },
+  native: { USD: 3200, SAR: 12000, AED: 11750 },
+  enterprise: { USD: 5500, SAR: 20625, AED: 20200 },
+  care: { USD: 180, SAR: 675, AED: 660 },
 };
 
 /** Published price for a fixed tier, falling back to the pegged conversion. */
@@ -149,6 +163,18 @@ export interface BuildTier {
   popular?: boolean;
 }
 
+/**
+ * Every plan includes authentication and an admin area where the project
+ * needs one. That is not an upsell — a site whose owner cannot change their
+ * own content is a site that decays, and handing over something you have to
+ * email me to edit is not finished work.
+ */
+const EVERY_PLAN = [
+  "Sign-in and accounts where the project needs them",
+  "Admin area you actually control",
+  "Yours outright on final payment",
+];
+
 export const BUILD_TIERS: BuildTier[] = [
   {
     id: "launch",
@@ -157,11 +183,11 @@ export const BUILD_TIERS: BuildTier[] = [
     priceUsd: BASE_USD.launch,
     features: [
       "Landing page or one-pager",
-      "Blog",
-      "Contact form",
-      "SEO basics",
-      "Mobile-first",
+      "Contact form that reaches you",
+      "SEO basics and social preview",
+      "Fast on a phone, not just a laptop",
       "Deployed and handed over",
+      ...EVERY_PLAN,
     ],
   },
   {
@@ -171,24 +197,42 @@ export const BUILD_TIERS: BuildTier[] = [
     popular: true,
     features: [
       "Everything in Launch",
-      "CMS you can actually use",
-      "Multi-page information architecture",
-      "Analytics and reporting",
-      "Page count set by you",
+      "Blog and pages you can edit yourself",
+      "Multi-page structure and navigation",
+      "Analytics without a cookie banner",
+      "Same price from four pages to nine",
+      ...EVERY_PLAN,
     ],
   },
   {
     id: "app",
-    name: "Web app / SaaS MVP",
+    name: "Web app",
     blurb: "Software, not a brochure.",
     priceUsd: BASE_USD.app,
     from: true,
     features: [
-      "Authentication",
-      "Database",
-      "Stripe payments",
-      "Dashboards",
-      "API integrations",
+      "Accounts, roles and permissions",
+      "Database and real-time updates",
+      "Card payments and subscriptions",
+      "Dashboards and reporting",
+      "Third-party integrations",
+      ...EVERY_PLAN,
+    ],
+  },
+  {
+    id: "native",
+    name: "iOS and macOS app",
+    blurb: "A real native app, not a wrapped website.",
+    priceUsd: BASE_USD.native,
+    from: true,
+    features: [
+      "Native iOS, macOS, or both",
+      "Shares its backend with your web app",
+      "Offline support and local storage",
+      "Push notifications",
+      "Signed builds, distributed directly to your users",
+      "Not published to the App Store — no review, no store fees",
+      ...EVERY_PLAN,
     ],
   },
 ];

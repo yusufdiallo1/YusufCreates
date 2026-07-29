@@ -11,6 +11,7 @@ import {
   TagInput,
   TextArea,
 } from "@/components/admin/shared/Fields";
+import { DateTimePicker } from "@/components/admin/shared/DateTimePicker";
 import { Empty, Skeleton } from "@/components/admin/ProjectsAdmin";
 import type { Doc } from "@convex/_generated/dataModel";
 
@@ -260,18 +261,12 @@ function PostDrawer({
           />
 
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="post-at" className="text-sm text-secondary">
-                Publish date
-              </label>
-              <input
-                id="post-at"
-                type="datetime-local"
-                value={draft.publishedAt}
-                onChange={(e) => set("publishedAt", e.target.value)}
-                className="hairline mt-2 w-full rounded-lg bg-surface-1 px-3.5 py-2.5 text-sm text-primary"
-              />
-            </div>
+            <DateTimePicker
+              id="post-at"
+              label="Publish date"
+              value={draft.publishedAt}
+              onChange={(v) => set("publishedAt", v)}
+            />
             <div className="flex items-end pb-2.5">
               <label className="flex items-center gap-2.5 text-sm text-secondary">
                 <input

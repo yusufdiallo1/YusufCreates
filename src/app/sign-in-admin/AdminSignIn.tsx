@@ -99,7 +99,19 @@ export function AdminSignIn() {
         </label>
         <input
           id="passphrase"
-          type="text"
+          /*
+           * A real password field when hidden.
+           *
+           * This was type="text" with transparent colour, which only hides the
+           * glyphs from a casual glance — selecting the text highlights them,
+           * a screenshot captures them, and the browser treats the value as an
+           * ordinary field it may store or autofill in plain sight.
+           *
+           * Swapping the type keeps the disappearing-ink effect (the ghost
+           * layer is rendered separately) while making the underlying control
+           * behave like the credential input it is.
+           */
+          type={revealed ? "text" : "password"}
           autoComplete="current-password"
           spellCheck={false}
           value={value}

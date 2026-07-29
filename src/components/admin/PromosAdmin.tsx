@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
 import { Field, TextArea } from "@/components/admin/shared/Fields";
+import { DateTimePicker } from "@/components/admin/shared/DateTimePicker";
 import { Empty, Skeleton } from "@/components/admin/ProjectsAdmin";
 import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
 import type { Doc, Id } from "@convex/_generated/dataModel";
@@ -397,30 +398,19 @@ function CreateDialog({
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="promo-start" className="text-sm text-secondary">
-                Starts
-              </label>
-              <input
-                id="promo-start"
-                type="datetime-local"
-                value={draft.startsAt}
-                onChange={(e) => set("startsAt", e.target.value)}
-                className="hairline mt-2 w-full rounded-lg bg-surface-1 px-3 py-2.5 text-sm text-primary"
-              />
-            </div>
-            <div>
-              <label htmlFor="promo-end" className="text-sm text-secondary">
-                Ends (optional)
-              </label>
-              <input
-                id="promo-end"
-                type="datetime-local"
-                value={draft.endsAt}
-                onChange={(e) => set("endsAt", e.target.value)}
-                className="hairline mt-2 w-full rounded-lg bg-surface-1 px-3 py-2.5 text-sm text-primary"
-              />
-            </div>
+            <DateTimePicker
+              id="promo-start"
+              label="Starts"
+              value={draft.startsAt}
+              onChange={(v) => set("startsAt", v)}
+            />
+            <DateTimePicker
+              id="promo-end"
+              label="Ends (optional)"
+              value={draft.endsAt}
+              onChange={(v) => set("endsAt", v)}
+              help="Leave unset for open-ended."
+            />
           </div>
 
           <Field

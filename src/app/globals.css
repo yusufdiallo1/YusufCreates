@@ -773,10 +773,30 @@
   /* Disappearing ink: typed characters fade to invisible, and revealing the
      password fades them back. The value is never masked by the browser, so
      the animation is what provides the privacy. */
-  .ink-input {
+  /*
+   * Disappearing ink.
+   *
+   * Applies only while the field is a password input — the browser already
+   * masks the value there, and hiding the dots too is what produces the empty
+   * field the ghost layer writes over. When revealed the field becomes a real
+   * text input and this must not apply, or the revealed value would be
+   * invisible.
+   *
+   * -webkit-text-security keeps the value masked even if a browser ignores
+   * the transparent colour, so the credential is never rendered as glyphs a
+   * selection or screenshot could capture.
+   */
+  .ink-input:not(.ink-visible) {
     color: transparent;
     caret-color: var(--text-primary);
+    -webkit-text-security: disc;
     transition: color var(--dur-slow) var(--ease-in-out-quint);
+  }
+
+  /* Selecting the field must not paint the value back in. */
+  .ink-input:not(.ink-visible)::selection {
+    color: transparent;
+    background-color: var(--accent-glow);
   }
   .ink-input.ink-visible {
     color: var(--text-primary);
@@ -1145,5 +1165,67 @@
     font-size: var(--text-xs);
     color: var(--text-secondary);
     margin-bottom: 2.5rem;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Native form controls
+   -------------------------------------------------------------------------- */
+
+@layer base {
+  /*
+   * Browsers render select dropdowns, checkboxes and the date picker in their
+   * own chrome, which ignores the page entirely — on a near-black canvas that
+   * appears as a light grey panel with blue highlights, obviously borrowed
+   * from another application.
+   *
+   * `color-scheme` is the one hook that reaches those surfaces: it tells the
+   * browser to draw its built-in UI dark, so the dropdown list, the scrollbar
+   * and the checkbox all follow the theme. Already set on :root; repeated on
+   * the controls themselves because a select inside a light-themed subtree
+   * would otherwise revert.
+   */
+  select,
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="time"],
+  input[type="month"] {
+    color-scheme: dark;
+    accent-color: var(--accent);
+  }
+
+  [data-theme="light"] select,
+  [data-theme="light"] input[type="checkbox"],
+  [data-theme="light"] input[type="radio"],
+  [data-theme="light"] input[type="date"],
+  [data-theme="light"] input[type="datetime-local"],
+  [data-theme="light"] input[type="time"],
+  [data-theme="light"] input[type="month"] {
+    color-scheme: light;
+  }
+
+  /* The option list is drawn by the OS; only the colours are ours to set. */
+  select option {
+    background-color: var(--bg-surface-2);
+    color: var(--text-primary);
+  }
+
+  /* Chromium exposes the calendar button, which otherwise renders as a light
+     glyph invisible against a dark field. */
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator,
+  input[type="month"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.7);
+    cursor: pointer;
+  }
+
+  [data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator,
+  [data-theme="light"] input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+  [data-theme="light"] input[type="time"]::-webkit-calendar-picker-indicator,
+  [data-theme="light"] input[type="month"]::-webkit-calendar-picker-indicator {
+    filter: none;
   }
 }
