@@ -61,9 +61,16 @@ export function CookieNotice() {
           animate={{ opacity: 1, y: 0 }}
           exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
           transition={{ duration: reduceMotion ? 0.15 : 0.4, ease: [0.16, 1, 0.3, 1] }}
-          /* Above the chat pill on mobile, and inset so it never covers the
-             whole viewport on a small screen. */
-          className="glass-depth glass-near glass-panel fixed inset-x-4 bottom-4 z-40 mx-auto max-w-xl p-5 sm:inset-x-auto sm:right-6 sm:bottom-6"
+          /*
+           * Sits ABOVE the chat pill, which is fixed at bottom-5 right-5.
+           * At bottom-4 this panel spanned the full width on a phone and
+           * covered the pill outright — the chat could not be opened at all
+           * until the notice was dismissed.
+           *
+           * z-30 keeps it under the pill's z-40 as a second line of defence,
+           * so any future overlap loses to the button rather than blocking it.
+           */
+          className="glass-depth glass-near glass-panel fixed inset-x-4 bottom-24 z-30 mx-auto max-w-xl p-5 sm:inset-x-auto sm:right-6 sm:bottom-24"
         >
           <p className="text-sm text-primary">No tracking cookies here.</p>
           <p className="mt-2 text-xs text-secondary">

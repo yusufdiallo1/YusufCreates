@@ -66,7 +66,7 @@ export const GROWTH = {
  * site's own positioning is "founders who were quoted too much by an agency".
  * The numbers now match the pitch.
  */
-const BASE_USD = {
+export const BASE_USD = {
   launch: 400,
   app: 2500,
   /**
