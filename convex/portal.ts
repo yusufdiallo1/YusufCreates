@@ -8,11 +8,15 @@ import type { Doc, Id } from "./_generated/dataModel";
 /**
  * Client portal.
  *
- * THE RULE THIS FILE EXISTS TO ENFORCE: a client sees exactly the projects on
- * their own record and nothing else. The project id is never taken from the
- * request — it is derived from the authenticated session and checked against
- * that list. Changing an id in the URL is the first thing anyone tries, and it
- * must return nothing.
+ * Clients see CLIENT PROJECTS — the work being done for them — not the public
+ * portfolio. Those are separate tables on purpose: a portfolio piece is
+ * marketing I control, a client project is a live engagement with milestones,
+ * files and invoices attached.
+ *
+ * THE RULE THIS FILE ENFORCES: a project id is never taken from the request.
+ * It is resolved from the authenticated session and checked against ownership.
+ * Changing an id in the URL is the first thing anyone tries, and it must
+ * return nothing.
  */
 
 async function requireClient(
@@ -34,13 +38,25 @@ async function requireClient(
   return client;
 }
 
-/** Throws unless the caller owns this project. Every read goes through it. */
-function assertOwns(client: Doc<"clients">, projectId: Id<"projects">) {
-  if (!client.projectIds.includes(projectId)) {
-    // Deliberately the same error as "not a client" — distinguishing them
-    // would confirm that a project id exists.
+/**
+ * Throws unless the caller owns this project.
+ *
+ * Ownership is read from the project's own clientId rather than a list on the
+ * client, so there is exactly one source of truth and no way for the two to
+ * disagree.
+ */
+async function assertOwns(
+  ctx: QueryCtx | MutationCtx,
+  client: Doc<"clients">,
+  projectId: Id<"clientProjects">,
+): Promise<Doc<"clientProjects">> {
+  const project = await ctx.db.get(projectId);
+  // Deliberately the same error for "not yours" and "does not exist" —
+  // distinguishing them confirms which ids are real.
+  if (!project || project.clientId !== client._id) {
     throw new Error("Not authorised.");
   }
+  return project;
 }
 
 /** Everything the portal home needs, for the caller's own projects only. */
@@ -49,34 +65,34 @@ export const overview = query({
   handler: async (ctx) => {
     const client = await requireClient(ctx);
 
-    const projects = await Promise.all(
-      client.projectIds.map((id) => ctx.db.get(id)),
-    );
+    const projects = await ctx.db
+      .query("clientProjects")
+      .withIndex("by_client", (q) => q.eq("clientId", client._id))
+      .collect();
 
     const withProgress = await Promise.all(
-      projects
-        .filter((p): p is Doc<"projects"> => p !== null)
-        .map(async (project) => {
-          const milestones = await ctx.db
-            .query("milestones")
-            .withIndex("by_project", (q) => q.eq("projectId", project._id))
-            .collect();
+      projects.map(async (project) => {
+        const milestones = await ctx.db
+          .query("milestones")
+          .withIndex("by_project", (q) => q.eq("projectId", project._id))
+          .collect();
 
-          const done = milestones.filter((m) => m.status === "done").length;
+        const done = milestones.filter((m) => m.status === "done").length;
 
-          return {
-            _id: project._id,
-            title: project.title,
-            // Percentage complete is the single figure that kills most
-            // "any update?" emails, so it is computed here rather than left
-            // to the client to work out from a list.
-            percentComplete:
-              milestones.length === 0
-                ? 0
-                : Math.round((done / milestones.length) * 100),
-            milestones: milestones.sort((a, b) => a.order - b.order),
-          };
-        }),
+        return {
+          _id: project._id,
+          title: project.name,
+          description: project.description ?? null,
+          status: project.status,
+          // The single figure that kills most "any update?" emails, so it is
+          // computed here rather than left to the reader.
+          percentComplete:
+            milestones.length === 0
+              ? 0
+              : Math.round((done / milestones.length) * 100),
+          milestones: milestones.sort((a, b) => a.order - b.order),
+        };
+      }),
     );
 
     return { name: client.name, projects: withProgress };
@@ -84,10 +100,10 @@ export const overview = query({
 });
 
 export const deliverables = query({
-  args: { projectId: v.id("projects") },
+  args: { projectId: v.id("clientProjects") },
   handler: async (ctx, args) => {
     const client = await requireClient(ctx);
-    assertOwns(client, args.projectId);
+    await assertOwns(ctx, client, args.projectId);
 
     return await ctx.db
       .query("deliverables")
@@ -103,19 +119,18 @@ export const approveDeliverable = mutation({
     const client = await requireClient(ctx);
     const item = await ctx.db.get(args.id);
     if (!item) throw new Error("Not found.");
-    // Ownership is checked against the deliverable's project, not a value
-    // supplied by the caller.
-    assertOwns(client, item.projectId);
+    // Checked against the deliverable's own project, not a caller-supplied id.
+    await assertOwns(ctx, client, item.projectId);
 
     await ctx.db.patch(args.id, { approvedAt: Date.now() });
   },
 });
 
 export const messages = query({
-  args: { projectId: v.id("projects") },
+  args: { projectId: v.id("clientProjects") },
   handler: async (ctx, args) => {
     const client = await requireClient(ctx);
-    assertOwns(client, args.projectId);
+    await assertOwns(ctx, client, args.projectId);
 
     return await ctx.db
       .query("portalMessages")
@@ -126,18 +141,18 @@ export const messages = query({
 });
 
 export const postMessage = mutation({
-  args: { projectId: v.id("projects"), body: v.string() },
+  args: { projectId: v.id("clientProjects"), body: v.string() },
   handler: async (ctx, args) => {
     const client = await requireClient(ctx);
-    assertOwns(client, args.projectId);
+    await assertOwns(ctx, client, args.projectId);
 
     const body = args.body.trim().slice(0, 4000);
     if (!body) return;
 
     await ctx.db.insert("portalMessages", {
       projectId: args.projectId,
-      // authorType comes from the verified session, never from the request —
-      // otherwise a client could post a message that appears to be from me.
+      // From the verified session, never the request — otherwise a client
+      // could post a message that renders as being from me.
       authorType: "client",
       authorName: client.name,
       body,
@@ -146,7 +161,7 @@ export const postMessage = mutation({
   },
 });
 
-/** Invoices for the caller's own projects. */
+/** Invoices raised against the caller's own projects. */
 export const invoices = query({
   args: {},
   handler: async (ctx) => {
@@ -157,8 +172,7 @@ export const invoices = query({
       .filter(
         (i) =>
           i.status !== "draft" &&
-          i.projectId !== undefined &&
-          client.projectIds.includes(i.projectId),
+          i.clientEmail.toLowerCase() === client.email.toLowerCase(),
       )
       .map((i) => ({
         _id: i._id,
@@ -168,7 +182,6 @@ export const invoices = query({
         currency: i.currency,
         status: i.status,
         stage: i.stage,
-        // The hosted payment link, so they can pay from the portal.
         payUrl: i.stripeHostedUrl ?? null,
         paidAt: i.paidAt ?? null,
       }));
@@ -177,20 +190,38 @@ export const invoices = query({
 
 /* --------------------------------------------------------------- admin --- */
 
+/** Clients with their projects, so the admin list is one round trip. */
 export const listClients = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    return await ctx.db.query("clients").order("desc").collect();
+    const clients = await ctx.db.query("clients").order("desc").collect();
+
+    return await Promise.all(
+      clients.map(async (client) => {
+        const projects = await ctx.db
+          .query("clientProjects")
+          .withIndex("by_client", (q) => q.eq("clientId", client._id))
+          .collect();
+        return { ...client, projects };
+      }),
+    );
   },
 });
 
+/**
+ * Creates a client and their first project together.
+ *
+ * One step rather than two, because a client with no project has nothing to
+ * see — the portal link would open on an empty page.
+ */
 export const createClient = mutation({
   args: {
     email: v.string(),
     name: v.string(),
     company: v.optional(v.string()),
-    projectIds: v.array(v.id("projects")),
+    projectName: v.string(),
+    projectDescription: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -201,22 +232,68 @@ export const createClient = mutation({
       .withIndex("by_email", (q) => q.eq("email", email))
       .unique();
 
+    const clientId =
+      existing?._id ??
+      (await ctx.db.insert("clients", {
+        email,
+        name: args.name,
+        company: args.company,
+        createdAt: Date.now(),
+      }));
+
     if (existing) {
       await ctx.db.patch(existing._id, {
         name: args.name,
         company: args.company,
-        projectIds: args.projectIds,
       });
-      return existing._id;
     }
 
-    return await ctx.db.insert("clients", {
-      email,
-      name: args.name,
-      company: args.company,
-      projectIds: args.projectIds,
+    const projectId = await ctx.db.insert("clientProjects", {
+      clientId,
+      name: args.projectName,
+      description: args.projectDescription,
+      status: "planning",
+      startedAt: Date.now(),
       createdAt: Date.now(),
     });
+
+    return { clientId, projectId };
+  },
+});
+
+export const addProject = mutation({
+  args: {
+    clientId: v.id("clients"),
+    name: v.string(),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    return await ctx.db.insert("clientProjects", {
+      clientId: args.clientId,
+      name: args.name,
+      description: args.description,
+      status: "planning",
+      startedAt: Date.now(),
+      createdAt: Date.now(),
+    });
+  },
+});
+
+export const setProjectStatus = mutation({
+  args: {
+    id: v.id("clientProjects"),
+    status: v.union(
+      v.literal("planning"),
+      v.literal("active"),
+      v.literal("review"),
+      v.literal("complete"),
+      v.literal("on_hold"),
+    ),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    await ctx.db.patch(args.id, { status: args.status });
   },
 });
 
@@ -224,13 +301,32 @@ export const removeClient = mutation({
   args: { id: v.id("clients") },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
+
+    // Cascade, or the projects, milestones and messages become unreachable
+    // rows that still hold the client's data.
+    const projects = await ctx.db
+      .query("clientProjects")
+      .withIndex("by_client", (q) => q.eq("clientId", args.id))
+      .collect();
+
+    for (const project of projects) {
+      for (const table of ["milestones", "deliverables", "portalMessages"] as const) {
+        const rows = await ctx.db
+          .query(table)
+          .withIndex("by_project", (q) => q.eq("projectId", project._id))
+          .collect();
+        for (const row of rows) await ctx.db.delete(row._id);
+      }
+      await ctx.db.delete(project._id);
+    }
+
     await ctx.db.delete(args.id);
   },
 });
 
 export const setMilestones = mutation({
   args: {
-    projectId: v.id("projects"),
+    projectId: v.id("clientProjects"),
     milestones: v.array(
       v.object({
         title: v.string(),
@@ -247,7 +343,7 @@ export const setMilestones = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
 
-    // Replace wholesale: the admin edits the list as a whole, and diffing
+    // Replaced wholesale: the admin edits the list as a whole, and diffing
     // would leave orphans behind on a rename.
     const existing = await ctx.db
       .query("milestones")
@@ -271,7 +367,7 @@ export const setMilestones = mutation({
 });
 
 export const adminMessages = query({
-  args: { projectId: v.id("projects") },
+  args: { projectId: v.id("clientProjects") },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     return await ctx.db
@@ -283,7 +379,7 @@ export const adminMessages = query({
 });
 
 export const adminReply = mutation({
-  args: { projectId: v.id("projects"), body: v.string() },
+  args: { projectId: v.id("clientProjects"), body: v.string() },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     await ctx.db.insert("portalMessages", {

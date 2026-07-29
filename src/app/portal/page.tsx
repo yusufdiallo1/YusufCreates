@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Portal } from "@/components/portal/Portal";
+import { ChatLauncher } from "@/components/chat/ChatLauncher";
 
 export const metadata: Metadata = {
   title: "Client portal",
@@ -8,5 +9,12 @@ export const metadata: Metadata = {
 };
 
 export default function PortalPage() {
-  return <Portal />;
+  return (
+    <>
+      <Portal />
+      {/* The same public assistant. A client asking "what's included in the
+          care plan" should not have to leave the portal to find out. */}
+      <ChatLauncher />
+    </>
+  );
 }

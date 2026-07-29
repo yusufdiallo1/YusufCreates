@@ -1,4 +1,3 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { fetchMutation, fetchQuery } from "convex/nextjs";
@@ -14,10 +13,17 @@ import { buildSystemPrompt } from "@/lib/systemPrompt";
 export const runtime = "nodejs";
 
 /**
- * Date-stamped, as asked. Kept in one constant so switching tiers is a
- * one-line change if the guardrails do not hold under testing.
+ * Groq, via its OpenAI-compatible endpoint.
+ *
+ * No SDK: the chat completions API is one POST and one SSE stream, and a
+ * dependency here is one more thing to keep patched for no benefit.
+ *
+ * Model in a single constant so switching is a one-line change. Llama 3.3 70B
+ * follows instructions well enough for the guardrails below, which matters
+ * more than raw capability — this bot's job is to refuse confidently.
  */
-const MODEL = "claude-haiku-4-5-20251001";
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const MODEL = "llama-3.3-70b-versatile";
 
 /** A chat widget, not an essay generator. This is the main cost control. */
 const MAX_TOKENS = 1024;
@@ -31,7 +37,7 @@ interface Turn {
 }
 
 export async function POST(request: Request) {
-  const key = process.env.ANTHROPIC_API_KEY;
+  const key = process.env.GROQ_API_KEY;
   if (!key) {
     return NextResponse.json({ error: "Not configured." }, { status: 503 });
   }
@@ -119,38 +125,65 @@ export async function POST(request: Request) {
     }
   }
 
-  const client = new Anthropic({ apiKey: key });
-
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const encoder = new TextEncoder();
       let full = "";
 
       try {
-        const response = client.messages.stream({
-          model: MODEL,
-          max_tokens: MAX_TOKENS,
-          system: [
-            {
-              type: "text",
-              text: system,
-              // The prompt is identical on every request, so this turns most
-              // of the input cost into a cache read. It only applies once the
-              // prefix clears the model's minimum cacheable length — worth
-              // checking usage.cache_read_input_tokens on the second request
-              // to confirm it is actually taking effect.
-              cache_control: { type: "ephemeral" },
-            },
-          ],
-          messages,
+        const upstream = await fetch(GROQ_URL, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${key}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: MODEL,
+            max_tokens: MAX_TOKENS,
+            temperature: 0.3,
+            stream: true,
+            // The system prompt is the first message in the OpenAI shape,
+            // rather than a separate field.
+            messages: [{ role: "system", content: system }, ...messages],
+          }),
+          // A hung upstream must not hold the connection open indefinitely.
+          signal: AbortSignal.timeout(30_000),
         });
 
-        response.on("text", (delta) => {
-          full += delta;
-          controller.enqueue(encoder.encode(delta));
-        });
+        if (!upstream.ok || !upstream.body) {
+          throw new Error(`groq ${upstream.status}`);
+        }
 
-        await response.finalMessage();
+        // Server-sent events: "data: {json}\n\n", terminated by "data: [DONE]".
+        // Chunks split mid-event, so the tail is carried into the next read.
+        const reader = upstream.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            if (!line.startsWith("data:")) continue;
+            const payload = line.slice(5).trim();
+            if (!payload || payload === "[DONE]") continue;
+            try {
+              const delta =
+                JSON.parse(payload).choices?.[0]?.delta?.content ?? "";
+              if (delta) {
+                full += delta;
+                controller.enqueue(encoder.encode(delta));
+              }
+            } catch {
+              // A partial JSON frame is not fatal; the next read completes it.
+            }
+          }
+        }
       } catch (err) {
         console.error("[chat] stream failed:", err);
         controller.enqueue(

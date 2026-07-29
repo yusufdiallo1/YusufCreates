@@ -420,11 +420,41 @@ export default defineSchema({
    * a project id from the URL is never trusted, because changing one in the
    * address bar is the first thing anyone tries.
    */
+  /**
+   * Work done FOR a client.
+   *
+   * Deliberately separate from the `projects` table, which is the public
+   * portfolio. They look similar and are not the same thing: a portfolio piece
+   * is marketing I control, and a client project is a live engagement with
+   * milestones, files and money attached. Reusing one table for both meant the
+   * "assign projects" picker offered my own case studies, which is nonsense.
+   */
+  clientProjects: defineTable({
+    clientId: v.id("clients"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    status: v.union(
+      v.literal("planning"),
+      v.literal("active"),
+      v.literal("review"),
+      v.literal("complete"),
+      v.literal("on_hold"),
+    ),
+    startedAt: v.optional(v.number()),
+    targetLaunch: v.optional(v.number()),
+    createdAt: v.number(),
+  }).index("by_client", ["clientId"]),
+
   clients: defineTable({
     email: v.string(),
     name: v.string(),
     company: v.optional(v.string()),
-    projectIds: v.array(v.id("projects")),
+    /**
+     * Legacy: portfolio ids assigned before clientProjects existed. Optional
+     * so existing rows validate; nothing writes it any more. Access is
+     * derived from clientProjects.by_client.
+     */
+    projectIds: v.optional(v.array(v.id("projects"))),
     /** Set once they first sign in through a magic link. */
     userId: v.optional(v.id("users")),
     lastLoginAt: v.optional(v.number()),
@@ -432,7 +462,7 @@ export default defineSchema({
   }).index("by_email", ["email"]),
 
   milestones: defineTable({
-    projectId: v.id("projects"),
+    projectId: v.id("clientProjects"),
     title: v.string(),
     description: v.optional(v.string()),
     status: v.union(
@@ -446,7 +476,7 @@ export default defineSchema({
   }).index("by_project", ["projectId", "order"]),
 
   deliverables: defineTable({
-    projectId: v.id("projects"),
+    projectId: v.id("clientProjects"),
     name: v.string(),
     url: v.string(),
     version: v.number(),
@@ -455,7 +485,7 @@ export default defineSchema({
   }).index("by_project", ["projectId"]),
 
   portalMessages: defineTable({
-    projectId: v.id("projects"),
+    projectId: v.id("clientProjects"),
     authorType: v.union(v.literal("client"), v.literal("admin")),
     authorName: v.string(),
     body: v.string(),

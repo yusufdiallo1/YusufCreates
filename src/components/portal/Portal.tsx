@@ -63,7 +63,7 @@ export function Portal() {
 function PortalContent() {
   const data = useQuery(api.portal.overview, {});
   const invoices = useQuery(api.portal.invoices, {});
-  const [active, setActive] = useState<Id<"projects"> | null>(null);
+  const [active, setActive] = useState<Id<"clientProjects"> | null>(null);
 
   if (data === undefined) {
     return (
@@ -233,7 +233,7 @@ function PortalContent() {
   );
 }
 
-function Deliverables({ projectId }: { projectId: Id<"projects"> }) {
+function Deliverables({ projectId }: { projectId: Id<"clientProjects"> }) {
   const files = useQuery(api.portal.deliverables, { projectId });
   const approve = useMutation(api.portal.approveDeliverable);
 
@@ -283,7 +283,7 @@ function Deliverables({ projectId }: { projectId: Id<"projects"> }) {
   );
 }
 
-function Messages({ projectId }: { projectId: Id<"projects"> }) {
+function Messages({ projectId }: { projectId: Id<"clientProjects"> }) {
   const messages = useQuery(api.portal.messages, { projectId });
   const post = useMutation(api.portal.postMessage);
   const [draft, setDraft] = useState("");

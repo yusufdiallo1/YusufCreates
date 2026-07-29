@@ -1,11 +1,14 @@
 import {
   Body,
+  Column,
   Container,
   Head,
   Hr,
   Html,
+  Img,
   Link,
   Preview,
+  Row,
   Section,
   Text,
 } from "@react-email/components";
@@ -25,6 +28,14 @@ import {
  * clients forcibly invert colours and a near-black template can end up with
  * black text on black. A light shell survives that inversion legibly.
  */
+
+/**
+ * Absolute, because an email has no origin to resolve a relative path
+ * against. Falls back to the live domain so a preview rendered without env
+ * still shows the logo rather than a broken image.
+ */
+const SITE_URL =
+  process.env.NEXT_PUBLIC_APP_URL ?? "https://yusufcreates.com";
 
 export const brand = {
   canvas: "#ffffff",
@@ -73,20 +84,39 @@ export function Shell({
             padding: "40px",
           }}
         >
-          {/* Wordmark as text, not an image: images are blocked by default in
-              a great many clients, and a logo that renders as a broken icon is
-              worse than no logo. */}
-          <Text
-            style={{
-              margin: "0 0 32px",
-              fontSize: "15px",
-              fontWeight: 600,
-              letterSpacing: "-0.01em",
-              color: brand.text,
-            }}
-          >
-            Yusuf Creates
-          </Text>
+          {/* Logo image with the wordmark beside it.
+
+              Many clients block images by default, so the wordmark is real
+              text rather than part of the picture — if the logo never loads,
+              the header still reads correctly instead of showing a broken
+              icon with nothing next to it. PNG, not SVG: Gmail and Outlook
+              both refuse SVG in email. */}
+          <Section style={{ marginBottom: "32px" }}>
+            <Row>
+              <Column style={{ width: "28px", verticalAlign: "middle" }}>
+                <Img
+                  src={`${SITE_URL}/email-logo.png`}
+                  width="24"
+                  height="24"
+                  alt=""
+                  style={{ display: "block" }}
+                />
+              </Column>
+              <Column style={{ verticalAlign: "middle", paddingLeft: "10px" }}>
+                <Text
+                  style={{
+                    margin: 0,
+                    fontSize: "15px",
+                    fontWeight: 600,
+                    letterSpacing: "-0.01em",
+                    color: brand.text,
+                  }}
+                >
+                  Yusuf Creates
+                </Text>
+              </Column>
+            </Row>
+          </Section>
 
           {children}
 
@@ -123,6 +153,13 @@ export function Shell({
               Yusuf Creates ·{" "}
               <Link href="https://yusufcreates.com" style={{ color: brand.secondary }}>
                 yusufcreates.com
+              </Link>
+              {" · "}
+              <Link
+                href="https://www.instagram.com/yusufcreatesdev/"
+                style={{ color: brand.secondary }}
+              >
+                @yusufcreatesdev
               </Link>
               {unsubscribeUrl ? (
                 <>

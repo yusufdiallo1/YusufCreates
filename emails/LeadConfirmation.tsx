@@ -19,14 +19,25 @@ export function LeadConfirmation({
   summary?: { label: string; value: string }[];
   replyWithin?: string;
 }) {
-  const first = name.trim().split(/\s+/)[0] || "there";
+  /*
+   * Empty when there is no real name.
+   *
+   * The route passes "there" as its fallback, which produced "Thanks there —"
+   * on an enquiry sent from the CTA band, where only an email address is
+   * collected. A greeting with no name reads as neutral; a greeting with a
+   * placeholder in it reads as broken.
+   */
+  const raw = name.trim();
+  const first =
+    raw && raw.toLowerCase() !== "there" ? raw.split(/\s+/)[0] : "";
+  const greeting = first ? `Thanks ${first}` : "Thanks";
 
   return (
     <Shell
-      preview={`Thanks ${first} — I've got your enquiry and I'll reply within ${replyWithin}.`}
+      preview={`${greeting} — I've got your enquiry and I'll reply within ${replyWithin}.`}
       footerNote="You're receiving this because you sent an enquiry through yusufcreates.com."
     >
-      <H1>Thanks {first} — that&apos;s with me.</H1>
+      <H1>{greeting} — that&apos;s with me.</H1>
 
       <P>
         I read every enquiry myself, and I&apos;ll come back to you within{" "}

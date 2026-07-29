@@ -418,10 +418,17 @@
      `(hover: none)` targets touch rather than a width breakpoint, so a small
      desktop window keeps the intended 14px. */
   @media (hover: none) {
+    /*
+     * !important is load-bearing here, and this is the one place it is right.
+     *
+     * These live in @layer base, which Tailwind's utility layer always beats —
+     * so `text-sm` on any input silently reinstated the 14px that causes the
+     * zoom. Without the override the rule looked correct and did nothing.
+     */
     input,
     select,
     textarea {
-      font-size: max(16px, 1em);
+      font-size: max(16px, 1em) !important;
     }
   }
 

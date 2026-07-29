@@ -159,7 +159,18 @@ export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.98 }}
             transition={{ duration: reduceMotion ? 0.12 : 0.28, ease: EASE }}
-            className="glass-depth glass-near glass-panel fixed right-5 bottom-5 z-50 flex h-[min(32rem,80dvh)] w-[min(24rem,calc(100vw-2.5rem))] flex-col !p-0 lg:right-8 lg:bottom-8"
+            /*
+              Full-screen on mobile, a floating panel from sm up.
+
+              Anchored to the bottom at a fixed height, the on-screen keyboard
+              pushed the panel off the top of the viewport — the input stayed
+              visible but everything above it disappeared. Pinning to all four
+              edges lets the browser resize it as the keyboard opens instead.
+
+              dvh, never vh: on mobile Safari vh is the LARGEST viewport
+              height, so a vh-sized panel extends under the browser chrome.
+            */
+            className="glass-depth glass-near fixed inset-0 z-50 flex w-full flex-col !rounded-none !p-0 sm:inset-auto sm:right-5 sm:bottom-5 sm:h-[min(32rem,80dvh)] sm:w-[min(24rem,calc(100vw-2.5rem))] sm:!rounded-[28px] lg:right-8 lg:bottom-8"
           >
             <div className="flex items-center justify-between px-5 py-4">
               <p className="text-sm text-primary">Ask about the work</p>

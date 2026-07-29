@@ -77,12 +77,6 @@ export function Footer() {
                 >
                   Start a project
                 </Link>
-                <Link
-                  href="/call"
-                  className="block text-sm text-secondary transition-colors duration-fast hover:text-primary"
-                >
-                  Book a call
-                </Link>
                 {/* The lead magnet. Footer rather than nav — six top-level
                     items is already the limit before a nav starts to read as
                     a list. */}

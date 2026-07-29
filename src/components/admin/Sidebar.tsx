@@ -18,38 +18,43 @@ import { Logo } from "@/components/ui/Logo";
  * rail and screen reader announcement, so the two can never disagree.
  */
 
+/**
+ * Navigation.
+ *
+ * Three groups, not four, and the two screens I open every day sit at the top
+ * outside any group. Fourteen links under four headings read as a directory;
+ * this reads as a tool. Everything still reachable is still reachable —
+ * anything not here is one Cmd+K away.
+ */
+const PRIMARY = [
+  { href: "/admin", label: "Overview" },
+  { href: "/admin/leads", label: "Leads" },
+];
+
 const GROUPS: { heading: string; items: { href: string; label: string }[] }[] = [
   {
-    heading: "Inbox",
+    heading: "Clients",
     items: [
-      { href: "/admin", label: "Overview" },
-      { href: "/admin/leads", label: "Leads" },
-      { href: "/admin/clients", label: "Clients" },
-      { href: "/admin/feedback", label: "Feedback" },
-    ],
-  },
-  {
-    heading: "Publish",
-    items: [
-      { href: "/admin/projects", label: "Projects" },
-      { href: "/admin/testimonials", label: "Testimonials" },
-      { href: "/admin/blog", label: "Blog" },
-    ],
-  },
-  {
-    heading: "Reach",
-    items: [
-      { href: "/admin/broadcasts", label: "Broadcasts" },
-      { href: "/admin/analytics", label: "Analytics" },
-      { href: "/admin/kb", label: "Knowledge base" },
-    ],
-  },
-  {
-    heading: "Money",
-    items: [
-      { href: "/admin/invoices", label: "Proposals and invoices" },
-      { href: "/admin/promos", label: "Promotions" },
+      { href: "/admin/clients", label: "Clients & projects" },
       { href: "/admin/proposals", label: "Proposals" },
+      { href: "/admin/invoices", label: "Invoices" },
+    ],
+  },
+  {
+    heading: "Site",
+    items: [
+      { href: "/admin/projects", label: "Portfolio" },
+      { href: "/admin/blog", label: "Blog" },
+      { href: "/admin/testimonials", label: "Testimonials" },
+    ],
+  },
+  {
+    heading: "Growth",
+    items: [
+      { href: "/admin/broadcasts", label: "Broadcast" },
+      { href: "/admin/promos", label: "Promotions" },
+      { href: "/admin/analytics", label: "Analytics" },
+      { href: "/admin/kb", label: "AI knowledge" },
     ],
   },
 ];
@@ -106,6 +111,23 @@ export function Sidebar() {
       </button>
 
       <div className="flex-1 space-y-6 overflow-y-auto px-1 pb-4">
+        {/* Ungrouped and first: the two screens opened every day should not
+            be buried under a heading with everything else. */}
+        <ul>
+          {PRIMARY.map((item) => (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                aria-current={isActive(item.href) ? "page" : undefined}
+                onClick={() => setMobileOpen(false)}
+                className="admin-nav-link"
+              >
+                {item.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+
         {GROUPS.map((group) => (
           <div key={group.heading}>
             <h2 className="px-3 pb-1.5 text-[11px] tracking-[0.04em] text-secondary uppercase">
@@ -130,6 +152,14 @@ export function Sidebar() {
       </div>
 
       <div className="space-y-1 px-1 py-3 before:mb-3 before:block before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/8 before:to-transparent">
+        <Link
+          href="/admin/feedback"
+          aria-current={isActive("/admin/feedback") ? "page" : undefined}
+          onClick={() => setMobileOpen(false)}
+          className="admin-nav-link"
+        >
+          Feedback
+        </Link>
         <Link
           href="/admin/settings"
           aria-current={isActive("/admin/settings") ? "page" : undefined}

@@ -118,13 +118,28 @@ export function Nav() {
               Start a project
             </Link>
 
+            {/*
+              onPointerDown, not onClick.
+
+              The nav animates its own padding as the page scrolls, so the
+              button can move a few pixels between a touch landing and the
+              click event resolving — and a click that lands on a moved target
+              is silently dropped. That is why it took several taps. Pointer
+              events fire on contact, before any of that can happen.
+
+              The target is 44px with touch-manipulation, which also removes
+              the 300ms double-tap delay some mobile browsers still apply.
+            */}
             <button
               type="button"
-              onClick={() => setOpen((v) => !v)}
+              onPointerDown={(e) => {
+                e.preventDefault();
+                setOpen((v) => !v);
+              }}
               aria-expanded={open}
               aria-controls="mobile-nav"
               aria-label={open ? "Close menu" : "Open menu"}
-              className="flex size-9 items-center justify-center rounded-full md:hidden"
+              className="-mr-2 flex size-11 touch-manipulation items-center justify-center rounded-full md:hidden"
             >
               <span className="relative block h-3 w-4">
                 <span
