@@ -41,7 +41,7 @@ const C = {
 
 /** Syntax palette for the code windows. Tuned to sit beside --accent. */
 const S = {
-  comment: "#5c6370",
+  comment: "#7d8590",
   key: "#c678dd",
   str: "#98c379",
   num: "#d19a66",
@@ -124,10 +124,10 @@ function glass(radius = 24, hi = false) {
 /** Solid panel. Code and terminals need opaque ground, not refraction —
  *  monospace over a blurred gradient is where legibility goes to die. */
 function panel(radius = 20) {
-  return `background:linear-gradient(180deg, #121316 0%, #0d0e10 100%);
-    border:1px solid rgba(255,255,255,0.09);
+  return `background:linear-gradient(180deg, #262a33 0%, #1b1e25 100%);
+    border:1px solid rgba(255,255,255,0.20);
     border-radius:${radius}px;
-    box-shadow:0 26px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);`;
+    box-shadow:0 30px 70px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.14);`;
 }
 
 function tone(t) {
@@ -146,11 +146,12 @@ function tone(t) {
 function chrome(label, accentDot) {
   const dot = (c) =>
     `<span style="width:12px;height:12px;border-radius:99px;background:${c};display:block"></span>`;
-  return `<div style="display:flex;align-items:center;gap:9px;padding:16px 20px;
-      border-bottom:1px solid rgba(255,255,255,0.07)">
+  return `<div style="display:flex;align-items:center;gap:9px;padding:16px 22px;
+      background:rgba(255,255,255,0.07);
+      border-bottom:1px solid rgba(255,255,255,0.13)">
     ${dot("#ff5f57")}${dot("#febc2e")}${dot("#28c840")}
-    <span style="margin-left:10px;font-family:${MONO};font-size:19px;
-      color:${accentDot ? C.accent : C.secondary};letter-spacing:-0.01em">${label}</span>
+    <span style="margin-left:10px;font-family:${MONO};font-size:20px;font-weight:500;
+      color:${accentDot ? "#9aa4ee" : "#b6bcc6"};letter-spacing:-0.01em">${label}</span>
   </div>`;
 }
 
@@ -159,9 +160,12 @@ function chrome(label, accentDot) {
  * pairs so the colouring is intentional rather than regex-guessed.
  */
 function codeWindow(cw) {
-  const lines = cw.lines
+  const src = [...cw.lines];
+  while (src.length && src[0] === "") src.shift();
+  while (src.length && src[src.length - 1] === "") src.pop();
+  const lines = src
     .map((ln) => {
-      if (ln === "") return `<div style="height:26px"></div>`;
+      if (ln === "") return `<div style="height:24px"></div>`;
       const spans = (Array.isArray(ln) ? ln : [[ln, "text"]])
         .map(([t, kind]) => {
           const color =
@@ -183,14 +187,18 @@ function codeWindow(cw) {
 
   return `<div style="${panel(18)}overflow:hidden;margin-top:26px">
     ${chrome(cw.file, cw.accentFile)}
-    <div style="padding:24px 26px;font-family:${MONO};font-size:24px;
-      line-height:1.62;letter-spacing:-0.01em">${lines}</div>
+    <div style="padding:30px 32px;font-family:${MONO};font-size:30px;
+      line-height:1.6;letter-spacing:-0.01em">${lines}</div>
   </div>`;
 }
 
 /** Terminal block. Prompt lines get an accent caret, output stays muted. */
 function terminal(t) {
-  const lines = t.lines
+  const src = [...t.lines];
+  const blank = (ln) => (Array.isArray(ln) ? ln[0] : ln) === "";
+  while (src.length && blank(src[0])) src.shift();
+  while (src.length && blank(src[src.length - 1])) src.pop();
+  const lines = src
     .map((ln) => {
       const [text, kind] = Array.isArray(ln) ? ln : [ln, "out"];
       if (kind === "cmd") {
@@ -209,8 +217,8 @@ function terminal(t) {
 
   return `<div style="${panel(18)}overflow:hidden;margin-top:26px">
     ${chrome(t.title || "zsh", true)}
-    <div style="padding:24px 26px;font-family:${MONO};font-size:24px;
-      line-height:1.66;letter-spacing:-0.01em">${lines}</div>
+    <div style="padding:30px 32px;font-family:${MONO};font-size:30px;
+      line-height:1.64;letter-spacing:-0.01em">${lines}</div>
   </div>`;
 }
 
@@ -223,24 +231,24 @@ function fileTree(tree) {
     .map((it) => {
       const pad = 26 + (it.depth || 0) * 34;
       const isDir = it.dir;
-      const color = it.on ? C.accent : isDir ? C.text : C.secondary;
+      const color = it.on ? C.accent : isDir ? C.text : "#b3b9c4";
       const weight = it.on ? 600 : isDir ? 500 : 400;
       const icon = isDir
-        ? `<svg viewBox="0 0 24 24" style="width:22px;height:22px;flex:none" aria-hidden="true">
-             <path fill="${it.on ? C.accent : "#6b7280"}" d="M2 6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/>
+        ? `<svg viewBox="0 0 24 24" style="width:26px;height:26px;flex:none" aria-hidden="true">
+             <path fill="${it.on ? C.accent : "#8b93a1"}" d="M2 6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/>
            </svg>`
-        : `<svg viewBox="0 0 24 24" style="width:22px;height:22px;flex:none" aria-hidden="true">
-             <path fill="none" stroke="${it.on ? C.accent : "#5b6068"}" stroke-width="1.9"
+        : `<svg viewBox="0 0 24 24" style="width:26px;height:26px;flex:none" aria-hidden="true">
+             <path fill="none" stroke="${it.on ? C.accent : "#8b93a1"}" stroke-width="1.9"
                d="M6 2.8h7l5 5v13.4H6z"/>
            </svg>`;
-      return `<div style="display:flex;align-items:center;gap:14px;padding:13px 26px 13px ${pad}px;
+      return `<div style="display:flex;align-items:center;gap:16px;padding:17px 28px 17px ${pad}px;
           ${it.on ? `background:rgba(94,106,210,0.10);border-left:3px solid ${C.accent};padding-left:${pad - 3}px;` : ""}">
         ${icon}
-        <span style="font-family:${MONO};font-size:25px;color:${color};
+        <span style="font-family:${MONO};font-size:30px;color:${color};
           font-weight:${weight};letter-spacing:-0.01em">${it.name}</span>
         ${
           it.note
-            ? `<span style="margin-left:auto;font-size:20px;color:${it.on ? C.accent : C.secondary}">${it.note}</span>`
+            ? `<span style="margin-left:auto;font-size:23px;color:${it.on ? C.accent : "#9aa1ad"}">${it.note}</span>`
             : ""
         }
       </div>`;
@@ -260,9 +268,9 @@ function fileTree(tree) {
 function compare(cmp) {
   const col = (side, isBad) => `
     <div style="flex:1;${panel(18)}overflow:hidden">
-      <div style="display:flex;align-items:center;gap:11px;padding:16px 20px;
-          border-bottom:1px solid rgba(255,255,255,0.07);
-          background:${isBad ? "rgba(229,72,77,0.09)" : "rgba(76,195,138,0.09)"}">
+      <div style="display:flex;align-items:center;gap:11px;padding:17px 22px;
+          border-bottom:1px solid rgba(255,255,255,0.13);
+          background:${isBad ? "rgba(229,72,77,0.20)" : "rgba(76,195,138,0.18)"}">
         <svg viewBox="0 0 24 24" style="width:23px;height:23px;flex:none" aria-hidden="true">
           ${
             isBad
@@ -270,15 +278,15 @@ function compare(cmp) {
               : `<circle cx="12" cy="12" r="10" fill="${C.green}"/><path d="M7 12.5l3.5 3.5L17 9" fill="none" stroke="#08090a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`
           }
         </svg>
-        <span style="font-size:21px;font-weight:600;letter-spacing:0.04em;
+        <span style="font-size:22px;font-weight:600;letter-spacing:0.04em;
           text-transform:uppercase;color:${isBad ? C.danger : C.green}">${side.label}</span>
       </div>
-      <div style="padding:22px 22px 24px">
-        <div style="font-family:${MONO};font-size:23px;color:${C.text};
-          line-height:1.5;letter-spacing:-0.01em;white-space:pre-wrap">${side.code}</div>
+      <div style="padding:26px 24px 28px">
+        <div style="font-family:${MONO};font-size:29px;font-weight:500;color:#ffffff;
+          line-height:1.5;letter-spacing:-0.01em">${side.code.replace(/\n/g, "<br>")}</div>
         ${
           side.note
-            ? `<div style="margin-top:16px;font-size:21px;color:${C.secondary};line-height:1.4">${side.note}</div>`
+            ? `<div style="margin-top:18px;font-size:23px;color:#a2a8b2;line-height:1.42">${side.note}</div>`
             : ""
         }
       </div>
@@ -305,8 +313,8 @@ function steps(list) {
           }
         </div>
         <div style="flex:1;padding:20px 24px;${panel(16)}">
-          <div style="font-family:${MONO};font-size:25px;color:${C.text};font-weight:600;letter-spacing:-0.01em">${s.k}</div>
-          <div style="font-size:22px;color:${C.secondary};margin-top:8px;line-height:1.4">${s.v}</div>
+          <div style="font-family:${MONO};font-size:28px;color:${C.text};font-weight:600;letter-spacing:-0.01em">${s.k}</div>
+          <div style="font-size:24px;color:#a2a8b2;margin-top:9px;line-height:1.4">${s.v}</div>
         </div>
       </div>`
     )
@@ -316,22 +324,22 @@ function steps(list) {
 /** Oversized figure with a caption. */
 function figure(f) {
   return `<div style="margin-top:26px;padding:34px 38px;${glass(24, true)}">
-    <div style="font-size:150px;font-weight:700;color:${C.accent};letter-spacing:-0.05em;
+    <div style="font-size:190px;font-weight:700;color:${C.accent};letter-spacing:-0.05em;
       line-height:0.95;text-shadow:0 0 80px ${C.accentGlow}">${f.value}</div>
-    <div style="font-size:25px;color:${C.text};margin-top:14px;line-height:1.4">${f.label}</div>
+    <div style="font-size:28px;color:${C.text};margin-top:16px;line-height:1.4">${f.label}</div>
   </div>`;
 }
 
 /** Labelled bar meter — for "most people never do this" style contrasts. */
 function bars(list) {
-  return `<div style="margin-top:26px;display:flex;flex-direction:column;gap:20px">${list
+  return `<div style="margin-top:26px;display:flex;flex-direction:column;gap:30px">${list
     .map(
       (b) => `<div>
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
-          <span style="font-size:24px;color:${C.text};letter-spacing:-0.01em">${b.label}</span>
-          <span style="font-size:24px;font-weight:600;color:${b.on ? C.accent : C.secondary}">${b.value}</span>
+          <span style="font-size:27px;color:${C.text};letter-spacing:-0.01em">${b.label}</span>
+          <span style="font-size:27px;font-weight:700;color:${b.on ? C.accent : "#a2a8b2"}">${b.value}</span>
         </div>
-        <div style="height:16px;border-radius:99px;background:rgba(255,255,255,0.07);overflow:hidden">
+        <div style="height:22px;border-radius:99px;background:rgba(255,255,255,0.07);overflow:hidden">
           <div style="width:${b.pct}%;height:100%;border-radius:99px;
             background:${b.on ? `linear-gradient(90deg,${C.accent},#8b95e8)` : "rgba(255,255,255,0.18)"};
             ${b.on ? `box-shadow:0 0 22px ${C.accentGlow}` : ""}"></div>
@@ -346,7 +354,7 @@ function checks(list) {
   return `<div style="display:flex;flex-direction:column;gap:16px;margin-top:26px">${list
     .map(
       (c) => `<div style="display:flex;align-items:center;gap:16px">
-        <span style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;
+        <span style="display:flex;align-items:center;justify-content:center;width:46px;height:46px;
           border-radius:99px;flex:none;background:rgba(94,106,210,0.16);
           box-shadow:inset 0 0 0 1px rgba(94,106,210,0.4)">
           <svg viewBox="0 0 24 24" style="width:22px;height:22px" aria-hidden="true">
@@ -354,7 +362,7 @@ function checks(list) {
               stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </span>
-        <span style="font-size:26px;color:${C.text};letter-spacing:-0.01em">${c}</span>
+        <span style="font-size:29px;color:${C.text};letter-spacing:-0.01em">${c}</span>
       </div>`
     )
     .join("")}</div>`;
@@ -364,9 +372,9 @@ function checks(list) {
 function rows(list) {
   return `<div style="display:flex;flex-direction:column;gap:14px;margin-top:26px">${list
     .map(
-      (r) => `<div style="display:flex;align-items:center;gap:20px;padding:22px 26px;${panel(16)}">
+      (r) => `<div style="display:flex;align-items:center;gap:20px;padding:26px 30px;${panel(16)}">
         <span style="font-family:${MONO};font-size:23px;font-weight:700;color:${C.accent};min-width:42px">${r.k}</span>
-        <span style="font-size:25px;color:${C.text};letter-spacing:-0.01em">${r.v}</span>
+        <span style="font-size:29px;color:${C.text};letter-spacing:-0.01em">${r.v}</span>
       </div>`
     )
     .join("")}</div>`;
@@ -376,7 +384,7 @@ function rows(list) {
 function tiers(list) {
   return `<div style="display:flex;flex-direction:column;gap:16px;margin-top:26px">${list
     .map(
-      (t) => `<div style="position:relative;padding:26px 28px;${glass(20, t.featured)}
+      (t) => `<div style="position:relative;padding:30px 32px;${glass(20, t.featured)}
           ${t.featured ? `border-top:2px solid ${C.accent};` : ""}">
         ${
           t.badge
@@ -387,10 +395,10 @@ function tiers(list) {
             : ""
         }
         <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px">
-          <span style="font-size:30px;font-weight:600;color:${C.text};letter-spacing:-0.02em">${t.name}</span>
-          <span style="font-size:36px;font-weight:700;color:${t.featured ? C.accent : C.text};letter-spacing:-0.03em">${t.price}</span>
+          <span style="font-size:33px;font-weight:600;color:${C.text};letter-spacing:-0.02em">${t.name}</span>
+          <span style="font-size:40px;font-weight:700;color:${t.featured ? C.accent : C.text};letter-spacing:-0.03em">${t.price}</span>
         </div>
-        <div style="font-size:22px;color:${C.secondary};margin-top:10px;line-height:1.4">${t.detail}</div>
+        <div style="font-size:24px;color:#a2a8b2;margin-top:12px;line-height:1.4">${t.detail}</div>
       </div>`
     )
     .join("")}</div>`;
@@ -401,8 +409,8 @@ function stats(list) {
   return `<div style="display:flex;gap:16px;margin-top:26px">${list
     .map(
       (st) => `<div style="flex:1;padding:26px 22px;${glass(20)}">
-        <div style="font-size:54px;font-weight:700;color:${C.text};letter-spacing:-0.03em;line-height:1">${st.value}</div>
-        <div style="font-size:20px;color:${C.secondary};margin-top:10px;line-height:1.3">${st.label}</div>
+        <div style="font-size:62px;font-weight:700;color:${C.text};letter-spacing:-0.03em;line-height:1">${st.value}</div>
+        <div style="font-size:22px;color:#a2a8b2;margin-top:12px;line-height:1.3">${st.label}</div>
       </div>`
     )
     .join("")}</div>`;
@@ -473,8 +481,8 @@ function slide(s, index, total, handle) {
 
   let size;
   if (hasGraphic) {
-    size = longest > 24 ? 52 : longest > 18 ? 58 : 64;
-    if (lines.length >= 3) size = Math.min(size, 50);
+    size = longest > 24 ? 62 : longest > 18 ? 70 : 76;
+    if (lines.length >= 3) size = Math.min(size, 58);
   } else {
     size = longest > 24 ? 78 : longest > 19 ? 88 : longest > 15 ? 96 : 104;
     if (lines.length >= 4) size = Math.min(size, 70);
@@ -505,7 +513,7 @@ function slide(s, index, total, handle) {
     : "";
 
   const body = s.body
-    ? `<p style="margin:${hasGraphic ? 18 : 26}px 0 0;font-size:${hasGraphic ? 24 : 28}px;
+    ? `<p style="margin:${hasGraphic ? 20 : 28}px 0 0;font-size:${hasGraphic ? 26 : 29}px;
         line-height:1.48;color:${C.secondary};max-width:900px;letter-spacing:-0.005em">${s.body}</p>`
     : "";
 
