@@ -266,6 +266,19 @@ function ProjectDrawer({
             value={draft.category}
             onChange={(v) => set("category", v)}
           />
+
+          {/* Up here, not below three Markdown editors. It was the last field
+              in a long scrolling drawer, so it read as missing entirely — and
+              a case study with no link to the thing it describes is the most
+              common thing to forget. */}
+          <Field
+            label="Live URL"
+            value={draft.liveUrl}
+            onChange={(v) => set("liveUrl", v)}
+            placeholder="https://"
+            help="Linked from the work card and the case study."
+          />
+
           <TextArea
             label="Summary"
             rows={3}
@@ -300,12 +313,6 @@ function ProjectDrawer({
             label="Tech stack"
             values={draft.techStack}
             onChange={(v) => set("techStack", v)}
-          />
-          <Field
-            label="Live URL"
-            value={draft.liveUrl}
-            onChange={(v) => set("liveUrl", v)}
-            placeholder="https://"
           />
 
           <div className="grid grid-cols-2 gap-3">

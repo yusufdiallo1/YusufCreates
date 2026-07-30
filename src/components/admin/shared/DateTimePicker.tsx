@@ -248,17 +248,23 @@ export function DateTimePicker({
               <span className="text-secondary">:</span>
               <select
                 aria-label="Minutes"
-                value={
-                  // Snapped to the nearest five so the option always exists —
-                  // otherwise a stored 07 renders as an empty select.
-                  Math.round((selected ?? view).getMinutes() / 5) * 5 % 60
-                }
+                /*
+                 * Every minute, not every fifth.
+                 *
+                 * The list used to hold twelve options and the value was
+                 * rounded to the nearest five so it always matched one of
+                 * them — which meant opening a post scheduled for :07 showed
+                 * :05, and saving without touching the field silently moved
+                 * it. A picker that quietly edits the value it was given is
+                 * worse than one that offers fewer choices.
+                 */
+                value={(selected ?? view).getMinutes()}
                 onChange={(e) =>
                   setTime((selected ?? view).getHours(), Number(e.target.value))
                 }
                 className="hairline rounded-md bg-surface-1 px-2 py-1.5 text-xs text-primary"
               >
-                {Array.from({ length: 12 }, (_, i) => i * 5).map((m) => (
+                {Array.from({ length: 60 }, (_, m) => m).map((m) => (
                   <option key={m} value={m}>
                     {pad(m)}
                   </option>

@@ -280,11 +280,21 @@ function PostDrawer({
             </div>
           </div>
 
-          {draft.published &&
-          new Date(draft.publishedAt).getTime() > mountedAt ? (
-            <p className="text-xs text-[color:var(--text-notice)]">
-              Scheduled — this stays hidden until that date passes.
-            </p>
+          {/* Says which of the two it is, rather than leaving a pre-filled
+              date to be read as "scheduled" when it means "now". Only the
+              future case is a warning; the immediate case is the default and
+              is stated plainly. */}
+          {draft.published ? (
+            new Date(draft.publishedAt).getTime() > mountedAt ? (
+              <p className="text-xs text-[color:var(--text-notice)]">
+                Scheduled — this stays hidden until that date passes.
+              </p>
+            ) : (
+              <p className="text-xs text-secondary">
+                Goes live as soon as you save. Set a future date to schedule
+                it instead.
+              </p>
+            )
           ) : null}
         </div>
 

@@ -38,6 +38,7 @@ export type Project = {
   coverUrl?: string;
   result?: string;
   summary: string;
+  liveUrl?: string;
 };
 
 type ProjectsProps = {
@@ -329,6 +330,19 @@ export function ProjectCard({ project }: { project: Project }) {
             {project.category}
           </span>
           <span className="text-xs text-secondary">{project.client}</span>
+
+          {/* A marker, not a link — the whole card is already an anchor to the
+              case study, and an <a> inside an <a> is invalid. Saying the site
+              is live is the useful part; the case study carries the link. */}
+          {project.liveUrl ? (
+            <span className="ml-auto flex items-center gap-1.5 text-xs text-accent">
+              <span
+                aria-hidden="true"
+                className="size-1.5 rounded-full bg-accent"
+              />
+              Live
+            </span>
+          ) : null}
         </div>
       </div>
     </Link>

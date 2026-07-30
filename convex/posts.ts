@@ -72,16 +72,15 @@ export const create = mutation({
   },
 });
 
-export const setPublished = mutation({
-  args: { id: v.id("posts"), published: v.boolean() },
-  handler: async (ctx, args) => {
-    await requireAdmin(ctx);
-    await ctx.db.patch(args.id, {
-      published: args.published,
-      publishedAt: args.published ? Date.now() : undefined,
-    });
-  },
-});
+/*
+ * No setPublished here.
+ *
+ * It toggled `published` and overwrote `publishedAt` with Date.now(), so
+ * flipping a scheduled post on would have silently moved its date to the
+ * present and published it immediately. Nothing called it — the drawer sends
+ * both fields through `update` — so it was a trap waiting for the first
+ * person to wire up a quick toggle in the list.
+ */
 
 /** Admin list — includes drafts, which listPublished deliberately hides. */
 export const listAll = query({
