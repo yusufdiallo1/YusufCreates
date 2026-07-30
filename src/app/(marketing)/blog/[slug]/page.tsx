@@ -7,6 +7,7 @@ import { api, isConvexConfigured } from "@/lib/convex-api";
 import { SITE } from "@/lib/constants";
 import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { renderMarkdown } from "@/lib/markdown";
 
 /**
  * Blog post.
@@ -111,9 +112,7 @@ export default async function BlogPostPage({
           </div>
         ) : null}
 
-        <div className="legal-prose mt-12">
-          <Markdown source={post.body} />
-        </div>
+        <div className="legal-prose mt-12">{renderMarkdown(post.body)}</div>
 
         {post.tags && post.tags.length > 0 ? (
           <div className="mt-14 flex flex-wrap gap-2">
@@ -132,33 +131,3 @@ export default async function BlogPostPage({
   );
 }
 
-/**
- * The same markdown subset the admin preview renders, so what is previewed is
- * what ships. Deliberately small — headings, lists and paragraphs cover
- * everything I actually write.
- */
-function Markdown({ source }: { source: string }) {
-  return (
-    <>
-      {source.split(/\n{2,}/).map((block, i) => {
-        const text = block.trim();
-        if (!text) return null;
-
-        if (text.startsWith("## ")) return <h2 key={i}>{text.slice(3)}</h2>;
-        if (text.startsWith("# ")) return <h2 key={i}>{text.slice(2)}</h2>;
-
-        if (text.startsWith("- ")) {
-          return (
-            <ul key={i}>
-              {text.split("\n").map((line, j) => (
-                <li key={j}>{line.replace(/^-\s*/, "")}</li>
-              ))}
-            </ul>
-          );
-        }
-
-        return <p key={i}>{text}</p>;
-      })}
-    </>
-  );
-}

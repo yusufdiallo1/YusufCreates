@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useMutation, useConvex } from "convex/react";
 import { api } from "@/lib/convex-api";
 import { uploadFile, uploadImage } from "@/lib/upload";
+import { renderMarkdown } from "@/lib/markdown";
 import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
 import { FieldError } from "@/components/ui/FieldError";
 
@@ -131,35 +132,6 @@ export function Markdown({
       )}
     </div>
   );
-}
-
-/**
- * Minimal markdown for the preview only — headings, bold, links, paragraphs.
- * The published page renders through the same subset, so what is previewed is
- * what ships.
- */
-function renderMarkdown(source: string): React.ReactNode {
-  return source.split(/\n{2,}/).map((block, i) => {
-    const trimmed = block.trim();
-    if (!trimmed) return null;
-
-    if (trimmed.startsWith("## ")) {
-      return <h2 key={i}>{trimmed.slice(3)}</h2>;
-    }
-    if (trimmed.startsWith("# ")) {
-      return <h1 key={i}>{trimmed.slice(2)}</h1>;
-    }
-    if (trimmed.startsWith("- ")) {
-      return (
-        <ul key={i}>
-          {trimmed.split("\n").map((line, j) => (
-            <li key={j}>{line.replace(/^-\s*/, "")}</li>
-          ))}
-        </ul>
-      );
-    }
-    return <p key={i}>{trimmed}</p>;
-  });
 }
 
 /** Chip input for tech stacks and tags. */
