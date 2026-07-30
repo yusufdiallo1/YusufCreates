@@ -33,6 +33,7 @@ export const submit = mutation({
     targetLaunch: v.optional(v.string()),
     decisionMakers: v.optional(v.string()),
     supportScope: v.optional(v.string()),
+    promoCode: v.optional(v.string()),
     source: v.optional(v.string()),
     currency: v.optional(v.string()),
     vatNumber: v.optional(v.string()),

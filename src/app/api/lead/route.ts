@@ -64,6 +64,7 @@ interface Payload {
   targetLaunch?: string;
   decisionMakers?: string;
   supportScope?: string;
+  promoCode?: string;
   tier?: string;
   budget?: string;
   timeline?: string;
@@ -184,6 +185,9 @@ export async function POST(request: Request) {
       targetLaunch: trim(payload.targetLaunch),
       decisionMakers: trim(payload.decisionMakers),
       supportScope: trim(payload.supportScope),
+      // Uppercased to match how codes are issued, so a lead typed in lower
+      // case still lines up with the promo when the invoice is raised.
+      promoCode: trim(payload.promoCode)?.toUpperCase(),
       tier: payload.tier || undefined,
       budget: payload.budget || undefined,
       timeline: payload.timeline || undefined,
@@ -287,6 +291,7 @@ function buildSummary(p: Payload): { label: string; value: string }[] {
     ["Budget", p.budget],
     ["Timeline", p.timeline],
     ["Support scope", p.supportScope],
+    ["Discount code", p.promoCode],
     ["Procurement", p.procurementProcess],
     ["NDA required", p.ndaRequired === "yes" ? "Yes" : undefined],
     ["Target launch", p.targetLaunch],

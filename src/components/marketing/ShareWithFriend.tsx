@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { track } from "@/lib/track";
+import { shareId } from "@/lib/referral";
+import { Modal } from "@/components/ui/Modal";
 
 /**
  * Share the site with someone, and they get 10% off for 14 days.
@@ -18,24 +20,43 @@ import { track } from "@/lib/track";
  * links, which are the two that work everywhere.
  */
 
-const SHARE_KEY = "yc.ref";
-
-function shareId(): string {
-  try {
-    const existing = localStorage.getItem(SHARE_KEY);
-    if (existing) return existing;
-    const made = crypto.randomUUID().slice(0, 8);
-    localStorage.setItem(SHARE_KEY, made);
-    return made;
-  } catch {
-    return crypto.randomUUID().slice(0, 8);
-  }
-}
-
 const MESSAGE =
   "Thought of you — Yusuf builds websites and web apps properly. This link gets you 10% off:";
 
-export function ShareWithFriend() {
+/**
+ * The footer entry point — a link, not the whole block.
+ *
+ * The share controls used to sit open in the footer, which gave four buttons
+ * equal weight with the newsletter beside them for an offer most visitors
+ * are not ready to act on. Behind a link they are there for the person
+ * looking for them and quiet for everyone else.
+ */
+export function ShareWithFriendLink({ className }: { className?: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={className}
+      >
+        Refer a friend
+      </button>
+
+      <Modal
+        open={open}
+        onOpenChange={setOpen}
+        title="Know someone who needs a site?"
+        description="Send them this link and they get 10% off their project, good for 14 days. Applies to everything except Enterprise."
+      >
+        <ShareWithFriend inModal />
+      </Modal>
+    </>
+  );
+}
+
+export function ShareWithFriend({ inModal = false }: { inModal?: boolean }) {
   /*
    * Resolved after hydration. The URL depends on window.location and the id on
    * localStorage, neither of which the server can see, so computing either
@@ -46,7 +67,10 @@ export function ShareWithFriend() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    setUrl(`${window.location.origin}/?ref=${shareId()}`);
+    // Lands on /pricing, not the homepage. Someone arriving with a discount
+    // wants to see what it applies to, and the panel that hands them the code
+    // renders on every marketing route anyway.
+    setUrl(`${window.location.origin}/pricing?ref=${shareId()}`);
     setCanShare(typeof navigator !== "undefined" && !!navigator.share);
   }, []);
 
@@ -65,13 +89,19 @@ export function ShareWithFriend() {
 
   return (
     <div>
-      <p className="text-sm text-primary">Know someone who needs a site?</p>
-      <p className="mt-1.5 text-xs text-secondary">
-        Send them this link and they get 10% off their project, good for 14
-        days. Applies to everything except Enterprise.
-      </p>
+      {/* The modal states the offer in its own title and description, so
+          repeating it here would say the same thing twice in one panel. */}
+      {inModal ? null : (
+        <>
+          <p className="text-sm text-primary">Know someone who needs a site?</p>
+          <p className="mt-1.5 text-xs text-secondary">
+            Send them this link and they get 10% off their project, good for 14
+            days. Applies to everything except Enterprise.
+          </p>
+        </>
+      )}
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className={`flex flex-wrap gap-2 ${inModal ? "" : "mt-4"}`}>
         {canShare ? (
           <button
             type="button"

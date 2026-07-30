@@ -4,7 +4,8 @@ import { Logo } from "@/components/ui/Logo";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { INSTAGRAM } from "@/lib/constants";
 import { NewsletterForm } from "@/components/marketing/NewsletterForm";
-import { ShareWithFriend } from "@/components/marketing/ShareWithFriend";
+import { ShareWithFriendLink } from "@/components/marketing/ShareWithFriend";
+import { FeedbackModal } from "@/components/marketing/FeedbackModal";
 import { AvailabilityBadge } from "@/components/marketing/AvailabilityBadge";
 
 /**
@@ -115,7 +116,14 @@ export function Footer() {
       <div className="hairline-t">
         <div className="mx-auto grid max-w-5xl gap-10 px-6 py-10 md:grid-cols-2">
           <NewsletterForm className="relative max-w-md" />
-          <ShareWithFriend />
+
+          {/* Two links rather than an open share block. Four buttons for an
+              offer most visitors are not ready to act on was taking the same
+              weight as the newsletter beside it. */}
+          <div className="flex flex-col items-start gap-3 md:items-end">
+            <ShareWithFriendLink className="text-sm text-primary transition-colors duration-fast hover:text-accent" />
+            <FeedbackModal className="text-sm text-secondary transition-colors duration-fast hover:text-primary" />
+          </div>
         </div>
       </div>
 

@@ -15,6 +15,7 @@ import type * as auth from "../auth.js";
 import type * as broadcasts from "../broadcasts.js";
 import type * as capacity from "../capacity.js";
 import type * as chat from "../chat.js";
+import type * as cleanup from "../cleanup.js";
 import type * as crons from "../crons.js";
 import type * as events from "../events.js";
 import type * as feedback from "../feedback.js";
@@ -33,6 +34,7 @@ import type * as proposals from "../proposals.js";
 import type * as referrals from "../referrals.js";
 import type * as seed from "../seed.js";
 import type * as settings from "../settings.js";
+import type * as siteFeedback from "../siteFeedback.js";
 import type * as subscribers from "../subscribers.js";
 import type * as testimonials from "../testimonials.js";
 
@@ -50,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   broadcasts: typeof broadcasts;
   capacity: typeof capacity;
   chat: typeof chat;
+  cleanup: typeof cleanup;
   crons: typeof crons;
   events: typeof events;
   feedback: typeof feedback;
@@ -68,6 +71,7 @@ declare const fullApi: ApiFromModules<{
   referrals: typeof referrals;
   seed: typeof seed;
   settings: typeof settings;
+  siteFeedback: typeof siteFeedback;
   subscribers: typeof subscribers;
   testimonials: typeof testimonials;
 }>;

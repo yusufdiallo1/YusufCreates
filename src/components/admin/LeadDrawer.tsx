@@ -95,6 +95,9 @@ export function LeadDrawer({
         ["Budget", lead.budget],
         ["Timeline", lead.timeline],
         ["Support scope", lead.supportScope],
+        // As typed. Whether it is still valid is decided when the invoice is
+        // raised, not here — a code can expire between inquiry and quote.
+        ["Discount code", lead.promoCode],
         ["Procurement", lead.procurementProcess],
         ["NDA required", lead.ndaRequired === true ? "Yes" : undefined],
         ["Target launch", lead.targetLaunch],

@@ -89,6 +89,15 @@ export default defineSchema({
     /* Support path only. */
     supportScope: v.optional(v.string()),
 
+    /**
+     * A discount code they arrived with, as typed.
+     *
+     * Recorded, not applied. Validity is decided when the invoice is issued —
+     * storing a resolved discount here would let a code that has since
+     * expired or been exhausted still be honoured weeks later.
+     */
+    promoCode: v.optional(v.string()),
+
     /** Private admin notes. Append-only, timestamped. Never shown publicly. */
     notes: v.optional(v.string()),
     score: v.optional(v.number()),
@@ -174,6 +183,23 @@ export default defineSchema({
     from: v.optional(v.string()),
     resolved: v.boolean(),
   }).index("by_project", ["projectId", "resolved"]),
+
+  /**
+   * Unsolicited feedback from the footer — separate from `feedback`, which is
+   * a rating attached to a specific project by a client.
+   *
+   * Anyone can write here, so nothing in it is trusted: it is shown in the
+   * admin as plain text and never rendered as markup anywhere public.
+   */
+  siteFeedback: defineTable({
+    name: v.string(),
+    email: v.string(),
+    message: v.string(),
+    /** Which page they were on. Context for a vague report. */
+    path: v.optional(v.string()),
+    read: v.boolean(),
+    createdAt: v.number(),
+  }).index("by_read", ["read", "createdAt"]),
 
   events: defineTable({
     type: v.string(),

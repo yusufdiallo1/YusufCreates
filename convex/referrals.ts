@@ -23,6 +23,22 @@ const PERCENT_OFF = 10;
 /** Referral codes never apply to Enterprise — that pricing is negotiated. */
 const EXCLUDED_TIERS = ["enterprise"];
 
+/**
+ * Every tier a referral code is good for.
+ *
+ * Stated as an allow-list because `appliesTo: []` means "every tier" in the
+ * schema — so the exclusion above was declared, exposed through `terms`, and
+ * then not enforced. The share copy promised Enterprise was excluded while
+ * the code applied to it.
+ */
+const ELIGIBLE_TIERS = [
+  "launch",
+  "growth",
+  "app",
+  "native",
+  "care",
+].filter((t) => !EXCLUDED_TIERS.includes(t));
+
 function makeCode(): string {
   const bytes = new Uint8Array(CODE_LEN);
   crypto.getRandomValues(bytes);
@@ -34,16 +50,27 @@ function makeCode(): string {
 /**
  * Issues a code to someone who arrived through a share link.
  *
- * Idempotent per referral id: reloading the landing page must not mint a new
- * code each time, or one share becomes an unlimited discount generator.
+ * Idempotent per VISITOR, not per share link.
+ *
+ * It used to key on the referral id alone — which comes from the sharer's
+ * browser and is therefore the same for everyone who follows one link. Every
+ * recipient resolved to the same promo row, and that row allows a single
+ * redemption, so the first person to use it burned the code and everyone
+ * after got a dead one.
+ *
+ * The visitor id is minted client-side and kept in their own storage, so a
+ * reload still returns the same code while a different person gets their own.
+ * Neither id is trusted for anything but idempotency — the discount is fixed
+ * here, not passed in.
  */
 export const claim = mutation({
-  args: { ref: v.string() },
+  args: { ref: v.string(), visitor: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const ref = args.ref.trim().slice(0, 64);
     if (!ref) return { ok: false as const };
 
-    const name = `Referral ${ref}`;
+    const visitor = args.visitor?.trim().slice(0, 64);
+    const name = visitor ? `Referral ${ref}:${visitor}` : `Referral ${ref}`;
 
     // Same visitor, same code — reloading the page must not mint a new one.
     // Indexed rather than scanned: this runs on a page load, and the table it
@@ -84,7 +111,9 @@ export const claim = mutation({
       code,
       discountType: "percentage",
       discountValue: PERCENT_OFF,
-      appliesTo: [],
+      // Named tiers, not an empty array — empty means "everything", which
+      // included the one tier the offer says it excludes.
+      appliesTo: ELIGIBLE_TIERS,
       startsAt: now,
       endsAt,
       // One project per referral. Without this the code spreads beyond the

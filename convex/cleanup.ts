@@ -76,3 +76,34 @@ export const removeStrayAccount = internalMutation({
     };
   },
 });
+
+/** Clears the rows left behind by verification runs. */
+export const removeTestData = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const promos = await ctx.db.query("promos").collect();
+    let removedPromos = 0;
+    for (const p of promos) {
+      // Only the synthetic refs used while verifying the per-visitor fix.
+      if (
+        /^Referral (idx-verify|share-link-1|tier-test|browsertest|showonce)/.test(
+          p.name,
+        )
+      ) {
+        await ctx.db.delete(p._id);
+        removedPromos++;
+      }
+    }
+
+    const feedback = await ctx.db.query("siteFeedback").collect();
+    let removedFeedback = 0;
+    for (const f of feedback) {
+      if (f.email === "verify@example.com") {
+        await ctx.db.delete(f._id);
+        removedFeedback++;
+      }
+    }
+
+    return { removedPromos, removedFeedback };
+  },
+});

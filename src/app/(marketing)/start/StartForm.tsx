@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { storedReferralCode } from "@/lib/referral";
 import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
 import { Reveal } from "@/components/motion/Reveal";
 import { SubmitSuccess } from "@/components/marketing/SubmitSuccess";
@@ -74,6 +75,18 @@ export function StartForm() {
     contactPreference: "Email",
     message: "",
   });
+
+  /*
+   * Carry over a code claimed on this device.
+   *
+   * In an effect, not in the initial state: localStorage does not exist on
+   * the server, so reading it during render would make the two passes
+   * disagree and hydration would fail.
+   */
+  useEffect(() => {
+    const stored = storedReferralCode();
+    if (stored) setValues((v) => ({ ...v, promoCode: stored }));
+  }, []);
 
   // Which fields have been left once. Errors show only after that, or after a
   // failed attempt to advance — nobody should be corrected mid-word.
@@ -327,6 +340,28 @@ export function StartForm() {
                   value={values.message ?? ""}
                   onChange={(e) => set("message")(e.target.value)}
                   className="hairline mt-2 w-full rounded-lg bg-surface-1 px-4 py-3 text-sm text-primary"
+                />
+              </div>
+
+              {/* Pre-filled when they arrived through a share link. The code
+                  was being issued, shown and stored, and then never asked
+                  for — so a referral discount could only be redeemed by
+                  someone who thought to mention it unprompted. */}
+              <div className="mt-6">
+                <label htmlFor="promoCode" className="text-sm text-secondary">
+                  Discount code (optional)
+                </label>
+                <input
+                  id="promoCode"
+                  type="text"
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={values.promoCode ?? ""}
+                  onChange={(e) =>
+                    set("promoCode")(e.target.value.toUpperCase())
+                  }
+                  placeholder="YC…"
+                  className="hairline mt-2 w-full rounded-lg bg-surface-1 px-4 py-3 font-mono text-sm tracking-[0.15em] text-primary uppercase"
                 />
               </div>
 
