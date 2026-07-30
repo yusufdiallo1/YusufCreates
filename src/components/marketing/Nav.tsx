@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -30,6 +30,9 @@ export function Nav() {
   const pathname = usePathname();
   const [condensed, setCondensed] = useState(false);
   const [open, setOpen] = useState(false);
+  // Set when pointerdown has already toggled the menu, so the click that
+  // follows on a mouse does not toggle it straight back.
+  const pointerHandled = useRef(false);
 
   useEffect(() => {
     const onScroll = () => setCondensed(window.scrollY > 24);
@@ -47,12 +50,20 @@ export function Nav() {
   }
 
   // Lock the page behind the overlay, and restore on close.
+  //
+  // The flag on <html> is how anything else fixed to the viewport knows to get
+  // out of the way — the chat pill sits at the same stacking level as this
+  // overlay, so without it the pill stayed on top of the open menu and swallowed
+  // taps meant for the nav. A data attribute rather than a context because the
+  // two live in different trees and only CSS needs to know.
   useEffect(() => {
     if (!open) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    document.documentElement.dataset.navOpen = "true";
     return () => {
       document.body.style.overflow = previous;
+      delete document.documentElement.dataset.navOpen;
     };
   }, [open]);
 
@@ -127,6 +138,15 @@ export function Nav() {
               is silently dropped. That is why it took several taps. Pointer
               events fire on contact, before any of that can happen.
 
+              But preventDefault on pointerdown also suppresses the click the
+              browser would synthesise, and Enter/Space on a <button> arrive
+              as a click with no pointer event before them — so handling only
+              pointerdown made the menu unreachable by keyboard entirely.
+
+              Both are handled, and the ref guards against the pair firing for
+              one activation: a mouse produces pointerdown AND click, which
+              would otherwise toggle twice and leave the menu shut.
+
               The target is 44px with touch-manipulation, which also removes
               the 300ms double-tap delay some mobile browsers still apply.
             */}
@@ -134,6 +154,15 @@ export function Nav() {
               type="button"
               onPointerDown={(e) => {
                 e.preventDefault();
+                pointerHandled.current = true;
+                setOpen((v) => !v);
+              }}
+              onClick={() => {
+                // Already toggled on contact; this is the click that followed.
+                if (pointerHandled.current) {
+                  pointerHandled.current = false;
+                  return;
+                }
                 setOpen((v) => !v);
               }}
               aria-expanded={open}
@@ -174,21 +203,32 @@ export function Nav() {
         {open ? (
           <motion.div
             id="mobile-nav"
-            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
-            transition={{ duration: reduceMotion ? 0.12 : 0.24, ease: [0.16, 1, 0.3, 1] }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -10 }}
+            /* Opening reads as a movement, not a cut. Closing stays quicker
+               than opening — waiting on a panel you have already dismissed
+               feels like lag, where the same duration on the way in reads as
+               considered. */
+            transition={{
+              duration: reduceMotion ? 0.12 : 0.42,
+              ease: [0.16, 1, 0.3, 1],
+            }}
             className="fixed inset-0 z-40 flex flex-col bg-canvas px-6 pt-28 pb-10 md:hidden"
           >
             <ul className="flex flex-col gap-2">
               {NAV_ITEMS.map((item, index) => (
                 <motion.li
                   key={item.href}
-                  initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+                  initial={reduceMotion ? false : { opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
+                  /* Staggered with the panel, not after it: the last item
+                     lands around the time the panel settles, so the whole
+                     thing reads as one movement rather than a list catching
+                     up with its own container. */
                   transition={{
-                    duration: 0.3,
-                    delay: reduceMotion ? 0 : 0.04 + index * 0.035,
+                    duration: reduceMotion ? 0.12 : 0.4,
+                    delay: reduceMotion ? 0 : 0.08 + index * 0.055,
                     ease: [0.16, 1, 0.3, 1],
                   }}
                 >

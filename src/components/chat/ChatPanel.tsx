@@ -37,6 +37,28 @@ export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /*
+   * The mobile nav overlay covers the page at the same stacking level as the
+   * pill and paints after it, so the pill sat on top of the open menu and took
+   * taps meant for the nav — which reads as the assistant being broken.
+   *
+   * Unmounted rather than hidden in CSS: a display:none button is still in the
+   * tab order in some engines, and Tailwind's utility layer beats a component
+   * rule on `display` anyway. Nav owns the flag on <html>.
+   */
+  const [navOpen, setNavOpen] = useState(false);
+  useEffect(() => {
+    const read = () =>
+      setNavOpen(document.documentElement.dataset.navOpen === "true");
+    read();
+    const observer = new MutationObserver(read);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-nav-open"],
+    });
+    return () => observer.disconnect();
+  }, []);
+
   const panelRef = useRef<HTMLDivElement>(null);
   const pillRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -134,20 +156,22 @@ export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
 
   return (
     <>
-      <button
-        ref={pillRef}
-        type="button"
-        onClick={() => {
-          setOpen(true);
-          track("chat_open");
-        }}
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        className="glass-depth glass-near glass-pill fixed right-5 bottom-5 z-40 flex items-center gap-2 px-4 py-3 text-sm text-primary shadow-lg lg:right-8 lg:bottom-8"
-      >
-        <span aria-hidden="true" className="size-1.5 rounded-full bg-accent" />
-        Ask a question
-      </button>
+      {navOpen ? null : (
+        <button
+          ref={pillRef}
+          type="button"
+          onClick={() => {
+            setOpen(true);
+            track("chat_open");
+          }}
+          aria-expanded={open}
+          aria-haspopup="dialog"
+          className="glass-depth glass-near glass-pill fixed right-5 bottom-5 z-40 flex items-center gap-2 px-4 py-3 text-sm text-primary shadow-lg lg:right-8 lg:bottom-8"
+        >
+          <span aria-hidden="true" className="size-1.5 rounded-full bg-accent" />
+          Ask a question
+        </button>
+      )}
 
       <AnimatePresence>
         {open ? (
