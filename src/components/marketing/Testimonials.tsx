@@ -95,10 +95,19 @@ export function Testimonials({
           </Marquee>
         </div>
       ) : (
-        <div className="mx-auto mt-12 max-w-xl px-6">
-          <Reveal>
-            <TestimonialCard item={items[0]} wide />
-          </Reveal>
+        /* Every item, not just the first. This rendered items[0] alone, so
+           featuring a second testimonial appeared to do nothing at all. Two
+           side by side; one fills the column on its own. */
+        <div className="mx-auto mt-12 max-w-4xl px-6">
+          <div
+            className={`grid gap-6 ${items.length > 1 ? "sm:grid-cols-2" : "mx-auto max-w-xl"}`}
+          >
+            {items.map((item, index) => (
+              <Reveal key={item._id} delay={index * 0.07}>
+                <TestimonialCard item={item} wide />
+              </Reveal>
+            ))}
+          </div>
         </div>
       )}
     </section>

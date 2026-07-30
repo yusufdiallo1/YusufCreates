@@ -28,7 +28,11 @@ const EMPTY = {
   quote: "",
   website: "",
   avatarUrl: "",
-  featured: false,
+  // Shown by default. The homepage only reads featured rows, so the old
+  // default meant every testimonial I added went nowhere until I found the
+  // checkbox at the bottom of the drawer — the common case needed the extra
+  // step, and hiding one is the rarer decision.
+  featured: true,
 };
 
 export function TestimonialsAdmin() {
@@ -243,6 +247,21 @@ function Drawer({
             value={draft.quote}
             onChange={(v) => set("quote", v)}
           />
+
+          {/* Directly under the quote, not at the foot of the drawer. This is
+              what decides whether the testimonial appears at all, and below
+              the avatar upload it was under the fold — easy to save without
+              ever seeing. */}
+          <label className="flex items-center gap-2.5 text-sm text-secondary">
+            <input
+              type="checkbox"
+              checked={draft.featured}
+              onChange={(e) => set("featured", e.target.checked)}
+              className="size-4 rounded"
+            />
+            Show on the homepage
+          </label>
+
           <Field
             label="Website"
             value={draft.website}
@@ -256,15 +275,6 @@ function Drawer({
             value={draft.avatarUrl}
             onChange={(v) => set("avatarUrl", v)}
           />
-          <label className="flex items-center gap-2.5 text-sm text-secondary">
-            <input
-              type="checkbox"
-              checked={draft.featured}
-              onChange={(e) => set("featured", e.target.checked)}
-              className="size-4 rounded"
-            />
-            Show on the homepage
-          </label>
         </div>
 
         <div className="mt-8 flex items-center gap-3">
