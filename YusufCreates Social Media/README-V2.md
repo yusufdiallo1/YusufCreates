@@ -1,6 +1,6 @@
 # YusufCreates Social Media — v2 (graphic)
 
-Sixteen carousels at **1080×1350 (4:5)**, rendered from code. Same brand as v1,
+Twenty-six carousels at **1080×1350 (4:5)**, rendered from code. Same brand as v1,
 but each slide shows a real object — a code window, a terminal, a file tree, a
 comparison, a meter — instead of a headline on a gradient.
 
@@ -25,7 +25,7 @@ require fails:
 node "YusufCreates Social Media/build-v2/render.js"
 ```
 
-Writes 80 slides across 16 carousels. It fails loudly rather than producing wrong
+Writes 130 slides across 26 carousels. It fails loudly rather than producing wrong
 output: it aborts if the embedded font doesn't load, and warns per slide if
 content overflows the safe area.
 
@@ -56,6 +56,9 @@ when a graphic is present, so the block keeps its room.
 | `steps` | Numbered steps with a connecting spine |
 | `figure` | One oversized numeral with a caption |
 | `bars` | Labelled meters, for contrasts |
+| `splash` | Claude Code startup banner, redrawn |
+| `people` | Creator cards with monogram avatars |
+| `quote` | Pull quote with attribution |
 | `checks` `rows` `tiers` `stats` | Carried over from v1 |
 
 Code is **hand-tokenised**, not regex-highlighted:
@@ -114,6 +117,25 @@ edited and none are checkable from this repo.
 **These decks go stale fastest.** Both tools ship constantly. Re-read the docs
 before re-posting one, not just before writing a new one.
 
+## ⚠️ Real people: monograms, never photographs
+
+Decks 22 and 23 name real creators. Two rules, both deliberate:
+
+**No headshots.** A photograph is the subject's copyright, and putting someone's
+face on a branded post implies an endorsement they never gave. The `people` and
+`quote` blocks render initials in the accent colour instead — same "this is a
+person" signal, none of the exposure. If you ever swap in real photos, get
+permission first; the avatar slot is sized for it.
+
+**No invented quotes.** Every line about a named person has to be sourced, and
+the one quotation is explicitly labelled a paraphrase in its attribution line.
+Fabricating a quote and attributing it to a real person is both dishonest and
+exactly the kind of thing this audience checks.
+
+The Claude Code splash in deck 17 is redrawn rather than screenshotted for a
+related reason: a real screenshot leaks the working directory, the plan tier,
+and whatever warnings happen to be firing that day.
+
 ## The decks
 
 | Slug | Angle |
@@ -134,6 +156,16 @@ before re-posting one, not just before writing a new one.
 | `v2-14-ultrathink` | The `ultrathink` keyword and `effort` levels |
 | `v2-15-hooks-automation` | Stop hooks, and why some commands aren't built in |
 | `v2-16-who-to-follow` | Creators worth following, and how to filter |
+| `v2-17-first-session` | The startup banner, `/init`, first five minutes |
+| `v2-18-mcp` | Connecting real tools instead of pasting data |
+| `v2-19-subagents` | Delegating to a fresh context |
+| `v2-20-cursor-agent` | Cursor Tab vs Agent |
+| `v2-21-better-prompts` | Outcome over instruction |
+| `v2-22-nate-herk` | One creator, sourced facts, one paraphrase |
+| `v2-23-follow-list` | Five worth following |
+| `v2-24-cost` | Context is the bill |
+| `v2-25-git-discipline` | Commit before you let it run |
+| `v2-26-what-changed` | What a year with these tools actually changed |
 
 Captions: `CAPTIONS-V2.md` covers `v2-07` onward plus the posting order.
 `v2-01`–`v2-04` reuse decks 12–15 in `CAPTIONS.md`; `v2-05`/`v2-06` reuse decks

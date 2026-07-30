@@ -869,6 +869,537 @@ const carousels = [
       },
     ],
   },
+  // =====================================================================
+  // ROUND FOUR — tooling, MCP, subagents, and the people worth following
+  //
+  // On the creator decks: monogram avatars, never photographs. A real
+  // headshot is the subject's copyright, and putting someone's face on a
+  // branded post implies an endorsement they never gave. Every line about
+  // a named person is a sourced fact, and the one quote is explicitly
+  // labelled a paraphrase — inventing a quotation and attributing it is
+  // both dishonest and the kind of thing this audience checks.
+  // =====================================================================
+
+  // 17. The splash. Opens the set — instantly recognisable to the audience.
+  {
+    slug: "v2-17-first-session",
+    title: "Your first five minutes",
+    slides: [
+      {
+        eyebrow: "Claude Code",
+        headline: [["This screen,", "primary"], ["then most", "primary"], ["people guess.", "accent"]],
+        body: "Five minutes of setup decides whether it’s a chat window or a system that knows your project.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "What you see",
+        headline: [["Read the", "primary"], ["banner.", "muted"]],
+        splash: {
+          title: "Terminal",
+          version: "v2.1.220",
+          model: "Opus 5 (1M context) with high effort",
+          cwd: "~/YusufCreates/YusufCreates",
+          warning: "3 MCP servers need authentication · run /mcp",
+          footer: "shift+tab to cycle modes",
+        },
+        body: "Model, context size, effort, directory. Every one of those is a setting you can change.",
+      },
+      {
+        eyebrow: "Minute one",
+        headline: [["Run /init.", "accent"], ["Then edit it.", "muted"]],
+        body: "It writes a CLAUDE.md by reading your codebase. The generated file is a starting point, not the answer — cut it down to what’s actually true and keep it short.",
+      },
+      {
+        eyebrow: "Minute two",
+        headline: [["Check where", "primary"], ["you are.", "muted"]],
+        steps: [
+          { k: "/context", v: "What is filling the window right now" },
+          { k: "/doctor", v: "Setup problems, and it can fix them" },
+          { k: "/mcp", v: "Which servers are connected" },
+          { k: "Shift+Tab", v: "Pick a permission mode before you start" },
+        ],
+      },
+      {
+        eyebrow: "The habit",
+        headline: [["Set up once.", "primary"], ["Benefit daily.", "accent"]],
+        body: "Everyone types their first prompt in under a minute. The people getting real value spent five on this screen first.",
+        cta: "Save this",
+      },
+    ],
+  },
+
+  // 18. MCP. Verified against the docs; kept conceptual, since server lists move.
+  {
+    slug: "v2-18-mcp",
+    title: "Connect it to your actual tools",
+    slides: [
+      {
+        eyebrow: "Claude Code",
+        headline: [["Stop pasting", "primary"], ["data into the", "primary"], ["chat.", "accent"]],
+        body: "MCP lets it query your tools directly. Most people never connect one.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "The idea",
+        headline: [["One protocol,", "primary"], ["any tool.", "muted"]],
+        compare: {
+          neutral: true,
+          bad: {
+            label: "Without",
+            code: "copy → paste\n→ hope",
+            note: "You become the integration. Stale the moment you paste it.",
+          },
+          good: {
+            label: "With MCP",
+            code: "it queries\nthe source",
+            note: "Live data, every time it asks.",
+          },
+        },
+      },
+      {
+        eyebrow: "What connects",
+        headline: [["Your stack,", "primary"], ["already.", "muted"]],
+        rows: [
+          { k: "01", v: "GitHub — issues, PRs, workflows" },
+          { k: "02", v: "Databases — query the real schema" },
+          { k: "03", v: "Figma — read the actual design" },
+          { k: "04", v: "Sentry, Linear, Slack, Notion" },
+        ],
+      },
+      {
+        eyebrow: "Setup",
+        headline: [["Config, not", "primary"], ["code.", "muted"]],
+        terminal: {
+          title: "zsh",
+          lines: [
+            ["claude", "cmd"],
+            ["", "out"],
+            ["3 MCP servers need authentication", "bad"],
+            ["run /mcp", "out"],
+            ["", "out"],
+            ["→ /mcp, authenticate, done", "ok"],
+          ],
+        },
+        body: "An open standard, so the same servers work in other tools too.",
+      },
+      {
+        eyebrow: "The shift",
+        headline: [["It stops", "primary"], ["guessing about", "primary"], ["your system.", "accent"]],
+        body: "The difference between an assistant that reasons about your codebase and one that can actually look at the database it’s writing queries against.",
+        cta: "Save this",
+      },
+    ],
+  },
+
+  // 19. Subagents in depth — the follow-up to deck 02's one-slide version.
+  {
+    slug: "v2-19-subagents",
+    title: "Delegate to a fresh context",
+    slides: [
+      {
+        eyebrow: "Claude Code",
+        headline: [["Your context is", "primary"], ["full of things", "primary"], ["you’ll never", "accent"]],
+        body: "Every file it searched is still sitting there, crowding out the work. Subagents fix that.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "The file",
+        headline: [["An agent is", "primary"], ["just markdown.", "muted"]],
+        code: {
+          file: ".claude/agents/auditor.md",
+          accentFile: true,
+          lines: [
+            [["---", "punct"]],
+            [["name", "key"], [": ", "punct"], ["auditor", "str"]],
+            [["description", "key"], [": ", "punct"], ["Reviews, never edits", "str"]],
+            [["tools", "key"], [": ", "punct"], ["[Read, Grep, Glob]", "str"]],
+            [["---", "punct"]],
+            "",
+            [["Report findings. Do not fix them.", "text"]],
+          ],
+        },
+      },
+      {
+        eyebrow: "Why it works",
+        headline: [["It reads a lot.", "primary"], ["You see the", "primary"], ["answer.", "muted"]],
+        bars: [
+          { label: "Inline — every file lands in your context", value: "crowded", pct: 94 },
+          { label: "Subagent — only the conclusion comes back", value: "clean", pct: 26, on: true },
+        ],
+      },
+      {
+        eyebrow: "The safety",
+        headline: [["Take away the", "primary"], ["write tools.", "accent"]],
+        body: "An agent given only Read and Grep cannot edit anything, whatever it decides. That’s a guarantee from the tool list, not a promise in a prompt.",
+      },
+      {
+        eyebrow: "The catch",
+        headline: [["Rewind won’t", "primary"], ["undo them.", "danger"]],
+        body: "Subagent edits land outside your session’s checkpoints. If one writes, use git — /rewind won’t bring it back.",
+        cta: "Save this",
+      },
+    ],
+  },
+
+  // 20. Cursor Tab vs Agent — the other half of the audience.
+  {
+    slug: "v2-20-cursor-agent",
+    title: "Tab or Agent",
+    slides: [
+      {
+        eyebrow: "Cursor",
+        headline: [["You’re using", "primary"], ["Cursor like", "primary"], ["autocomplete.", "accent"]],
+        body: "Tab is the famous part. Agent is the part that does the work.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "The split",
+        headline: [["Two different", "primary"], ["tools.", "muted"]],
+        compare: {
+          neutral: true,
+          bad: {
+            label: "Tab",
+            code: "predicts your\nnext edit",
+            note: "Fast, local, inline. Best when you already know the shape.",
+          },
+          good: {
+            label: "Agent",
+            code: "plans across\nfiles",
+            note: "Reads the codebase, edits many files, runs commands.",
+          },
+        },
+      },
+      {
+        eyebrow: "Plan first",
+        headline: [["Say what, not", "primary"], ["how.", "muted"]],
+        body: "Agent works best on an outcome — “make the checkout handle a declined card” — not a sequence of instructions. If you already know every step, Tab is faster.",
+      },
+      {
+        eyebrow: "Give it rules",
+        headline: [["It doesn’t know", "primary"], ["your conventions.", "muted"]],
+        body: "Without .cursor/rules or AGENTS.md it writes generic code that passes review and doesn’t match anything around it. Rules are what make Agent output look like your codebase.",
+      },
+      {
+        eyebrow: "The habit",
+        headline: [["Tab for typing.", "primary"], ["Agent for", "primary"], ["thinking.", "accent"]],
+        body: "Most people use one and ignore the other. They solve genuinely different problems, and knowing which you’re in is most of the skill.",
+        cta: "Follow for more",
+      },
+    ],
+  },
+
+  // 21. The prompt-quality deck. Applies to every tool.
+  {
+    slug: "v2-21-better-prompts",
+    title: "Why it keeps missing",
+    slides: [
+      {
+        eyebrow: "Craft",
+        headline: [["It keeps giving", "primary"], ["you the wrong", "primary"], ["thing.", "accent"]],
+        body: "Usually the prompt described a solution instead of a problem.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "The swap",
+        headline: [["Outcome beats", "primary"], ["instruction.", "muted"]],
+        compare: {
+          bad: {
+            label: "Vague",
+            code: "make the form\nbetter",
+            note: "Better how? It has to guess, and it guesses generically.",
+          },
+          good: {
+            label: "Specific",
+            code: "show errors\ninline, on blur",
+            note: "One outcome, checkable. It either did that or it didn’t.",
+          },
+        },
+      },
+      {
+        eyebrow: "Give it the map",
+        headline: [["Point at the", "primary"], ["files.", "muted"]],
+        body: "@-mention the file instead of describing it. Reading the real thing beats inferring it from your summary, every time.",
+      },
+      {
+        eyebrow: "Say what not to do",
+        headline: [["Constraints are", "primary"], ["the useful part.", "muted"]],
+        checks: [
+          "Don’t add a dependency for this",
+          "Match the pattern in the file above",
+          "Leave the public API unchanged",
+          "Show me the plan before editing",
+        ],
+      },
+      {
+        eyebrow: "The rule",
+        headline: [["If you can’t", "primary"], ["check it, it", "primary"], ["can’t hit it.", "accent"]],
+        body: "Before sending, ask how you’d know it succeeded. If you can’t answer, neither can it — and that’s the prompt to rewrite.",
+        cta: "Save this",
+      },
+    ],
+  },
+
+  // 22. Nate Herk. Facts only, and the quote explicitly a paraphrase.
+  {
+    slug: "v2-22-nate-herk",
+    title: "Nate Herk",
+    slides: [
+      {
+        eyebrow: "Who to follow",
+        headline: [["He left Goldman", "primary"], ["Sachs to build", "primary"], ["automations.", "accent"]],
+        body: "Nate Herk is the clearest teacher in AI automation right now. Here’s what’s worth taking from him.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "The person",
+        headline: [["Real builds,", "primary"], ["on camera.", "muted"]],
+        people: [
+          {
+            initials: "NH",
+            name: "Nate Herk",
+            handle: "@nateherk",
+            note: "Founder of Uppit AI. Teaches n8n workflows and AI agents to people who don’t come from a technical background.",
+          },
+        ],
+        body: "30M+ views, and the largest AI automation community on Skool.",
+      },
+      {
+        eyebrow: "His 2026 call",
+        headline: [["Speed to lead.", "accent"]],
+        quote: {
+          text: "Speed-to-lead is the number one workflow to build in 2026.",
+          initials: "NH",
+          name: "Nate Herk",
+          source: "Paraphrased from his 2026 automation guidance",
+        },
+      },
+      {
+        eyebrow: "Why it holds",
+        headline: [["Answer first,", "primary"], ["win the job.", "muted"]],
+        bars: [
+          { label: "Reply within 5 minutes", value: "you win it", pct: 91, on: true },
+          { label: "Reply the next day", value: "they moved on", pct: 24 },
+        ],
+        body: "Nothing clever in it. The first credible reply usually takes the work, and that’s an automation, not a personality trait.",
+      },
+      {
+        eyebrow: "The filter",
+        headline: [["Watch who", "primary"], ["shows the", "primary"], ["failures.", "accent"]],
+        body: "His builds break on camera and he fixes them. That’s the difference between teaching and editing — and it’s the thing to look for in anyone you follow.",
+        cta: "Follow for more",
+      },
+    ],
+  },
+
+  // 23. The wider list, as cards.
+  {
+    slug: "v2-23-follow-list",
+    title: "Five worth following",
+    slides: [
+      {
+        eyebrow: "AI + Claude Code",
+        headline: [["Five people", "primary"], ["worth your", "primary"], ["feed.", "accent"]],
+        body: "Most AI content is a thumbnail and a promise. These ship things.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "Automation",
+        headline: [["Builders, not", "primary"], ["announcers.", "muted"]],
+        people: [
+          {
+            initials: "NH",
+            name: "Nate Herk",
+            handle: "@nateherk",
+            note: "n8n workflows and AI agents, built end to end on camera.",
+          },
+          {
+            initials: "NS",
+            name: "Nick Saraev",
+            handle: "nicksaraev.com",
+            note: "Automation as an actual business, not just a demo.",
+          },
+        ],
+      },
+      {
+        eyebrow: "More",
+        headline: [["Different", "primary"], ["angles.", "muted"]],
+        people: [
+          {
+            initials: "JC",
+            name: "Jono Catliff",
+            handle: "no-code",
+            note: "End-to-end no-code builds for non-technical founders.",
+          },
+          {
+            initials: "SS",
+            name: "Simon Scrapes",
+            handle: "scraping",
+            note: "Scraping and data pipelines — the unglamorous half that makes agents useful.",
+          },
+        ],
+      },
+      {
+        eyebrow: "The best one",
+        headline: [["Still the docs.", "primary"], ["Genuinely.", "accent"]],
+        people: [
+          {
+            initials: "AI",
+            name: "code.claude.com/docs",
+            handle: "the source",
+            note: "Updated the day a feature ships. Every Claude Code deck I post is checked against it first.",
+          },
+        ],
+      },
+      {
+        eyebrow: "The filter",
+        headline: [["Do they show", "primary"], ["it breaking?", "accent"]],
+        body: "Anyone whose builds always work first try is editing, not teaching. Follow the ones who leave the failure in.",
+        cta: "Comment who I missed",
+      },
+    ],
+  },
+
+  // 24. Cost. Honest, and it maps to the service.
+  {
+    slug: "v2-24-cost",
+    title: "Where the money goes",
+    slides: [
+      {
+        eyebrow: "Claude Code",
+        headline: [["Your context is", "primary"], ["the bill.", "accent"]],
+        body: "Not the number of prompts. The amount you’re carrying when you send them.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "See it",
+        headline: [["/cost and", "primary"], ["/context.", "muted"]],
+        body: "One shows what this session has spent. The other shows what’s filling the window — usually a giant file pasted an hour ago and never used again.",
+      },
+      {
+        eyebrow: "The habit",
+        headline: [["Clear between", "primary"], ["tasks.", "muted"]],
+        bars: [
+          { label: "One long session, four jobs", value: "expensive", pct: 88 },
+          { label: "/clear between each", value: "cheap", pct: 31, on: true },
+        ],
+        body: "You pay to re-send everything already in the window. A stale conversation costs money on every turn.",
+      },
+      {
+        eyebrow: "Delegate",
+        headline: [["Send the reading", "primary"], ["elsewhere.", "muted"]],
+        body: "A subagent with a smaller model can do the searching and hand back a paragraph. You pay for a thousand lines once, in its context, not in yours forever.",
+      },
+      {
+        eyebrow: "The cap",
+        headline: [["Set a ceiling", "primary"], ["on scripts.", "accent"]],
+        code: {
+          file: "ci.sh",
+          lines: [
+            [["claude", "fn"], [" -p ", "punct"], ['"review this PR"', "str"], [" \\", "punct"]],
+            [["  --max-budget-usd", "key"], [" ", "text"], ["2.00", "num"]],
+            "",
+            [["# A loop that misbehaves stops", "comment"]],
+            [["# at two dollars, not two hundred.", "comment"]],
+          ],
+        },
+        cta: "Save this",
+      },
+    ],
+  },
+
+  // 25. Git discipline. The counterweight to every "let it run" post.
+  {
+    slug: "v2-25-git-discipline",
+    title: "Commit before you let it run",
+    slides: [
+      {
+        eyebrow: "Hard truths",
+        headline: [["Let it run.", "primary"], ["But commit", "primary"], ["first.", "danger"]],
+        body: "Every “I let the agent go wild” story that ends badly has the same missing step.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "The gap",
+        headline: [["Checkpoints", "primary"], ["aren’t history.", "muted"]],
+        compare: {
+          bad: {
+            label: "Checkpoints",
+            code: "session only\n30 days",
+            note: "Gone with the session. No bash changes, no subagent edits.",
+          },
+          good: {
+            label: "Git",
+            code: "permanent\nbranchable",
+            note: "Everything, forever, and someone else can read it.",
+          },
+        },
+      },
+      {
+        eyebrow: "The move",
+        headline: [["A branch costs", "primary"], ["you nothing.", "muted"]],
+        terminal: {
+          title: "zsh",
+          lines: [
+            ["git checkout -b agent-refactor", "cmd"],
+            ["git commit -am 'before'", "cmd"],
+            ["", "out"],
+            ["now let it do whatever it wants", "ok"],
+          ],
+        },
+      },
+      {
+        eyebrow: "Review",
+        headline: [["Read the diff,", "primary"], ["not the summary.", "muted"]],
+        body: "The summary is written by the thing that made the changes. git diff is written by git. Only one of those is evidence.",
+      },
+      {
+        eyebrow: "The rule",
+        headline: [["Autonomy needs", "primary"], ["an undo.", "accent"]],
+        body: "The faster you let it work, the more you need a clean commit behind you. That’s not caution — it’s what makes going fast survivable.",
+        cta: "Save this",
+      },
+    ],
+  },
+
+  // 26. The closer. Ties tooling back to the service without a price.
+  {
+    slug: "v2-26-what-changed",
+    title: "What actually changed",
+    slides: [
+      {
+        eyebrow: "Build in public",
+        headline: [["The job changed.", "primary"], ["Not the", "primary"], ["standard.", "accent"]],
+        body: "A year of building with these tools, honestly summarised.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "Faster",
+        headline: [["Nothing starts", "primary"], ["from empty.", "muted"]],
+        body: "Scaffolding, boilerplate, the third CRUD screen, the migration nobody wants to write. That work didn’t get easier — it got delegated.",
+      },
+      {
+        eyebrow: "Harder",
+        headline: [["Reviewing is", "primary"], ["now the job.", "danger"]],
+        bars: [
+          { label: "Time writing code", value: "way down", pct: 28 },
+          { label: "Time reading code", value: "way up", pct: 86, on: true },
+        ],
+        body: "Generating stopped being the constraint, so judging became the constraint.",
+      },
+      {
+        eyebrow: "Unchanged",
+        headline: [["It’s yours when", "primary"], ["it breaks.", "muted"]],
+        body: "Nobody accepts “the AI wrote it” at 2am. Everything I ship is still read line by line, because the responsibility never moved.",
+      },
+      {
+        eyebrow: "The result",
+        headline: [["Two builds.", "primary"], ["One person.", "accent"]],
+        body: "Fewer clients at once, built by the person you spoke to. The tooling carries the parts that don’t need judgement — that’s the whole model.",
+        cta: "Two slots — DM me",
+        ctaHi: true,
+      },
+    ],
+  },
 ];
 
 module.exports = { carousels, HANDLE };

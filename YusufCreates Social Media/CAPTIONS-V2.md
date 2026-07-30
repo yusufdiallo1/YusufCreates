@@ -335,6 +335,302 @@ v2-05/v2-06 reuse decks 7 and 9. New captions for v2-07 onward are below.
 
 ---
 
+## `v2-17-first-session`
+
+> Everyone types their first prompt in under a minute. The people getting real
+> value spent five on this screen first.
+>
+> READ THE BANNER — model, context size, effort level, working directory. Every
+> one of those is a setting you can change, and most people never look.
+>
+> MINUTE ONE — run `/init`. It writes a CLAUDE.md by reading your codebase. Then
+> edit it: the generated file is a starting point, not the answer. Cut it to
+> what's actually true and keep it short.
+>
+> MINUTE TWO —
+> → `/context` — what's filling the window right now
+> → `/doctor` — setup problems, and it can fix them
+> → `/mcp` — which servers are connected
+> → Shift+Tab — pick a permission mode before you start
+>
+> Set up once, benefit daily. Five minutes decides whether it's a chat window or
+> a system that knows your project.
+
+```
+#claudecode #aicoding #developertools #devworkflow #codingtips #terminal
+#softwareengineer #buildinpublic #programming #devtools #productivity
+#setup #webdev #techtips #devcommunity
+```
+
+---
+
+## `v2-18-mcp`
+
+> Stop pasting data into the chat. MCP lets Claude query your actual tools —
+> and most people never connect one.
+>
+> WITHOUT IT you're the integration: copy, paste, hope it's still current. It's
+> stale the moment you paste it.
+>
+> WITH IT it queries the source. Live data, every time it asks.
+>
+> WHAT CONNECTS —
+> → GitHub — issues, PRs, workflows
+> → Databases — query the real schema
+> → Figma — read the actual design
+> → Sentry, Linear, Slack, Notion
+>
+> SETUP is config, not code. Run `/mcp`, authenticate, done. It's an open
+> standard, so the same servers work in other tools too.
+>
+> The difference between an assistant that reasons about your codebase and one
+> that can look at the database it's writing queries against.
+>
+> Which would you connect first?
+
+```
+#mcp #claudecode #aitools #developertools #integration #devworkflow
+#softwareengineering #buildinpublic #programming #api #devtools
+#automation #webdev #techtips #devcommunity
+```
+
+---
+
+## `v2-19-subagents`
+
+> Your context is full of things you'll never read again. Every file it searched
+> is still sitting there, crowding out the actual work.
+>
+> A SUBAGENT is just markdown:
+>
+> ```
+> ---
+> name: auditor
+> description: Reviews, never edits
+> tools: [Read, Grep, Glob]
+> ---
+> Report findings. Do not fix them.
+> ```
+>
+> WHY IT WORKS — it reads a thousand lines in its own context and hands you back
+> the conclusion. Inline, all of that lands in yours and stays there.
+>
+> THE SAFETY — an agent given only Read and Grep cannot edit anything, whatever
+> it decides. That's a guarantee from the tool list, not a promise in a prompt.
+>
+> THE CATCH — subagent edits land outside your session's checkpoints. If one
+> writes, use git. `/rewind` won't bring it back.
+
+```
+#claudecode #aiagents #developertools #devworkflow #softwareengineering
+#codingtips #buildinpublic #programming #automation #devtools
+#contextwindow #webdev #techtips #aicoding #devcommunity
+```
+
+---
+
+## `v2-20-cursor-agent`
+
+> You're using Cursor like autocomplete. Tab is the famous part — Agent is the
+> part that does the work.
+>
+> TAB predicts your next edit. Fast, local, inline. Best when you already know
+> the shape of what you're writing.
+>
+> AGENT plans across files. Reads the codebase, edits many files, runs commands.
+>
+> PLAN FIRST — Agent works best on an outcome: "make the checkout handle a
+> declined card", not a sequence of instructions. If you already know every
+> step, Tab is faster.
+>
+> GIVE IT RULES — without `.cursor/rules` or AGENTS.md it writes generic code
+> that passes review and matches nothing around it. Rules are what make Agent
+> output look like your codebase.
+>
+> Tab for typing. Agent for thinking. Most people use one and ignore the other —
+> knowing which you're in is most of the skill.
+
+```
+#cursor #cursorai #aicoding #developertools #codeeditor #vibecoding
+#programming #webdevelopment #devtips #softwareengineer #aitools
+#codingsetup #buildinpublic #frontenddeveloper #productivity
+```
+
+---
+
+## `v2-21-better-prompts`
+
+> It keeps giving you the wrong thing. Usually the prompt described a solution
+> instead of a problem.
+>
+> THE SWAP —
+> ❌ "make the form better" — better how? It guesses, and it guesses generically.
+> ✅ "show errors inline, on blur" — one outcome, checkable.
+>
+> GIVE IT THE MAP — @-mention the file instead of describing it. Reading the
+> real thing beats inferring it from your summary, every time.
+>
+> SAY WHAT NOT TO DO — constraints are the useful part:
+> → Don't add a dependency for this
+> → Match the pattern in the file above
+> → Leave the public API unchanged
+> → Show me the plan before editing
+>
+> THE RULE — before sending, ask how you'd know it succeeded. If you can't
+> answer, neither can it. That's the prompt to rewrite.
+
+```
+#promptengineering #aicoding #claudecode #cursor #developertools
+#codingtips #softwareengineer #devworkflow #buildinpublic #programming
+#aitools #devtools #webdev #techtips #productivity
+```
+
+---
+
+## `v2-22-nate-herk`
+
+> He left Goldman Sachs to build automations. Nate Herk is the clearest teacher
+> in AI automation right now — here's what's worth taking from him.
+>
+> THE PERSON — founder of Uppit AI, 30M+ views, and the largest AI automation
+> community on Skool. Teaches n8n workflows and AI agents to people who don't
+> come from a technical background.
+>
+> HIS 2026 CALL — speed-to-lead is the number one workflow to build.
+> (Paraphrased from his 2026 automation guidance.)
+>
+> WHY IT HOLDS — nothing clever in it. The first credible reply usually takes
+> the work. Reply in five minutes and you're in the conversation; reply the next
+> day and they've moved on. That's an automation, not a personality trait.
+>
+> THE FILTER — his builds break on camera and he fixes them. That's the
+> difference between teaching and editing, and it's what to look for in anyone
+> you follow.
+
+```
+#nateherk #aiautomation #n8n #aiagents #automation #buildinpublic
+#nocode #aitools #learninpublic #devcommunity #workflow #aicommunity
+#entrepreneur #productivity #techcreators
+```
+
+---
+
+## `v2-23-follow-list`
+
+> Five people worth your feed. Most AI content is a thumbnail and a promise —
+> these ship things.
+>
+> → NATE HERK (@nateherk) — n8n workflows and AI agents, built end to end on
+> camera.
+> → NICK SARAEV (nicksaraev.com) — automation as an actual business, not just a
+> demo.
+> → JONO CATLIFF — end-to-end no-code builds for non-technical founders.
+> → SIMON SCRAPES — scraping and data pipelines, the unglamorous half that makes
+> agents useful.
+> → code.claude.com/docs — updated the day a feature ships. Every Claude Code
+> deck I post is checked against it first.
+>
+> THE FILTER — do they show it breaking? Anyone whose builds always work first
+> try is editing, not teaching. Follow the ones who leave the failure in.
+>
+> Who did I miss? 👇
+
+```
+#aicommunity #aiautomation #claudecode #buildinpublic #learninpublic
+#aitools #developercommunity #nocode #n8n #aiagents #techcreators
+#devcommunity #programming #automation #contentcreator
+```
+
+---
+
+## `v2-24-cost`
+
+> Your context is the bill. Not the number of prompts — the amount you're
+> carrying when you send them.
+>
+> SEE IT — `/cost` shows what this session has spent. `/context` shows what's
+> filling the window. Usually one giant file pasted an hour ago and never used
+> again.
+>
+> THE HABIT — `/clear` between tasks. You pay to re-send everything already in
+> the window, so a stale conversation costs money on every single turn. One long
+> session doing four unrelated jobs is the expensive pattern.
+>
+> DELEGATE — a subagent with a smaller model can do the searching and hand back
+> a paragraph. You pay for a thousand lines once, in its context, not in yours
+> forever.
+>
+> THE CAP — in scripts, `--max-budget-usd 2.00`. A loop that misbehaves stops at
+> two dollars, not two hundred.
+
+```
+#claudecode #aitools #developertools #costoptimization #devworkflow
+#softwareengineering #buildinpublic #programming #cli #devtools
+#productivity #aicoding #techtips #webdev #devcommunity
+```
+
+---
+
+## `v2-25-git-discipline`
+
+> Let it run. But commit first. Every "I let the agent go wild" story that ends
+> badly has the same missing step.
+>
+> CHECKPOINTS AREN'T HISTORY — session only, deleted after 30 days, and they
+> don't track bash changes or subagent edits. Git is permanent, branchable, and
+> someone else can read it.
+>
+> THE MOVE — a branch costs you nothing:
+>
+> ```
+> git checkout -b agent-refactor
+> git commit -am 'before'
+> ```
+>
+> Now let it do whatever it wants.
+>
+> REVIEW THE DIFF, NOT THE SUMMARY. The summary is written by the thing that
+> made the changes. `git diff` is written by git. Only one of those is evidence.
+>
+> Autonomy needs an undo. The faster you let it work, the more you need a clean
+> commit behind you — that's not caution, it's what makes going fast survivable.
+
+```
+#git #versioncontrol #claudecode #aicoding #developertools #devworkflow
+#softwareengineering #codereview #buildinpublic #programming #devtools
+#bestpractices #webdev #techtips #devcommunity
+```
+
+---
+
+## `v2-26-what-changed`
+
+> The job changed. The standard didn't. A year of building with these tools,
+> honestly summarised.
+>
+> FASTER — nothing starts from empty. Scaffolding, boilerplate, the third CRUD
+> screen, the migration nobody wants to write. That work didn't get easier, it
+> got delegated.
+>
+> HARDER — reviewing is now the job. Generating stopped being the constraint, so
+> judging became the constraint. Time writing code went down; time reading code
+> went up.
+>
+> UNCHANGED — it's yours when it breaks. Nobody accepts "the AI wrote it" at
+> 2am. Everything I ship is still read line by line, because the responsibility
+> never moved.
+>
+> Two builds at a time, built by the person you spoke to. The tooling carries
+> the parts that don't need judgement. That's the whole model.
+
+```
+#buildinpublic #softwareengineering #aicoding #devlife #indiehacker
+#solofounder #freelancedeveloper #webdevelopment #codequality #craftsmanship
+#programming #techfounder #devcommunity #startup #webdev
+```
+
+---
+
 ## Posting notes
 
 **Order.** Tools decks are the reach engine — they teach, so they cost nothing

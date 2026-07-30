@@ -343,6 +343,124 @@ function figure(f) {
   </div>`;
 }
 
+/**
+ * Claude Code startup splash — the banner you see when a session opens.
+ *
+ * Redrawn rather than screenshotted: a screenshot of a real session leaks the
+ * working directory, the plan tier and whatever warnings happen to be firing.
+ * The mascot is a simple pixel block in Anthropic's clay tone, close enough to
+ * be recognisable at feed scale without passing itself off as their artwork.
+ */
+function claudeSplash(cs) {
+  const px = 11;
+  // Rows of the mascot block. 1 = filled, 0 = gap. Squarer than a literal
+  // trace, with the eyes punched out, so it still reads as a face at the size
+  // a phone renders this.
+  const grid = [
+    "0011111100",
+    "0111111110",
+    "1111111111",
+    "1100110011",
+    "1111111111",
+    "1111111111",
+    "0111111110",
+    "0110000110",
+  ];
+  const cells = grid
+    .map((row, y) =>
+      row
+        .split("")
+        .map((c, x) =>
+          c === "1"
+            ? `<rect x="${x * px}" y="${y * px}" width="${px}" height="${px}" fill="#d97757"/>`
+            : ""
+        )
+        .join("")
+    )
+    .join("");
+
+  const warn = cs.warning
+    ? `<div style="margin-top:18px;font-family:${MONO};font-size:22px;color:${C.amber};line-height:1.5">
+         <span style="color:${C.amber}">⚠ </span>${cs.warning}
+       </div>`
+    : "";
+
+  return `<div style="${panel(18)}overflow:hidden;margin-top:26px">
+    ${chrome(cs.title || "Terminal", true)}
+    <div style="padding:30px 32px">
+      <div style="display:flex;align-items:flex-start;gap:26px">
+        <svg viewBox="0 0 ${px * 10} ${px * 8}" style="width:${px * 10}px;height:${px * 8}px;flex:none"
+          aria-hidden="true">${cells}</svg>
+        <div style="font-family:${MONO};font-size:24px;line-height:1.45;letter-spacing:-0.01em">
+          <div><span style="color:${C.text};font-weight:700">Claude Code</span>
+            <span style="color:#9aa1ad"> ${cs.version || ""}</span></div>
+          <div style="color:#b6bcc6;margin-top:4px">${cs.model || ""}</div>
+          <div style="color:#8a8f98;margin-top:4px">${cs.cwd || ""}</div>
+        </div>
+      </div>
+      ${warn}
+      ${
+        cs.footer
+          ? `<div style="margin-top:22px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.10);
+               font-family:${MONO};font-size:22px;color:${C.accent};font-weight:600">▸▸ ${cs.footer}</div>`
+          : ""
+      }
+    </div>
+  </div>`;
+}
+
+/**
+ * Creator card. Monogram avatar rather than a photograph.
+ *
+ * Deliberate: real headshots are the subject's copyright, and putting someone's
+ * face on a branded post implies an endorsement they never gave. Initials in
+ * the accent colour carry the same "this is a person" signal with none of that.
+ * Every line beside the avatar has to be a sourced fact — no invented quotes.
+ */
+function people(list) {
+  return `<div style="margin-top:26px;display:flex;flex-direction:column;gap:18px">${list
+    .map(
+      (p) => `<div style="display:flex;align-items:center;gap:22px;padding:24px 26px;${panel(18)}">
+        <div style="width:78px;height:78px;border-radius:99px;flex:none;
+            display:flex;align-items:center;justify-content:center;
+            background:linear-gradient(145deg, rgba(94,106,210,0.85), rgba(124,92,220,0.55));
+            box-shadow:0 8px 26px ${C.accentGlow}, inset 0 1px 0 rgba(255,255,255,0.35);
+            font-size:30px;font-weight:700;color:#fff;letter-spacing:-0.02em">${p.initials}</div>
+        <div style="min-width:0">
+          <div style="font-size:30px;font-weight:600;color:${C.text};letter-spacing:-0.02em">${p.name}</div>
+          <div style="font-size:23px;color:${C.accent};margin-top:4px;font-family:${MONO}">${p.handle}</div>
+          <div style="font-size:23px;color:#a2a8b2;margin-top:8px;line-height:1.4">${p.note}</div>
+        </div>
+      </div>`
+    )
+    .join("")}</div>`;
+}
+
+/**
+ * Pull quote with attribution. Only ever paraphrase, and label it as such —
+ * a fabricated quotation attributed to a real person is defamation-shaped, and
+ * this audience will check.
+ */
+function quote(q) {
+  return `<div style="margin-top:26px;padding:34px 36px;${glass(24, true)}position:relative">
+    <div style="position:absolute;top:14px;left:26px;font-size:96px;line-height:1;
+      color:${C.accent};opacity:0.30;font-weight:700">"</div>
+    <div style="position:relative;font-size:36px;line-height:1.35;color:${C.text};
+      letter-spacing:-0.02em;font-weight:500;padding-left:34px">${q.text}</div>
+    <div style="display:flex;align-items:center;gap:16px;margin-top:24px;padding-left:34px">
+      <div style="width:52px;height:52px;border-radius:99px;flex:none;
+          display:flex;align-items:center;justify-content:center;
+          background:linear-gradient(145deg, rgba(94,106,210,0.85), rgba(124,92,220,0.55));
+          box-shadow:0 6px 18px ${C.accentGlow};
+          font-size:21px;font-weight:700;color:#fff">${q.initials}</div>
+      <div>
+        <div style="font-size:25px;color:${C.text};font-weight:600">${q.name}</div>
+        <div style="font-size:20px;color:#8a8f98;margin-top:2px">${q.source}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
 /** Labelled bar meter — for "most people never do this" style contrasts. */
 function bars(list) {
   return `<div style="margin-top:26px;display:flex;flex-direction:column;gap:30px">${list
@@ -486,6 +604,7 @@ function slide(s, index, total, handle) {
   const eyebrowColor = s.eyebrowColor || C.accent;
   const hasGraphic = !!(
     s.code || s.terminal || s.tree || s.compare || s.steps ||
+    s.splash || s.people || s.quote ||
     s.figure || s.bars || s.checks || s.rows || s.tiers || s.stats
   );
 
@@ -531,6 +650,9 @@ function slide(s, index, total, handle) {
     : "";
 
   const graphic =
+    (s.splash ? claudeSplash(s.splash) : "") +
+    (s.people ? people(s.people) : "") +
+    (s.quote ? quote(s.quote) : "") +
     (s.code ? codeWindow(s.code) : "") +
     (s.terminal ? terminal(s.terminal) : "") +
     (s.tree ? fileTree(s.tree) : "") +
