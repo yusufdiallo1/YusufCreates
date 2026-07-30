@@ -6,6 +6,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
 import { ScoreBadge } from "@/components/admin/ScoreBadge";
 import { LeadDrawer } from "@/components/admin/LeadDrawer";
+import { MiniSlide } from "@/components/ui/MiniSlide";
 import type { Doc } from "@convex/_generated/dataModel";
 import { ADMIN_PATH } from "@/lib/constants";
 
@@ -46,6 +47,7 @@ export function LeadsTable() {
   });
 
   const setLeadStatus = useMutation(api.admin.setLeadStatus);
+  const removeLead = useMutation(api.leads.remove);
 
   const select = (id: string | null) => {
     const next = new URLSearchParams(params.toString());
@@ -104,7 +106,7 @@ export function LeadsTable() {
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[40rem] border-collapse text-sm">
+          <table className="w-full min-w-[52rem] border-collapse text-sm">
             <thead>
               <tr className="border-b border-[color:var(--border-hairline)] text-left">
                 <Th>Name</Th>
@@ -112,6 +114,9 @@ export function LeadsTable() {
                 <Th>Score</Th>
                 <Th>Status</Th>
                 <Th>When</Th>
+                <Th>
+                  <span className="sr-only">Delete</span>
+                </Th>
               </tr>
             </thead>
             <tbody>
@@ -158,8 +163,28 @@ export function LeadsTable() {
                       ))}
                     </select>
                   </td>
-                  <td className="py-3 text-xs text-secondary whitespace-nowrap">
+                  <td className="py-3 pr-4 text-xs text-secondary whitespace-nowrap">
                     {relative(lead._creationTime)}
+                  </td>
+                  {/* On the row, not behind the drawer. Deleting a lead was
+                      the one thing that required opening it first, and the
+                      slide is the confirmation — a click that can land by
+                      accident is the wrong gesture for something permanent. */}
+                  <td
+                    className="py-3"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="w-[11.5rem]">
+                      <MiniSlide
+                        label="Slide to delete"
+                        pendingLabel="Deleting"
+                        doneLabel="Deleted"
+                        ariaLabel={`Slide to delete the lead from ${lead.name || lead.email}`}
+                        onConfirm={async () => {
+                          await removeLead({ id: lead._id });
+                        }}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}

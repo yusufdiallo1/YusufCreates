@@ -131,3 +131,21 @@ export const setStatus = mutation({
     await ctx.db.patch(args.id, { status: args.status });
   },
 });
+
+/**
+ * Deletes a lead permanently.
+ *
+ * There is no soft-delete flag and no undo. A lead is a message someone sent
+ * me; keeping a hidden copy of one I have deliberately thrown away is worse
+ * than losing it, and "archived" would only grow a second inbox I never read.
+ *
+ * The confirmation lives in the UI as a slide gesture, which is a deliberate
+ * act rather than a click that can land by accident.
+ */
+export const remove = mutation({
+  args: { id: v.id("leads") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    await ctx.db.delete(args.id);
+  },
+});

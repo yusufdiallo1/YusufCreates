@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import {
   Authenticated,
@@ -54,6 +53,24 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
   );
 }
 
+/*
+ * Remembered for the page session, at module scope.
+ *
+ * This was useState, which is per component INSTANCE — so it survived
+ * navigation inside the admin but reset the moment you visited a public page
+ * and came back, because the whole admin layout unmounts. That is the
+ * "Checking…" blank on every crossing between the site and the back office.
+ *
+ * Module scope survives unmount and resets on a full page load, which is
+ * exactly the lifetime wanted: it is a cache of "the server already told me
+ * yes this session", not a credential.
+ *
+ * Presentation only. It cannot widen access — every Convex query and mutation
+ * behind this calls requireAdmin server-side on every single call, so a
+ * revoked session gets empty screens and errors, not data.
+ */
+let seenAsAdmin = false;
+
 /**
  * Signed in is not the same as being the admin. A second account could hold a
  * valid session, so the identity is confirmed against the server.
@@ -61,24 +78,10 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
 function AdminOnly({ children }: { children: React.ReactNode }) {
   const allowed = useQuery(api.admin.amIAdmin, {});
 
-  /*
-   * Remembered for the session once it comes back true.
-   *
-   * This gate wraps `children` inside the layout, so every navigation
-   * re-evaluated it — and while the query was pending it replaced the whole
-   * page with "Checking…". That blank flash on every click is what made the
-   * admin feel slow; the data was already cached, the shell just kept
-   * throwing it away.
-   *
-   * This is presentation only. It cannot widen access: every Convex query and
-   * mutation behind this still calls requireAdmin server-side on every single
-   * call, so a revoked session gets empty screens and errors, not data.
-   */
-  const [everAllowed, setEverAllowed] = useState(false);
-  if (allowed === true && !everAllowed) setEverAllowed(true);
+  if (allowed === true && !seenAsAdmin) seenAsAdmin = true;
 
   if (allowed === undefined) {
-    if (everAllowed) return <>{children}</>;
+    if (seenAsAdmin) return <>{children}</>;
     return <div className="py-24 text-center text-sm text-secondary">Checking…</div>;
   }
 

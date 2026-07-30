@@ -159,7 +159,19 @@ export function DateTimePicker({
             animate={{ opacity: 1, y: 0 }}
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
             transition={{ duration: reduceMotion ? 0.1 : 0.2, ease: EASE }}
-            className="glass-depth glass-near glass-card absolute z-50 mt-2 w-[19rem] !p-4"
+            /*
+             * Solid, not glass.
+             *
+             * This used glass-near, which is a 32%-opaque material — over the
+             * open page it looked right, but inside a drawer the buttons and
+             * body text behind it read straight through the grid and the
+             * calendar was genuinely unusable. A popover you have to decode
+             * is not a popover.
+             *
+             * z-50 with an opaque surface and a real shadow: it sits above
+             * the drawer, and nothing shows through it.
+             */
+            className="absolute z-50 mt-2 w-[19rem] rounded-2xl border border-[color:var(--border-hairline)] bg-surface-2 p-4 shadow-2xl"
           >
             <div className="flex items-center justify-between">
               <button
