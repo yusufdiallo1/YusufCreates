@@ -24,13 +24,21 @@ export function SkillChip({
 }) {
   return (
     <Reveal delay={Math.min(index * 0.03, 0.3)} className="w-full">
+      {/*
+        min-w-0 on the description, shrink-0 on the name.
+
+        A flex item will not shrink below its content's intrinsic width unless
+        it is told it may, so a long use line pushed the row wider than its
+        column and was clipped by the section instead of wrapping. The name is
+        short and fixed; the description is the part that should give.
+      */}
       <div
         data-cursor="link"
         className="skill-row group flex w-full items-baseline justify-between gap-4 py-3"
       >
-        <span className="text-sm text-primary">{skill.name}</span>
+        <span className="shrink-0 text-sm text-primary">{skill.name}</span>
         {skill.use ? (
-          <span className="skill-row-use text-right text-xs text-secondary">
+          <span className="skill-row-use min-w-0 text-right text-xs text-balance text-secondary">
             {skill.use}
           </span>
         ) : null}

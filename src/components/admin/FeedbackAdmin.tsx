@@ -5,10 +5,15 @@ import { api } from "@/lib/convex-api";
 import { Empty, Skeleton } from "@/components/admin/ProjectsAdmin";
 
 /**
- * Client feedback, grouped by project.
+ * Two kinds of feedback on one screen.
  *
- * Unresolved groups sort first, because resolved feedback is a record and
- * unresolved feedback is a task.
+ * Site feedback comes from the footer form — anyone, about anything. Project
+ * feedback is a rating a client left against work in their portal. They are
+ * kept apart because a stranger reporting a broken link and a client saying a
+ * milestone is wrong need different things from me.
+ *
+ * Unread and unresolved sort first: resolved feedback is a record, the rest
+ * is a task.
  */
 export function FeedbackAdmin() {
   const groups = useQuery(api.feedback.listGrouped, {});
@@ -25,12 +30,14 @@ export function FeedbackAdmin() {
         </p>
       </div>
 
+      <SiteFeedbackList />
+
       {groups === undefined ? (
         <Skeleton />
       ) : groups.length === 0 ? (
         <Empty
-          title="No feedback yet"
-          body="Comments left against a project appear here, grouped by project."
+          title="No project feedback yet"
+          body="Comments a client leaves against a project appear here, grouped by project. Feedback sent from the footer form is listed above."
         />
       ) : (
         <div className="space-y-8">
@@ -100,5 +107,84 @@ export function FeedbackAdmin() {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Feedback sent from the footer form.
+ *
+ * Rendered as plain text, never as markup: anyone can write here, and the
+ * only safe assumption about an open input is that someone will eventually
+ * put a script tag in it.
+ */
+function SiteFeedbackList() {
+  const rows = useQuery(api.siteFeedback.listAll, {});
+  const markRead = useMutation(api.siteFeedback.markRead);
+  const remove = useMutation(api.siteFeedback.remove);
+
+  if (rows === undefined) return <Skeleton />;
+  if (rows.length === 0) return null;
+
+  const unread = rows.filter((r) => !r.read).length;
+
+  return (
+    <section>
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 className="text-lg text-primary">From the site</h2>
+        {unread > 0 ? (
+          <span className="badge badge-hot">{unread} unread</span>
+        ) : null}
+      </div>
+
+      <ul className="mt-3 divide-y divide-[color:var(--border-hairline)]">
+        {rows.map((row) => (
+          <li key={row._id} className="py-4">
+            <div className="flex items-baseline justify-between gap-4">
+              <p className="text-sm text-primary">
+                {row.name}
+                <a
+                  href={`mailto:${row.email}`}
+                  className="ml-2 text-xs text-accent transition-opacity duration-fast hover:opacity-80"
+                >
+                  {row.email}
+                </a>
+              </p>
+              <span className="shrink-0 text-xs text-secondary tabular-nums">
+                {new Date(row.createdAt).toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "short",
+                })}
+              </span>
+            </div>
+
+            {/* whitespace-pre-wrap so line breaks they typed survive, without
+                interpreting anything else in what they wrote. */}
+            <p className="mt-2 text-sm whitespace-pre-wrap text-secondary">
+              {row.message}
+            </p>
+
+            <div className="mt-3 flex items-center gap-2">
+              {row.path ? (
+                <span className="text-xs text-secondary">on {row.path}</span>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void markRead({ id: row._id, read: !row.read })}
+                className="hairline ml-auto rounded-full px-3 py-1 text-xs text-primary transition-colors duration-fast hover:bg-surface-2"
+              >
+                {row.read ? "Mark unread" : "Mark read"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void remove({ id: row._id })}
+                className="rounded-full px-3 py-1 text-xs text-secondary transition-colors duration-fast hover:text-[color:var(--danger)]"
+              >
+                Delete
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
