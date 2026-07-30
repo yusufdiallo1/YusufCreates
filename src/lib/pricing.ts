@@ -81,6 +81,36 @@ export const BASE_USD = {
 } as const;
 
 /**
+ * Care Plan billed annually: twelve months for the price of ten.
+ *
+ * The discount is the point — a year paid up front is a year of hosting and
+ * maintenance I can actually plan around, and the two free months are cheaper
+ * than the churn they prevent.
+ */
+export const CARE_ANNUAL_USD = 1800;
+
+export type BillingPeriod = "monthly" | "yearly";
+
+/** Care Plan price for a billing period, in the given currency. */
+export function carePrice(period: BillingPeriod, currency: Currency): number {
+  return period === "yearly"
+    ? convert(CARE_ANNUAL_USD, currency)
+    : tierPrice("care", currency);
+}
+
+/** Formatted Care Plan price, with the period suffix the page shows after it. */
+export function formatCarePrice(
+  period: BillingPeriod,
+  currency: Currency,
+): string {
+  return `${CURRENCY_SYMBOL[currency]}${carePrice(period, currency).toLocaleString("en-US")}`;
+}
+
+/** Months covered free by paying for a year. Shown as the toggle's incentive. */
+export const CARE_MONTHS_FREE =
+  Math.round((BASE_USD.care * 12 - CARE_ANNUAL_USD) / BASE_USD.care);
+
+/**
  * Published prices, where they differ from a strict peg conversion.
  *
  * The pegged rates give e.g. 13,000 USD -> 48,750 SAR, but the price quoted in
@@ -260,9 +290,22 @@ export const ENTERPRISE_FEATURES = [
 ];
 
 
+/**
+ * Numbers, not "unlimited".
+ *
+ * "Unlimited small edits" was never true in the way anyone reads it, and the
+ * word does more harm than a generous number: it invites the one client who
+ * tests it, and it gives me nothing to point at when they do. A hundred a
+ * month is past what any normal site needs, and it is a promise I can keep.
+ *
+ * The split matters as much as the counts. A small fix is a copy change, a
+ * price, an image, a broken link. A big fix is a new section, a new page, a
+ * behaviour change — work with design and testing in it.
+ */
 export const CARE_FEATURES = [
   "Hosting and maintenance",
-  "Unlimited small edits",
+  "100 small fixes a month",
+  "20 big fixes a month",
   "SEO monitoring",
   "Monthly analytics report",
   "Priority support",

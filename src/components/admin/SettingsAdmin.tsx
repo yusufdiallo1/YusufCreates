@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
 import { Skeleton } from "@/components/admin/ProjectsAdmin";
@@ -60,24 +59,14 @@ export function SettingsAdmin({
             />
           </Section>
 
-          <Section
-            title="Currency rates"
-            body="AED is pegged at 3.67 and needs no maintenance. GBP and EUR float, so these are entered by hand — if they go stale the pricing page quotes the wrong number."
-          >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <RateField
-                label="GBP per USD"
-                current={value("rate.GBP", "0.79")}
-                onSave={(v) => void set({ key: "rate.GBP", value: v })}
-              />
-              <RateField
-                label="EUR per USD"
-                current={value("rate.EUR", "0.92")}
-                onSave={(v) => void set({ key: "rate.EUR", value: v })}
-              />
-            </div>
-          </Section>
-
+          {/*
+            No currency-rate controls. There were fields for GBP and EUR here,
+            warning that a stale rate would make the pricing page quote the
+            wrong number — but the site only ever offered USD, SAR and AED,
+            and nothing read either value. Editing them changed nothing while
+            implying the prices had moved, which is worse than not offering
+            the control. SAR and AED are pegged, so there is no rate to keep.
+          */}
           <Section
             title="Integrations"
             body="Configured or not. The values themselves are never sent to the browser."
@@ -152,42 +141,3 @@ function Toggle({
   );
 }
 
-function RateField({
-  label,
-  current,
-  onSave,
-}: {
-  label: string;
-  current: string;
-  onSave: (value: string) => void;
-}) {
-  const [draft, setDraft] = useState(current);
-  const id = `rate-${label.replace(/\W+/g, "-")}`;
-  const dirty = draft !== current;
-
-  return (
-    <div>
-      <label htmlFor={id} className="text-sm text-secondary">
-        {label}
-      </label>
-      <div className="mt-2 flex gap-2">
-        <input
-          id={id}
-          type="number"
-          step="0.001"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          className="hairline min-w-0 flex-1 rounded-lg bg-surface-1 px-3.5 py-2 text-sm text-primary"
-        />
-        <button
-          type="button"
-          disabled={!dirty}
-          onClick={() => onSave(draft)}
-          className="shrink-0 rounded-lg bg-primary px-3.5 py-2 text-xs font-medium text-canvas disabled:opacity-40"
-        >
-          Save
-        </button>
-      </div>
-    </div>
-  );
-}

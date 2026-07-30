@@ -10,24 +10,33 @@ import { useCurrency } from "@/lib/useCurrency";
 import {
   BUILD_TIERS,
   CARE_FEATURES,
+  CARE_MONTHS_FREE,
   CURRENCIES,
   CURRENCY_SYMBOL,
   ENTERPRISE_FEATURES,
   GROWTH,
   convert,
-  formatTierPrice,
+  formatCarePrice,
   growthPriceUsd,
   tierPrice,
+  type BillingPeriod,
 } from "@/lib/pricing";
 
 /**
- * Pricing — three bands.
+ * Pricing — everything is a card.
  *
- *   1. Three build tiers side by side. Never four: a fourth column measurably
- *      hurts conversion by making the comparison harder, not richer.
- *   2. Enterprise, full width, with its own visual treatment so it is not
- *      compared like-for-like against the packaged tiers.
- *   3. Care Plan, separate, because aftercare is not a build option.
+ *   1. The four build tiers, two up on desktop.
+ *   2. Enterprise and Care Plan beside each other, same card shape as the
+ *      tiers above them.
+ *
+ * The tiers used to sit three-across, which was right when there were three
+ * of them. A fourth was added and the grid was not, so it wrapped alone onto
+ * a second row and read as an afterthought rather than a tier. Two columns
+ * divides evenly and leaves each card room for its feature list.
+ *
+ * Enterprise and Care were full-width bands. At that width the feature list
+ * needed two columns of its own and the price floated far from the name, so
+ * neither could be compared against the tiers they sit under.
  *
  * SlideToConfirm appears only on Enterprise and Care Plan — the two actions
  * here that are not cleanly reversible. Every other tier CTA is an ordinary
@@ -38,6 +47,7 @@ export function PricingTables() {
   const router = useRouter();
   const [currency, setCurrency] = useCurrency();
   const [pages, setPages] = useState<number>(GROWTH.minPages);
+  const [period, setPeriod] = useState<BillingPeriod>("monthly");
 
   const growthUsd = growthPriceUsd(pages);
 
@@ -70,9 +80,11 @@ export function PricingTables() {
         </Reveal>
       </div>
 
-      {/* BAND 1 — three build tiers */}
+      {/* BAND 1 — the build tiers */}
       <div className="mx-auto mt-16 max-w-5xl px-6">
-        <div className="grid gap-6 lg:grid-cols-3">
+        {/* Two columns, not three: BUILD_TIERS holds four, and four into three
+            leaves one stranded on its own row looking like a footnote. */}
+        <div className="grid gap-6 sm:grid-cols-2">
           {BUILD_TIERS.map((tier, index) => {
             const isGrowth = tier.id === "growth";
             const amount = isGrowth
@@ -174,13 +186,17 @@ export function PricingTables() {
         </div>
       </div>
 
-      {/* BAND 2 — Enterprise */}
-      <div className="mx-auto mt-8 max-w-5xl px-6">
-        <Reveal>
-          <div className="enterprise-band rounded-xl p-8">
-            <div className="flex flex-wrap items-baseline justify-between gap-4">
-              <h2 className="text-2xl">Enterprise</h2>
-              <p className="text-2xl tabular-nums">
+      {/* BAND 2 — Enterprise and Care Plan, same card shape as the tiers */}
+      <div className="mx-auto mt-6 max-w-5xl px-6">
+        <div className="grid gap-6 sm:grid-cols-2">
+          <Reveal>
+            <div className="enterprise-band flex h-full flex-col rounded-xl p-6">
+              <h2 className="text-xl">Enterprise</h2>
+              <p className="mt-1 text-sm text-secondary">
+                Scoped on a call, priced in the proposal.
+              </p>
+
+              <p className="mt-6 text-3xl tabular-nums">
                 <span className="text-base text-secondary">From </span>
                 <span className="text-secondary">
                   {CURRENCY_SYMBOL[currency]}
@@ -190,84 +206,115 @@ export function PricingTables() {
                   duration={0.5}
                 />
               </p>
-            </div>
 
-            <ul className="mt-8 grid gap-2 sm:grid-cols-2">
-              {ENTERPRISE_FEATURES.map((feature) => (
-                <li
-                  key={feature}
-                  className="flex gap-2.5 text-sm text-secondary"
-                >
-                  <span aria-hidden="true" className="text-accent">
-                    —
-                  </span>
-                  {feature}
-                </li>
-              ))}
-            </ul>
+              <ul className="mt-6 flex-1 space-y-2">
+                {ENTERPRISE_FEATURES.map((feature) => (
+                  <li
+                    key={feature}
+                    className="flex gap-2.5 text-sm text-secondary"
+                  >
+                    <span aria-hidden="true" className="text-accent">
+                      —
+                    </span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
 
-            <div className="mt-10 max-w-md">
-              {/* Enterprise needs company, role, procurement and NDA details,
-                  so this routes into the enterprise branch of the lead form
-                  rather than submitting anything inline. */}
-              <SlideToConfirm
-                purpose="submit-lead"
-                label="Slide to request a proposal"
-                completedLabel="Request received"
-                ariaLabel="Slide to request an enterprise proposal"
-                onConfirm={async () => {
-                  router.push("/start?tier=enterprise");
-                }}
-              />
-            </div>
-          </div>
-        </Reveal>
-      </div>
-
-      {/* BAND 3 — Care Plan */}
-      <div className="mx-auto mt-8 max-w-5xl px-6">
-        <Reveal>
-          <div className="rounded-xl border border-[color:var(--border-hairline)] bg-surface-1 p-8">
-            <div className="flex flex-wrap items-baseline justify-between gap-4">
-              <div>
-                <h2 className="text-2xl">Care Plan</h2>
-                <p className="mt-1 text-sm text-secondary">
-                  Aftercare, not a build tier. Add it to any project.
-                </p>
+              <div className="mt-8">
+                {/* Enterprise needs company, role, procurement and NDA details,
+                    so this routes into the enterprise branch of the lead form
+                    rather than submitting anything inline. */}
+                <SlideToConfirm
+                  purpose="submit-lead"
+                  label="Slide to request a proposal"
+                  completedLabel="Request received"
+                  ariaLabel="Slide to request an enterprise proposal"
+                  onConfirm={async () => {
+                    router.push("/start?tier=enterprise");
+                  }}
+                />
               </div>
-              <p className="text-2xl tabular-nums">
-                {formatTierPrice("care", currency)}
-                <span className="text-base text-secondary">/mo</span>
+            </div>
+          </Reveal>
+
+          <Reveal delay={0.07}>
+            <div className="flex h-full flex-col rounded-xl border border-[color:var(--border-hairline)] bg-surface-1 p-6">
+              <h2 className="text-xl">Care Plan</h2>
+              <p className="mt-1 text-sm text-secondary">
+                Aftercare, not a build tier. Add it to any project.
               </p>
-            </div>
 
-            <ul className="mt-8 grid gap-2 sm:grid-cols-2">
-              {CARE_FEATURES.map((feature) => (
-                <li
-                  key={feature}
-                  className="flex gap-2.5 text-sm text-secondary"
-                >
-                  <span aria-hidden="true" className="text-accent">
-                    —
-                  </span>
-                  {feature}
-                </li>
-              ))}
-            </ul>
+              {/* Billing period. Sits above the figure so the number never
+                  changes without the control that changed it in view. */}
+              <div
+                role="group"
+                aria-label="Billing period"
+                className="mt-5 flex w-fit gap-1 rounded-full border border-[color:var(--border-hairline)] p-1"
+              >
+                {(["monthly", "yearly"] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setPeriod(option)}
+                    aria-pressed={period === option}
+                    className={`rounded-full px-3 py-1 text-xs transition-colors duration-fast ${
+                      period === option
+                        ? "bg-primary text-canvas"
+                        : "text-secondary hover:text-primary"
+                    }`}
+                  >
+                    {option === "monthly" ? "Monthly" : "Yearly"}
+                  </button>
+                ))}
+              </div>
 
-            <div className="mt-10 max-w-md">
-              <SlideToConfirm
-                purpose="start-subscription"
-                ariaLabel="Slide to start your monthly Care Plan"
-                onConfirm={async () => {
-                  // Stripe is not wired yet; routing into the lead form keeps
-                  // the action honest rather than failing silently.
-                  router.push(`/start?tier=care&currency=${currency}`);
-                }}
-              />
+              <p className="mt-5 text-3xl tabular-nums">
+                {formatCarePrice(period, currency)}
+                <span className="text-base text-secondary">
+                  {period === "monthly" ? "/mo" : "/yr"}
+                </span>
+              </p>
+
+              {/* Only on the yearly option: on monthly it would be an advert
+                  for the price they did not pick, sitting under the one they
+                  did. */}
+              <p className="mt-2 h-4 text-xs text-accent">
+                {period === "yearly"
+                  ? `${CARE_MONTHS_FREE} months free versus paying monthly.`
+                  : ""}
+              </p>
+
+              <ul className="mt-6 flex-1 space-y-2">
+                {CARE_FEATURES.map((feature) => (
+                  <li
+                    key={feature}
+                    className="flex gap-2.5 text-sm text-secondary"
+                  >
+                    <span aria-hidden="true" className="text-accent">
+                      —
+                    </span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-8">
+                <SlideToConfirm
+                  purpose="start-subscription"
+                  ariaLabel={`Slide to start your ${period === "monthly" ? "monthly" : "annual"} Care Plan`}
+                  onConfirm={async () => {
+                    // Stripe is not wired yet; routing into the lead form keeps
+                    // the action honest rather than failing silently.
+                    router.push(
+                      `/start?tier=care&currency=${currency}&period=${period}`,
+                    );
+                  }}
+                />
+              </div>
             </div>
-          </div>
-        </Reveal>
+          </Reveal>
+        </div>
       </div>
     </>
   );

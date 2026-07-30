@@ -118,9 +118,20 @@ const CATALOGUE = [
     key: "care_monthly",
     name: "Care Plan",
     description:
-      "Hosting and maintenance, unlimited small edits, SEO monitoring, monthly report, priority support. Cancel any time.",
+      "Hosting and maintenance, 100 small fixes and 20 big fixes a month, SEO monitoring, monthly report, priority support. Cancel any time.",
     amount: 180_00,
     recurring: { interval: "month" },
+  },
+  {
+    // Twelve months for the price of ten. A separate price on its own product
+    // rather than a second price on care_monthly, because this script keys
+    // products by yc_key and one key must mean one price.
+    key: "care_yearly",
+    name: "Care Plan — annual",
+    description:
+      "Hosting and maintenance, 100 small fixes and 20 big fixes a month, SEO monitoring, monthly report, priority support. Twelve months for the price of ten.",
+    amount: 1800_00,
+    recurring: { interval: "year" },
   },
 ];
 
@@ -177,6 +188,27 @@ async function main() {
             ? `  created product       ${item.name}`
             : `  product exists        ${item.name}`,
         );
+      }
+    } else if (
+      product.name !== item.name ||
+      product.description !== item.description
+    ) {
+      /*
+       * Name and description were only ever set at creation, so editing either
+       * here changed nothing on an existing product — the catalogue said one
+       * thing and Stripe kept showing the old text on checkout and invoices.
+       *
+       * Safe to update in place, unlike `amount`: prices are immutable in
+       * Stripe and still require --replace, but product copy is not.
+       */
+      if (dry) {
+        console.log(`  would update product  ${item.name}`);
+      } else {
+        await stripe.products.update(product.id, {
+          name: item.name,
+          description: item.description,
+        });
+        console.log(`  updated product       ${item.name}`);
       }
     } else {
       console.log(`  product exists        ${item.name}`);
@@ -264,10 +296,12 @@ async function main() {
     console.log("\nPrice ids:");
     for (const [key, id] of results) console.log(`  ${key.padEnd(20)} ${id}`);
     console.log(
-      "\nThe Care Plan price id is the one to keep — subscriptions need it:",
+      "\nThe Care Plan price ids are the ones to keep — subscriptions need them:",
     );
     const care = results.find(([k]) => k === "care_monthly");
     if (care) console.log(`  STRIPE_PRICE_CARE_MONTHLY=${care[1]}`);
+    const careYear = results.find(([k]) => k === "care_yearly");
+    if (careYear) console.log(`  STRIPE_PRICE_CARE_YEARLY=${careYear[1]}`);
   }
 }
 

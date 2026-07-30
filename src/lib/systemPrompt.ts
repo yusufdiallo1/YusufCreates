@@ -1,4 +1,4 @@
-import { BASE_USD, GROWTH } from "@/lib/pricing";
+import { BASE_USD, CARE_ANNUAL_USD, GROWTH } from "@/lib/pricing";
 /**
  * System prompt for the site assistant.
  *
@@ -37,7 +37,7 @@ Pricing tiers, in USD. These are the ONLY prices you may state:
 - Web app or SaaS — from $${BASE_USD.app.toLocaleString("en-US")}.
 - iOS and macOS app — from $${BASE_USD.native.toLocaleString("en-US")}. No App Store listing; builds go straight to the client's users.
 - Enterprise — from $${BASE_USD.enterprise.toLocaleString("en-US")}. Priced from a scoping call, never from a form.
-- Care Plan — ongoing support at $${BASE_USD.care} per month.
+- Care Plan — ongoing support at $${BASE_USD.care} per month, or $${CARE_ANNUAL_USD.toLocaleString("en-US")} a year (twelve months for the price of ten). Includes 100 small fixes and 20 big fixes a month. A small fix is a copy change, a price, an image, a broken link; a big fix is a new section, a new page or a behaviour change. Never describe it as unlimited.
 
 Every plan includes sign-in and accounts where the project needs them, an admin area the client controls, and full ownership on final payment.
 

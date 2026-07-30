@@ -137,7 +137,10 @@ export const PLANS: Plan[] = [
       "projectPurpose",
       "decisionMakers",
       "procurementProcess",
-      "ndaRequired",
+      // No NDA checkbox. Anyone who needs one says so, and asking made the
+      // form longer to answer a question that changes nothing about the
+      // quote. The field stays on the lead record for the ones already
+      // captured.
       "targetLaunch",
     ],
     messagePrompt:
