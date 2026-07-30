@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
 import { ScoreBadge } from "@/components/admin/ScoreBadge";
+import { ADMIN_PATH } from "@/lib/constants";
 
 /**
  * Overview.
@@ -69,7 +70,7 @@ export function Overview() {
             Needs your attention
           </h2>
           <Link
-            href="/admin/leads"
+            href={`${ADMIN_PATH}/leads`}
             className="text-xs text-secondary transition-colors duration-fast hover:text-primary"
           >
             All leads
@@ -85,7 +86,7 @@ export function Overview() {
             {needsAttention.map((lead) => (
               <li key={lead._id}>
                 <Link
-                  href={`/admin/leads?id=${lead._id}`}
+                  href={`${ADMIN_PATH}/leads?id=${lead._id}`}
                   className="admin-card flex items-center justify-between gap-4 transition-colors duration-fast hover:bg-surface-2"
                 >
                   <div className="min-w-0">

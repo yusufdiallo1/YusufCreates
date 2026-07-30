@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { Logo } from "@/components/ui/Logo";
+import { ADMIN_PATH } from "@/lib/constants";
 
 /**
  * Admin sidebar.
@@ -27,34 +28,34 @@ import { Logo } from "@/components/ui/Logo";
  * anything not here is one Cmd+K away.
  */
 const PRIMARY = [
-  { href: "/admin", label: "Overview" },
-  { href: "/admin/leads", label: "Leads" },
+  { href: `${ADMIN_PATH}`, label: "Overview" },
+  { href: `${ADMIN_PATH}/leads`, label: "Leads" },
 ];
 
 const GROUPS: { heading: string; items: { href: string; label: string }[] }[] = [
   {
     heading: "Clients",
     items: [
-      { href: "/admin/clients", label: "Clients & projects" },
-      { href: "/admin/proposals", label: "Proposals" },
-      { href: "/admin/invoices", label: "Invoices" },
+      { href: `${ADMIN_PATH}/clients`, label: "Clients & projects" },
+      { href: `${ADMIN_PATH}/proposals`, label: "Proposals" },
+      { href: `${ADMIN_PATH}/invoices`, label: "Invoices" },
     ],
   },
   {
     heading: "Site",
     items: [
-      { href: "/admin/projects", label: "Portfolio" },
-      { href: "/admin/blog", label: "Blog" },
-      { href: "/admin/testimonials", label: "Testimonials" },
+      { href: `${ADMIN_PATH}/projects`, label: "Portfolio" },
+      { href: `${ADMIN_PATH}/blog`, label: "Blog" },
+      { href: `${ADMIN_PATH}/testimonials`, label: "Testimonials" },
     ],
   },
   {
     heading: "Growth",
     items: [
-      { href: "/admin/broadcasts", label: "Broadcast" },
-      { href: "/admin/promos", label: "Promotions" },
-      { href: "/admin/analytics", label: "Analytics" },
-      { href: "/admin/kb", label: "AI knowledge" },
+      { href: `${ADMIN_PATH}/broadcasts`, label: "Broadcast" },
+      { href: `${ADMIN_PATH}/promos`, label: "Promotions" },
+      { href: `${ADMIN_PATH}/analytics`, label: "Analytics" },
+      { href: `${ADMIN_PATH}/kb`, label: "AI knowledge" },
     ],
   },
 ];
@@ -89,7 +90,7 @@ export function Sidebar() {
   // Exact match for the index, prefix match elsewhere — otherwise /admin
   // would stay highlighted on every child route.
   const isActive = (href: string) =>
-    href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
+    href === `${ADMIN_PATH}` ? pathname === `${ADMIN_PATH}` : pathname.startsWith(href);
 
   const nav = (
     <nav aria-label="Admin sections" className="flex h-full flex-col">
@@ -153,16 +154,16 @@ export function Sidebar() {
 
       <div className="space-y-1 px-1 py-3 before:mb-3 before:block before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/8 before:to-transparent">
         <Link
-          href="/admin/feedback"
-          aria-current={isActive("/admin/feedback") ? "page" : undefined}
+          href={`${ADMIN_PATH}/feedback`}
+          aria-current={isActive(`${ADMIN_PATH}/feedback`) ? "page" : undefined}
           onClick={() => setMobileOpen(false)}
           className="admin-nav-link"
         >
           Feedback
         </Link>
         <Link
-          href="/admin/settings"
-          aria-current={isActive("/admin/settings") ? "page" : undefined}
+          href={`${ADMIN_PATH}/settings`}
+          aria-current={isActive(`${ADMIN_PATH}/settings`) ? "page" : undefined}
           onClick={() => setMobileOpen(false)}
           className="admin-nav-link"
         >

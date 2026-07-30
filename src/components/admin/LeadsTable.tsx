@@ -7,6 +7,7 @@ import { api } from "@/lib/convex-api";
 import { ScoreBadge } from "@/components/admin/ScoreBadge";
 import { LeadDrawer } from "@/components/admin/LeadDrawer";
 import type { Doc } from "@convex/_generated/dataModel";
+import { ADMIN_PATH } from "@/lib/constants";
 
 /**
  * Leads table.
@@ -50,7 +51,7 @@ export function LeadsTable() {
     const next = new URLSearchParams(params.toString());
     if (id) next.set("id", id);
     else next.delete("id");
-    router.replace(`/admin/leads?${next.toString()}`, { scroll: false });
+    router.replace(`${ADMIN_PATH}/leads?${next.toString()}`, { scroll: false });
   };
 
   return (

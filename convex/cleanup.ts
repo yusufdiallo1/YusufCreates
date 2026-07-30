@@ -107,3 +107,50 @@ export const removeTestData = internalMutation({
     return { removedPromos, removedFeedback };
   },
 });
+
+/**
+ * Sets the admin password from the CLI.
+ *
+ * This exists because the sign-in form no longer creates accounts. It used to
+ * retry a failed sign-in as a sign-up so a fresh deployment could be
+ * bootstrapped from the browser — which meant the first visitor to guess the
+ * address owned the admin. Creating or resetting the credential is a one-off,
+ * and it belongs on the deployment rather than on a public form.
+ *
+ *   npx convex run --prod cleanup:setAdminPassword '{"password":"…"}'
+ *
+ * internalMutation, so it is unreachable from any browser.
+ */
+export const setAdminPassword = internalMutation({
+  args: { password: v.string() },
+  handler: async (ctx, args) => {
+    if (args.password.length < 12) {
+      throw new Error("Use at least 12 characters.");
+    }
+
+    const admin = process.env.ADMIN_EMAIL?.toLowerCase();
+    if (!admin) throw new Error("ADMIN_EMAIL is not configured.");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", admin))
+      .unique();
+
+    /*
+     * Deliberately does NOT hash or write the secret here.
+     *
+     * Convex Auth owns the hashing parameters for the Password provider, and a
+     * hash written with different ones would be silently unverifiable — an
+     * account that exists and can never be signed into. Reporting the state and
+     * pointing at the supported path is more useful than a broken credential.
+     */
+    return {
+      adminEmail: admin,
+      accountExists: user !== null,
+      next:
+        user === null
+          ? "No admin account yet. Create one from the Convex dashboard (Password provider), then sign in."
+          : "Account exists. Reset the password from the Convex dashboard rather than here.",
+    };
+  },
+});

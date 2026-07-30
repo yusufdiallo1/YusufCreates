@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
 import { useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
+import { ADMIN_PATH } from "@/lib/constants";
 
 /**
  * Command palette. Cmd+K anywhere in the admin.
@@ -101,26 +102,26 @@ export function CommandPalette() {
 
   const actions = useMemo<Action[]>(() => {
     const nav: Action[] = [
-      { id: "nav:overview", label: "Overview", group: "Go to", run: () => go("/admin") },
-      { id: "nav:leads", label: "Leads and inquiries", group: "Go to", keywords: "inbox enquiries", run: () => go("/admin/leads") },
-      { id: "nav:analytics", label: "Analytics", group: "Go to", keywords: "traffic stats", run: () => go("/admin/analytics") },
-      { id: "nav:projects", label: "Projects and case studies", group: "Go to", keywords: "work portfolio", run: () => go("/admin/projects") },
-      { id: "nav:testimonials", label: "Testimonials", group: "Go to", run: () => go("/admin/testimonials") },
-      { id: "nav:feedback", label: "Feedback", group: "Go to", run: () => go("/admin/feedback") },
-      { id: "nav:broadcasts", label: "Broadcasting", group: "Go to", keywords: "newsletter email send", run: () => go("/admin/broadcasts") },
-      { id: "nav:blog", label: "Blog", group: "Go to", keywords: "posts writing", run: () => go("/admin/blog") },
-      { id: "nav:kb", label: "AI knowledge base", group: "Go to", keywords: "bot chat questions", run: () => go("/admin/kb") },
-      { id: "nav:invoices", label: "Proposals and invoices", group: "Go to", keywords: "money billing vat", run: () => go("/admin/invoices") },
-      { id: "nav:promos", label: "Promotions", group: "Go to", keywords: "discount code sale offer", run: () => go("/admin/promos") },
-      { id: "nav:clients", label: "Clients", group: "Go to", keywords: "portal access", run: () => go("/admin/clients") },
-      { id: "nav:proposals", label: "Proposals", group: "Go to", keywords: "quote scope contract", run: () => go("/admin/proposals") },
-      { id: "nav:settings", label: "Settings", group: "Go to", keywords: "profile availability config", run: () => go("/admin/settings") },
+      { id: "nav:overview", label: "Overview", group: "Go to", run: () => go(`${ADMIN_PATH}`) },
+      { id: "nav:leads", label: "Leads and inquiries", group: "Go to", keywords: "inbox enquiries", run: () => go(`${ADMIN_PATH}/leads`) },
+      { id: "nav:analytics", label: "Analytics", group: "Go to", keywords: "traffic stats", run: () => go(`${ADMIN_PATH}/analytics`) },
+      { id: "nav:projects", label: "Projects and case studies", group: "Go to", keywords: "work portfolio", run: () => go(`${ADMIN_PATH}/projects`) },
+      { id: "nav:testimonials", label: "Testimonials", group: "Go to", run: () => go(`${ADMIN_PATH}/testimonials`) },
+      { id: "nav:feedback", label: "Feedback", group: "Go to", run: () => go(`${ADMIN_PATH}/feedback`) },
+      { id: "nav:broadcasts", label: "Broadcasting", group: "Go to", keywords: "newsletter email send", run: () => go(`${ADMIN_PATH}/broadcasts`) },
+      { id: "nav:blog", label: "Blog", group: "Go to", keywords: "posts writing", run: () => go(`${ADMIN_PATH}/blog`) },
+      { id: "nav:kb", label: "AI knowledge base", group: "Go to", keywords: "bot chat questions", run: () => go(`${ADMIN_PATH}/kb`) },
+      { id: "nav:invoices", label: "Proposals and invoices", group: "Go to", keywords: "money billing vat", run: () => go(`${ADMIN_PATH}/invoices`) },
+      { id: "nav:promos", label: "Promotions", group: "Go to", keywords: "discount code sale offer", run: () => go(`${ADMIN_PATH}/promos`) },
+      { id: "nav:clients", label: "Clients", group: "Go to", keywords: "portal access", run: () => go(`${ADMIN_PATH}/clients`) },
+      { id: "nav:proposals", label: "Proposals", group: "Go to", keywords: "quote scope contract", run: () => go(`${ADMIN_PATH}/proposals`) },
+      { id: "nav:settings", label: "Settings", group: "Go to", keywords: "profile availability config", run: () => go(`${ADMIN_PATH}/settings`) },
     ];
 
     const quick: Action[] = [
-      { id: "do:broadcast", label: "Start a broadcast", hint: "Compose a newsletter", group: "Actions", run: () => go("/admin/broadcasts/new") },
-      { id: "do:project", label: "New project", group: "Actions", run: () => go("/admin/projects/new") },
-      { id: "do:post", label: "New blog post", group: "Actions", run: () => go("/admin/blog/new") },
+      { id: "do:broadcast", label: "Start a broadcast", hint: "Compose a newsletter", group: "Actions", run: () => go(`${ADMIN_PATH}/broadcasts/new`) },
+      { id: "do:project", label: "New project", group: "Actions", run: () => go(`${ADMIN_PATH}/projects/new`) },
+      { id: "do:post", label: "New blog post", group: "Actions", run: () => go(`${ADMIN_PATH}/blog/new`) },
       { id: "do:site", label: "View the live site", group: "Actions", keywords: "public home", run: () => { setOpen(false); window.open("/", "_blank", "noopener"); } },
     ];
 
@@ -131,7 +132,7 @@ export function CommandPalette() {
         hint: [l.company, l.email].filter(Boolean).join(" · "),
         group: "Leads",
         keywords: `${l.company ?? ""} ${l.email}`,
-        run: () => go(`/admin/leads?id=${l._id}`),
+        run: () => go(`${ADMIN_PATH}/leads?id=${l._id}`),
       })) ?? [];
 
     const projectActions: Action[] =
@@ -141,7 +142,7 @@ export function CommandPalette() {
         hint: p.status,
         group: "Projects",
         keywords: p.slug,
-        run: () => go(`/admin/projects/${p._id}`),
+        run: () => go(`${ADMIN_PATH}/projects/${p._id}`),
       })) ?? [];
 
     return [...nav, ...quick, ...leadActions, ...projectActions];

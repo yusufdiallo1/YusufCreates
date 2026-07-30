@@ -14,6 +14,16 @@ import type { MutationCtx } from "./_generated/server";
  */
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [Password],
+  /*
+   * Four failed attempts an hour, down from a default of ten.
+   *
+   * One person signs in here and they know the password. Ten guesses an hour
+   * is a sensible default for a product with real users who forget theirs; on
+   * a single-admin surface it is nine more than anyone legitimate needs. The
+   * allowance refills continuously rather than in a block, so a typo does not
+   * lock the day.
+   */
+  signIn: { maxFailedAttempsPerHour: 4 },
   callbacks: {
     /**
      * Two kinds of account may exist, and nothing else.

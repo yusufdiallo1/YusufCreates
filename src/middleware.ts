@@ -5,17 +5,24 @@ import {
   createRouteMatcher,
   nextjsMiddlewareRedirect,
 } from "@convex-dev/auth/nextjs/server";
+import { ADMIN_PATH } from "@/lib/constants";
 
 /**
  * Route protection.
  *
- * Every /admin and /dashboard route requires an authenticated session. This is
+ * Every back-office route requires an authenticated session. This is
  * the edge gate; it is NOT the only check — each Convex query and mutation
  * re-verifies identity server-side, because middleware cannot protect data
  * reached by any other path.
  */
-// /dashboard no longer exists — the admin lives entirely under /admin.
-const isProtected = createRouteMatcher(["/admin(.*)"]);
+/*
+ * The back office, plus /admin itself.
+ *
+ * The old path is still matched so a stale bookmark hits the auth gate and is
+ * redirected rather than falling through to a 404 that quietly confirms the
+ * admin moved. It resolves to nothing either way — the route no longer exists.
+ */
+const isProtected = createRouteMatcher([`${ADMIN_PATH}(.*)`, "/admin(.*)"]);
 // The portal handles its own three-state auth in-page rather than redirecting:
 // a client arriving from an email link should see an explanation, not a
 // sign-in form for an account they may not realise they have.
@@ -47,7 +54,7 @@ const convexMiddleware = convexAuthNextjsMiddleware(
     }
 
     if (signInRoute && authed) {
-      return nextjsMiddlewareRedirect(request, "/admin");
+      return nextjsMiddlewareRedirect(request, ADMIN_PATH);
     }
   },
 );
