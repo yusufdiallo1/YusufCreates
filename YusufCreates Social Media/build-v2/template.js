@@ -265,20 +265,33 @@ function fileTree(tree) {
  * slides, and a red-vs-green pair reads instantly at feed scale.
  */
 function compare(cmp) {
-  const col = (side, isBad) => `
+  // `neutral: true` for pairs that are both valid — two settings, two
+  // approaches. Red-versus-green there would assert a wrong answer that the
+  // slide isn't making, so those get accent-versus-grey instead.
+  const neutral = cmp.neutral === true;
+
+  const col = (side, isBad) => {
+    const tint = neutral
+      ? isBad ? "rgba(94,106,210,0.20)" : "rgba(255,255,255,0.07)"
+      : isBad ? "rgba(229,72,77,0.20)" : "rgba(76,195,138,0.18)";
+    const label = neutral ? (isBad ? C.accent : "#b6bcc6") : isBad ? C.danger : C.green;
+    const icon = neutral
+      ? `<circle cx="12" cy="12" r="10" fill="${isBad ? C.accent : "#6b7280"}"/>
+         <path d="M12 7v10" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>`
+      : isBad
+        ? `<circle cx="12" cy="12" r="10" fill="${C.danger}"/><path d="M8 8l8 8M16 8l-8 8" stroke="#fff" stroke-width="2.3" stroke-linecap="round"/>`
+        : `<circle cx="12" cy="12" r="10" fill="${C.green}"/><path d="M7 12.5l3.5 3.5L17 9" fill="none" stroke="#08090a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+    return `
     <div style="flex:1;${panel(18)}overflow:hidden">
       <div style="display:flex;align-items:center;gap:11px;padding:17px 22px;
           border-bottom:1px solid rgba(255,255,255,0.13);
-          background:${isBad ? "rgba(229,72,77,0.20)" : "rgba(76,195,138,0.18)"}">
+          background:${tint}">
         <svg viewBox="0 0 24 24" style="width:23px;height:23px;flex:none" aria-hidden="true">
-          ${
-            isBad
-              ? `<circle cx="12" cy="12" r="10" fill="${C.danger}"/><path d="M8 8l8 8M16 8l-8 8" stroke="#fff" stroke-width="2.3" stroke-linecap="round"/>`
-              : `<circle cx="12" cy="12" r="10" fill="${C.green}"/><path d="M7 12.5l3.5 3.5L17 9" fill="none" stroke="#08090a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`
-          }
+          ${icon}
         </svg>
         <span style="font-size:22px;font-weight:600;letter-spacing:0.04em;
-          text-transform:uppercase;color:${isBad ? C.danger : C.green}">${side.label}</span>
+          text-transform:uppercase;color:${label}">${side.label}</span>
       </div>
       <div style="padding:26px 24px 28px">
         <div style="font-family:${MONO};font-size:32px;font-weight:600;color:#ffffff;
@@ -290,6 +303,7 @@ function compare(cmp) {
         }
       </div>
     </div>`;
+  };
   return `<div style="display:flex;gap:18px;margin-top:26px;align-items:stretch">
     ${col(cmp.bad, true)}${col(cmp.good, false)}
   </div>`;

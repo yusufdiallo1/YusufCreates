@@ -197,6 +197,144 @@ v2-05/v2-06 reuse decks 7 and 9. New captions for v2-07 onward are below.
 
 ---
 
+## `v2-13-skills`
+
+> Stop pasting the same instructions into Claude Code. A skill turns a checklist
+> you keep re-typing into a command.
+>
+> THE FILE — one folder, one SKILL.md:
+>
+> ```
+> ---
+> name: ship
+> description: Pre-deploy checklist
+> ---
+> 1. Typecheck, then build.
+> 2. Prices match pricing.ts?
+> 3. No secrets in the bundle.
+> ```
+>
+> That's the whole thing. It becomes /ship.
+>
+> WHY IT BEATS CLAUDE.md — a skill's body only loads when it's used. CLAUDE.md
+> loads every session. So a long reference document costs almost nothing until
+> you need it. Move anything from CLAUDE.md that's a procedure rather than a
+> fact.
+>
+> TWO SWITCHES WORTH KNOWING —
+> → `disable-model-invocation: true` — only you can run it. For anything with
+> side effects; Claude shouldn't decide to deploy.
+> → `user-invocable: false` — only Claude can. For background knowledge that
+> isn't a useful command.
+>
+> Skills follow the open Agent Skills standard, so they're not locked to one
+> tool. The rule: written it twice? Make it a skill.
+
+```
+#claudecode #aicoding #developertools #devworkflow #automation #codingtips
+#softwareengineer #buildinpublic #programming #devtools #productivity
+#webdev #agentskills #devcommunity #techtips
+```
+
+---
+
+## `v2-14-ultrathink`
+
+> One word makes Claude think harder. It's in the docs, it costs nothing, and
+> almost nobody types it.
+>
+> THE WORD — `ultrathink`, anywhere in your prompt.
+>
+> Not a mode you switch on. A keyword you include, for the one question that
+> deserves it.
+>
+> WHEN — hard calls, not easy edits:
+> → A bug that only happens in production
+> → Choosing between two architectures
+> → Anything you'd normally sleep on
+> → Reviewing your own reasoning
+>
+> THE DIAL — you can also set `effort` in a skill's frontmatter:
+> `low · medium · high · xhigh · max`
+> It overrides the session level whenever that skill runs. So an
+> architecture-review skill can think hard by default, without you remembering.
+>
+> Most prompts don't need it. The ones where being wrong costs you a day
+> absolutely do — and it's one word.
+>
+> Try it on the next bug that doesn't make sense.
+
+```
+#claudecode #aicoding #promptengineering #developertools #codingtips
+#softwareengineer #devworkflow #buildinpublic #programming #aitools
+#devtools #techtips #webdev #productivity #devcommunity
+```
+
+---
+
+## `v2-15-hooks-automation`
+
+> Make Claude Code finish the job without you. The commands you've seen that
+> keep an agent working are mostly hooks — here's the actual mechanism.
+>
+> THE EVENT — a Stop hook fires when Claude tries to end its turn, and it can
+> refuse. Claude wanted to stop; the hook says the goal isn't met yet, so it
+> carries on. That's the whole trick behind "keep going until it's done".
+>
+> FOUR YOU'LL ACTUALLY USE —
+> → PreToolUse — block a command before it runs
+> → PostToolUse — format or lint after every edit
+> → SessionStart — load context at the start of each session
+> → Stop — refuse to finish until the work is done
+>
+> THE HONEST BIT — a lot of the slash commands you see in demos come from
+> plugins or someone's personal setup. If it isn't in the docs, it isn't
+> standard. But you can usually build it yourself from a hook and a skill.
+>
+> Prompting harder has a ceiling. A hook is a file you commit, so it works the
+> same tomorrow and for anyone else who clones the repo.
+
+```
+#claudecode #automation #devops #developertools #devworkflow #cicd
+#softwareengineering #buildinpublic #programming #cli #terminal
+#aicoding #devtools #engineering #techtips
+```
+
+---
+
+## `v2-16-who-to-follow`
+
+> Who to follow if you want signal instead of hype. Most AI content is a
+> thumbnail and a promise — these people ship things and show the work.
+>
+> NATE HERK — n8n workflows and AI agents. Left Goldman Sachs for automation
+> full time, and builds real systems on camera for people who don't come from a
+> technical background.
+>
+> ALSO WORTH IT —
+> → Nick Saraev — automation as an actual business
+> → Jono Catliff — no-code, end to end
+> → Simon Scrapes — scraping and pipelines
+> → Anthropic's own docs — the actual source
+>
+> THE FILTER — do they show the failures? Anyone whose builds always work first
+> try is editing, not teaching. The useful channels show the thing breaking and
+> what they did about it.
+>
+> And the best source is still the docs. Every Claude Code deck I post is
+> checked against code.claude.com before it goes out — tutorials go stale in
+> weeks, the docs update the day a feature ships.
+>
+> Who's actually taught you something? Drop them below 👇
+
+```
+#aicommunity #claudecode #aiautomation #n8n #buildinpublic #aitools
+#developercommunity #contentcreator #learninpublic #automation
+#aiagents #devcommunity #programming #techcreators #nocode
+```
+
+---
+
 ## Posting notes
 
 **Order.** Tools decks are the reach engine — they teach, so they cost nothing

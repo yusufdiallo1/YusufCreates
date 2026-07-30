@@ -1,6 +1,6 @@
 # YusufCreates Social Media — v2 (graphic)
 
-Twelve carousels at **1080×1350 (4:5)**, rendered from code. Same brand as v1,
+Sixteen carousels at **1080×1350 (4:5)**, rendered from code. Same brand as v1,
 but each slide shows a real object — a code window, a terminal, a file tree, a
 comparison, a meter — instead of a headline on a gradient.
 
@@ -25,7 +25,7 @@ require fails:
 node "YusufCreates Social Media/build-v2/render.js"
 ```
 
-Writes 30 slides across 6 carousels. It fails loudly rather than producing wrong
+Writes 80 slides across 16 carousels. It fails loudly rather than producing wrong
 output: it aborts if the embedded font doesn't load, and warns per slide if
 content overflows the safe area.
 
@@ -87,7 +87,15 @@ where legibility dies. Glass is kept for the chrome, eyebrows, CTAs and tiles.
 | Project details, metrics, live URLs | `convex/seed.ts` |
 
 Current: Launch $400 · Growth $750/$950 · Web app from $2,500 · iOS & macOS from
-$3,200 · Enterprise from $5,500 · Care Plan $180/mo.
+$3,200 · Enterprise from $5,500 · Care Plan $180/mo, or $1,800/year.
+
+**Tier descriptions go stale the same way prices do, and more quietly.** A deck
+once said the Care Plan included "unlimited small edits" — `pricing.ts`
+deliberately replaced that wording with "100 small fixes and 20 big fixes a
+month", with a comment explaining that "unlimited" was never true in the way
+anyone reads it. The price was right and the promise was wrong, which is worse:
+it's a commitment you'd have to honour or walk back. Check `BUILD_TIERS`,
+`ENTERPRISE_FEATURES`, `CARE_FEATURES` and `EVERY_PLAN` — not just the numbers.
 
 No deck claims traffic, revenue or client counts — none of that is recorded in
 the repo, and inventing it on a public post is a liability.
@@ -122,6 +130,10 @@ before re-posting one, not just before writing a new one.
 | `v2-10-headless` | `claude -p`, JSON output, budget caps |
 | `v2-11-fast-sites` | Perceived speed vs measured speed |
 | `v2-12-one-person` | How one person ships this much |
+| `v2-13-skills` | SKILL.md, lazy loading, invocation switches |
+| `v2-14-ultrathink` | The `ultrathink` keyword and `effort` levels |
+| `v2-15-hooks-automation` | Stop hooks, and why some commands aren't built in |
+| `v2-16-who-to-follow` | Creators worth following, and how to filter |
 
 Captions: `CAPTIONS-V2.md` covers `v2-07` onward plus the posting order.
 `v2-01`–`v2-04` reuse decks 12–15 in `CAPTIONS.md`; `v2-05`/`v2-06` reuse decks

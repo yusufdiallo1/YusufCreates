@@ -295,25 +295,24 @@ const carousels = [
         eyebrow: "Going further",
         headline: [["Native and", "primary"], ["enterprise.", "muted"]],
         tiers: [
-          { name: "iOS & macOS", price: "from $3,200", detail: "Native, one shared backend. Works offline, syncs on reconnect." },
+          { name: "iOS & macOS", price: "from $3,200", detail: "Shares your web backend. Works offline. No App Store queue, no store cut." },
           { name: "Enterprise", price: "from $5,500", detail: "Up to 25 pages, bilingual RTL, WCAG 2.2 AA, SSO, SLA." },
-          { name: "Care Plan", price: "$180/mo", detail: "Hosting, unlimited small edits, monthly reporting." },
+          { name: "Care Plan", price: "$180/mo", detail: "Hosting, 100 small fixes and 20 big fixes a month, SEO monitoring." },
         ],
       },
       {
         eyebrow: "In every plan",
         headline: [["No tier tax on", "primary"], ["the basics.", "muted"]],
         checks: [
-          "Sign-in and accounts where needed",
-          "An admin area you control",
+          "Sign-in and accounts where the project needs them",
+          "An admin area you actually control",
           "Yours outright on final payment",
-          "Fast on a phone, not just a laptop",
         ],
       },
       {
         eyebrow: "Next step",
         headline: [["Know which one", "primary"], ["you need?", "accent"]],
-        body: "Quoted in USD, SAR and AED. DM the tier name and what you’re building.",
+        body: "Care Plan billed yearly is $1,800 — twelve months for the price of ten. Quoted in USD, SAR and AED.",
         cta: "DM to start",
         ctaHi: true,
       },
@@ -647,6 +646,226 @@ const carousels = [
         body: "Two builds at a time, built by the person you spoke to. That’s the entire model, and it only works because the tooling carries the parts that don’t need judgement.",
         cta: "Two slots — DM me",
         ctaHi: true,
+      },
+    ],
+  },
+  // =====================================================================
+  // ROUND THREE — skills in depth, thinking control, and who to follow
+  //
+  // Skills frontmatter verified against code.claude.com/docs/en/skills.
+  // `ultrathink` and the effort levels are from
+  // code.claude.com/docs/en/model-config.
+  //
+  // Deliberately NOT taught as built-ins: /goal and similar commands that
+  // come from third-party plugins or personal setups. They aren't in the
+  // Claude Code docs, so a post presenting them as standard would send
+  // people looking for something that isn't there. Deck 15 teaches the
+  // mechanism that produces them instead, which is the transferable part.
+  // =====================================================================
+
+  // 13. Skills, properly. The single feature that changes how the tool works.
+  {
+    slug: "v2-13-skills",
+    title: "Skills are the real unlock",
+    slides: [
+      {
+        eyebrow: "Claude Code",
+        headline: [["Stop pasting", "primary"], ["the same", "primary"], ["instructions.", "accent"]],
+        body: "A skill turns a checklist you keep re-typing into a command. It’s the feature that changes how the tool works.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "The file",
+        headline: [["One folder.", "primary"], ["One SKILL.md.", "muted"]],
+        code: {
+          file: ".claude/skills/ship/SKILL.md",
+          accentFile: true,
+          lines: [
+            [["---", "punct"]],
+            [["name", "key"], [": ", "punct"], ["ship", "str"]],
+            [["description", "key"], [": ", "punct"], ["Pre-deploy checklist", "str"]],
+            [["---", "punct"]],
+            "",
+            [["1. Typecheck, then build.", "text"]],
+            [["2. Prices match pricing.ts?", "text"]],
+            [["3. No secrets in the bundle.", "text"]],
+          ],
+        },
+        body: "That’s the whole thing. It becomes /ship.",
+      },
+      {
+        eyebrow: "Why it beats CLAUDE.md",
+        headline: [["It costs nothing", "primary"], ["until it’s used.", "accent"]],
+        bars: [
+          { label: "CLAUDE.md — loads every session", value: "always", pct: 100 },
+          { label: "SKILL.md — loads when invoked", value: "on demand", pct: 22, on: true },
+        ],
+        body: "So a long reference document is free to keep. Move anything from CLAUDE.md that’s a procedure rather than a fact.",
+      },
+      {
+        eyebrow: "Who invokes it",
+        headline: [["Two switches", "primary"], ["worth knowing.", "muted"]],
+        compare: {
+          neutral: true,
+          bad: {
+            label: "You only",
+            code: "disable-model-\n  invocation: true",
+            note: "For anything with side effects. Claude shouldn’t decide to deploy.",
+          },
+          good: {
+            label: "Claude only",
+            code: "user-invocable:\n  false",
+            note: "For background knowledge that isn’t a useful command.",
+          },
+        },
+      },
+      {
+        eyebrow: "The rule",
+        headline: [["Written twice?", "primary"], ["Make it a skill.", "accent"]],
+        body: "Skills follow the open Agent Skills standard, so they aren’t locked to one tool. The second time you paste a procedure, you’ve found your next one.",
+        cta: "Save this",
+      },
+    ],
+  },
+
+  // 14. Thinking control. Genuinely underused, and trivially actionable.
+  {
+    slug: "v2-14-ultrathink",
+    title: "Make it think harder",
+    slides: [
+      {
+        eyebrow: "Claude Code",
+        headline: [["One word makes", "primary"], ["it think", "primary"], ["harder.", "accent"]],
+        body: "It’s in the docs, it costs nothing, and almost nobody types it.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "The word",
+        headline: [["ultrathink.", "accent"], ["Anywhere in the", "primary"], ["prompt.", "muted"]],
+        terminal: {
+          title: "claude",
+          lines: [
+            ["ultrathink — why does this only", "cmd"],
+            ["fail in production?", "cmd"],
+            ["", "out"],
+            ["Thinking…", "ok"],
+          ],
+        },
+        body: "Not a mode you switch on. A keyword you include, for the one question that deserves it.",
+      },
+      {
+        eyebrow: "When",
+        headline: [["Hard calls, not", "primary"], ["easy edits.", "muted"]],
+        checks: [
+          "A bug that only happens in production",
+          "Choosing between two architectures",
+          "Anything you’d normally sleep on",
+          "Reviewing your own reasoning",
+        ],
+      },
+      {
+        eyebrow: "The dial",
+        headline: [["Or set effort", "primary"], ["per skill.", "muted"]],
+        code: {
+          file: "SKILL.md",
+          lines: [
+            [["---", "punct"]],
+            [["name", "key"], [": ", "punct"], ["architecture-review", "str"]],
+            [["effort", "key"], [": ", "punct"], ["high", "accent"]],
+            [["---", "punct"]],
+            "",
+            [["# low · medium · high · xhigh · max", "comment"]],
+          ],
+        },
+        body: "Overrides the session level whenever that skill runs.",
+      },
+      {
+        eyebrow: "The habit",
+        headline: [["Cheap for the", "primary"], ["hard 5%.", "accent"]],
+        body: "Most prompts don’t need it. The ones where being wrong costs you a day absolutely do — and it’s one word.",
+        cta: "Follow for more",
+      },
+    ],
+  },
+
+  // 15. Automation via hooks. This is the honest, transferable version of the
+  //     "/goal" style commands people see and can't find in the docs.
+  {
+    slug: "v2-15-hooks-automation",
+    title: "Make it keep going",
+    slides: [
+      {
+        eyebrow: "Claude Code",
+        headline: [["Make it finish", "primary"], ["the job without", "primary"], ["you.", "accent"]],
+        body: "The commands you’ve seen that keep an agent working are mostly hooks. Here’s the actual mechanism.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "The event",
+        headline: [["Stop fires when", "primary"], ["it tries to stop.", "muted"]],
+        body: "A Stop hook can refuse. Claude wanted to finish the turn; the hook says the goal isn’t met yet, and it carries on. That’s the whole trick behind “keep going until done”.",
+      },
+      {
+        eyebrow: "The others",
+        headline: [["Four you’ll", "primary"], ["actually use.", "muted"]],
+        steps: [
+          { k: "PreToolUse", v: "Block a command before it runs" },
+          { k: "PostToolUse", v: "Format or lint after every edit" },
+          { k: "SessionStart", v: "Load context at the start of each session" },
+          { k: "Stop", v: "Refuse to finish until the work is done" },
+        ],
+      },
+      {
+        eyebrow: "The honest bit",
+        headline: [["Not every command", "primary"], ["is built in.", "danger"]],
+        body: "A lot of the slash commands in demos come from plugins or someone’s personal setup. If it isn’t in the docs, it isn’t standard — but you can usually build it yourself from a hook and a skill.",
+      },
+      {
+        eyebrow: "The shift",
+        headline: [["Configuration", "primary"], ["beats prompting.", "accent"]],
+        body: "Prompting harder has a ceiling. A hook is a file you commit, so it works the same tomorrow, next month, and for anyone else who clones the repo.",
+        cta: "Save this",
+      },
+    ],
+  },
+
+  // 16. Who to follow. Names verified as real, active creators; framed as a
+  //     recommendation rather than an endorsement of specific claims.
+  {
+    slug: "v2-16-who-to-follow",
+    title: "Who to actually follow",
+    slides: [
+      {
+        eyebrow: "AI + Claude Code",
+        headline: [["Who to follow,", "primary"], ["if you want", "primary"], ["signal.", "accent"]],
+        body: "Most AI content is hype. These people ship things and show the work.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "Automation",
+        headline: [["Nate Herk", "accent"], ["— n8n and", "primary"], ["AI agents.", "muted"]],
+        body: "Left Goldman Sachs for automation full time. Builds real n8n workflows and agent systems on camera, for people who don’t come from a technical background.",
+      },
+      {
+        eyebrow: "More worth a follow",
+        headline: [["Four others", "primary"], ["doing the work.", "muted"]],
+        rows: [
+          { k: "01", v: "Nick Saraev — automation as a business" },
+          { k: "02", v: "Jono Catliff — no-code, end to end" },
+          { k: "03", v: "Simon Scrapes — scraping and pipelines" },
+          { k: "04", v: "Anthropic’s own docs — the actual source" },
+        ],
+      },
+      {
+        eyebrow: "The filter",
+        headline: [["Do they show", "primary"], ["the failures?", "muted"]],
+        body: "Anyone whose builds always work first try is editing, not teaching. The useful channels show the thing breaking and what they did about it.",
+      },
+      {
+        eyebrow: "The best source",
+        headline: [["Still the docs.", "primary"], ["Genuinely.", "accent"]],
+        body: "Every Claude Code deck I post is checked against code.claude.com before it goes out. Tutorials go stale in weeks. The docs are updated the day the feature ships.",
+        cta: "Follow for more",
       },
     ],
   },

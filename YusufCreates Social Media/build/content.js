@@ -296,7 +296,7 @@ const carousels = [
           {
             name: "iOS & macOS",
             price: "from $3,200",
-            detail: "A real native app sharing one backend with your web build. Works offline, syncs on reconnect.",
+            detail: "Shares one backend with your web build. Works offline. No App Store queue, no store cut.",
           },
           {
             name: "Enterprise",
@@ -306,7 +306,7 @@ const carousels = [
           {
             name: "Care Plan",
             price: "$180/mo",
-            detail: "Aftercare, not a build tier. Hosting, unlimited small edits, monthly reporting.",
+            detail: "Aftercare, not a build tier. Hosting, 100 small and 20 big fixes a month, SEO monitoring.",
           },
         ],
       },
