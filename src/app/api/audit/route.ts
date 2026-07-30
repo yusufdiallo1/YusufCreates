@@ -229,7 +229,16 @@ async function runAudit(id: string, url: string, email: string) {
      * audit outright is worse than an occasional rate limit. Set
      * PAGESPEED_API_KEY to raise the ceiling.
      */
-    if (key) endpoint.searchParams.set("key", key);
+    if (key) {
+      endpoint.searchParams.set("key", key);
+    } else {
+      // Said out loud, because the failure it causes is a rate limit some
+      // time later on someone else's audit — by which point nothing points
+      // back to a missing environment variable.
+      console.warn(
+        "[audit] PAGESPEED_API_KEY is not set; using the anonymous quota.",
+      );
+    }
     // Mobile only. Running both strategies doubles the quota cost, and mobile
     // is the stricter and more representative of the two.
     endpoint.searchParams.set("strategy", "mobile");
@@ -237,7 +246,16 @@ async function runAudit(id: string, url: string, email: string) {
       endpoint.searchParams.append("category", c);
     }
 
-    const res = await fetch(endpoint, { signal: AbortSignal.timeout(90_000) });
+    /*
+     * 105s, inside the 120s function limit. A cold third-party site takes far
+     * longer than this one does — 19s warm — and the previous 90s cap was
+     * close enough to that range to abort real audits partway.
+     *
+     * It must stay below maxDuration: if the platform kills the function
+     * first, `finish` never runs and the row sits unfinished forever, which
+     * is the stuck state this timeout exists to avoid.
+     */
+    const res = await fetch(endpoint, { signal: AbortSignal.timeout(105_000) });
     if (!res.ok) {
       await finish({
         error:
