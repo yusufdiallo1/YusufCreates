@@ -358,6 +358,298 @@ const carousels = [
       },
     ],
   },
+  // =====================================================================
+  // ROUND TWO — more AI tooling, plus craft decks
+  //
+  // Checkpointing, permission modes, context management and headless mode
+  // all verified against code.claude.com/docs (July 2026). The rewind
+  // limitations in deck 07 are quoted from the checkpointing page directly;
+  // they are the part people learn the hard way.
+  // =====================================================================
+
+  // 7. Checkpoints. The single most useful thing people don't know exists.
+  {
+    slug: "v2-07-rewind",
+    title: "Undo everything Claude just did",
+    slides: [
+      {
+        eyebrow: "Claude Code",
+        headline: [["It broke your", "primary"], ["code. Press", "primary"], ["Esc twice.", "accent"]],
+        body: "There’s an undo for the last hour of edits, and most people don’t know it exists.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "Checkpoints",
+        headline: [["Every prompt is", "primary"], ["a save point.", "muted"]],
+        body: "Claude Code snapshots your files before each message you send. Automatically, all session, with no setup.",
+        figure: {
+          value: "100",
+          label: "Most recent checkpoints kept per session — kept with the conversation, so /rewind still works after you resume",
+        },
+      },
+      {
+        eyebrow: "How",
+        headline: [["Esc, Esc.", "primary"], ["Or /rewind.", "accent"]],
+        body: "Double-Esc opens the menu when the input is empty. Then pick a point and choose what to roll back:",
+        rows: [
+          { k: "01", v: "Restore code and conversation" },
+          { k: "02", v: "Restore conversation only" },
+          { k: "03", v: "Restore code only" },
+          { k: "04", v: "Summarize, to free context" },
+        ],
+      },
+      {
+        eyebrow: "The catch",
+        headline: [["Two things it", "primary"], ["will not undo.", "danger"]],
+        compare: {
+          bad: {
+            label: "Not tracked",
+            code: "rm file.txt\nmv old.txt new.txt",
+            note: "Bash changes aren’t checkpointed. Nor are subagent edits.",
+          },
+          good: {
+            label: "Tracked",
+            code: "Edit / Write\nfile tools",
+            note: "Only direct file edits made by Claude’s own tools.",
+          },
+        },
+      },
+      {
+        eyebrow: "The rule",
+        headline: [["Local undo.", "primary"], ["Not git.", "accent"]],
+        body: "Checkpoints die with the session after 30 days. They’re a safety net for the last hour, not version history. Commit anyway.",
+        cta: "Save this",
+      },
+    ],
+  },
+
+  // 8. Permission modes. Named exactly as the docs name them.
+  {
+    slug: "v2-08-permission-modes",
+    title: "Stop approving every edit",
+    slides: [
+      {
+        eyebrow: "Claude Code",
+        headline: [["You’re clicking", "primary"], ["approve 200", "primary"], ["times a day.", "accent"]],
+        body: "There’s a key for that. Most people never press it.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "The key",
+        headline: [["Shift + Tab", "primary"], ["cycles modes.", "muted"]],
+        steps: [
+          { k: "default", v: "Asks before it touches anything" },
+          { k: "acceptEdits", v: "Files yes, commands still ask" },
+          { k: "plan", v: "Reads and proposes. Writes blocked" },
+          { k: "auto", v: "Runs, with a classifier watching" },
+        ],
+      },
+      {
+        eyebrow: "Plan mode",
+        headline: [["Read first.", "primary"], ["Write never,", "primary"], ["until you say.", "muted"]],
+        body: "It explores the codebase and comes back with a plan. Nothing is written until you approve it. Best mode for a task you can’t yet describe precisely.",
+      },
+      {
+        eyebrow: "Auto mode",
+        headline: [["Not the same as", "primary"], ["no supervision.", "muted"]],
+        body: "A classifier still blocks the things you’d regret — deploys, mass deletions, force pushes, anything leaking secrets. Speed without handing over the keys entirely.",
+      },
+      {
+        eyebrow: "The habit",
+        headline: [["Match the mode", "primary"], ["to the risk.", "accent"]],
+        body: "Plan for anything architectural. acceptEdits for a refactor you understand. default when you’re somewhere unfamiliar. One keypress, not a setting you forget.",
+        cta: "Follow for more",
+      },
+    ],
+  },
+
+  // 9. Context. /clear vs /compact is a genuinely common confusion.
+  {
+    slug: "v2-09-context",
+    title: "Why it forgot what you said",
+    slides: [
+      {
+        eyebrow: "Claude Code",
+        headline: [["It forgot what", "primary"], ["you told it an", "primary"], ["hour ago.", "accent"]],
+        body: "Not a bug. You ran out of context, and there are two different fixes.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "The difference",
+        headline: [["/compact is not", "primary"], ["/clear.", "danger"]],
+        compare: {
+          bad: {
+            label: "/clear",
+            code: "New conversation.\nEmpty context.",
+            note: "Starts fresh. Use between unrelated tasks.",
+          },
+          good: {
+            label: "/compact",
+            code: "Same session,\nsummarised.",
+            note: "Keeps the thread. Use mid-task when it’s getting full.",
+          },
+        },
+        body: "Both keep CLAUDE.md — your instructions are never what gets dropped.",
+      },
+      {
+        eyebrow: "See it first",
+        headline: [["/context shows", "primary"], ["where it went.", "muted"]],
+        body: "A coloured grid of what’s actually filling the window — which tools, which files, how much memory. Usually the answer is one enormous file you pasted an hour ago.",
+      },
+      {
+        eyebrow: "Better",
+        headline: [["Summarise from", "primary"], ["the midpoint.", "muted"]],
+        body: "In the /rewind menu, “Summarize from here” compresses a verbose debugging stretch while leaving your original instructions intact. Sharper than compacting the lot.",
+      },
+      {
+        eyebrow: "The habit",
+        headline: [["Clear between", "primary"], ["tasks. Always.", "accent"]],
+        body: "Most context problems are one long session doing four unrelated jobs. Finish a thing, /clear, start the next one clean.",
+        cta: "Save this",
+      },
+    ],
+  },
+
+  // 10. Headless. The feature almost nobody uses, and the most impressive.
+  {
+    slug: "v2-10-headless",
+    title: "Claude Code without the chat",
+    slides: [
+      {
+        eyebrow: "Claude Code",
+        headline: [["It runs without", "primary"], ["the chat", "primary"], ["window.", "accent"]],
+        body: "One flag turns it into something you can script. Almost nobody uses this.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "The flag",
+        headline: [["-p, and it", "primary"], ["just answers.", "muted"]],
+        terminal: {
+          title: "zsh",
+          lines: [
+            ['claude -p "summarise today\'s commits"', "cmd"],
+            ["", "out"],
+            ["Three fixes shipped: hydration on", "out"],
+            ["mobile, stale chat pricing, a webhook", "out"],
+            ["missing payment_intent.succeeded.", "out"],
+          ],
+        },
+        body: "Non-interactive. Runs, prints, exits — like any other command.",
+      },
+      {
+        eyebrow: "Structured",
+        headline: [["JSON out, so", "primary"], ["you can pipe it.", "muted"]],
+        code: {
+          file: "release.sh",
+          lines: [
+            [["claude", "fn"], [" -p ", "punct"], ['"write release notes"', "str"], [" \\", "punct"]],
+            [["  --output-format", "key"], [" json ", "text"], ["\\", "punct"]],
+            [["  --max-budget-usd", "key"], [" ", "text"], ["2.00", "num"]],
+            "",
+            [["# A spend cap, so a loop can’t", "comment"]],
+            [["# run away with your bill.", "comment"]],
+          ],
+        },
+      },
+      {
+        eyebrow: "What for",
+        headline: [["The jobs nobody", "primary"], ["wants to do.", "muted"]],
+        checks: [
+          "Release notes from the commit log",
+          "A first-pass review on every PR",
+          "Triaging what broke overnight",
+          "Codemods across a hundred files",
+        ],
+      },
+      {
+        eyebrow: "The shift",
+        headline: [["It’s a tool, not", "primary"], ["just a chat.", "accent"]],
+        body: "The moment it runs in a script, it stops being something you visit and starts being part of how the project builds itself.",
+        cta: "Save this",
+      },
+    ],
+  },
+
+  // 11. Craft — the deck that sells the work without mentioning price.
+  {
+    slug: "v2-11-fast-sites",
+    title: "Why your site feels slow",
+    slides: [
+      {
+        eyebrow: "Craft",
+        headline: [["Your site loads", "primary"], ["fast. It still", "primary"], ["feels slow.", "accent"]],
+        body: "Speed you measure and speed people feel are two different things.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "The jump",
+        headline: [["Everything moves", "primary"], ["after it loads.", "danger"]],
+        body: "An image without width and height reserves no space, so the text under it jumps when it arrives. It’s the single most common reason a fast site feels cheap.",
+      },
+      {
+        eyebrow: "Fonts",
+        headline: [["Invisible text,", "primary"], ["then a flash.", "muted"]],
+        body: "A web font loading without a fallback strategy leaves the page blank, then repaints. font-display and a matched fallback metric make it a non-event.",
+      },
+      {
+        eyebrow: "The real one",
+        headline: [["Nothing responds", "primary"], ["for 200ms.", "muted"]],
+        bars: [
+          { label: "Feels instant", value: "under 100ms", pct: 96, on: true },
+          { label: "Feels laggy", value: "over 200ms", pct: 38 },
+        ],
+        body: "A button that waits for the server before acknowledging the tap feels broken, even at 300ms. Respond immediately, reconcile after.",
+      },
+      {
+        eyebrow: "The point",
+        headline: [["Perceived speed", "primary"], ["is a design", "primary"], ["decision.", "accent"]],
+        body: "Not a server upgrade. Reserve the space, own the first frame, answer every tap straight away.",
+        cta: "Work with me",
+      },
+    ],
+  },
+
+  // 12. Solo-developer angle. The honest version of "one person can do this",
+  //     which is also the most persuasive thing about the service.
+  {
+    slug: "v2-12-one-person",
+    title: "How one person ships this much",
+    slides: [
+      {
+        eyebrow: "Build in public",
+        headline: [["One person.", "primary"], ["Accounts,", "primary"], ["payments, admin.", "accent"]],
+        body: "Not because the work got smaller. Because nothing starts from an empty file now.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "The stack",
+        headline: [["Boring where", "primary"], ["it doesn’t show.", "muted"]],
+        rows: [
+          { k: "01", v: "Next.js — routing and rendering, solved" },
+          { k: "02", v: "TypeScript — catches it before the user" },
+          { k: "03", v: "Convex — realtime backend, zero ops" },
+          { k: "04", v: "Stripe — payments you don’t rebuild" },
+        ],
+      },
+      {
+        eyebrow: "The multiplier",
+        headline: [["Setup, not", "primary"], ["prompting.", "muted"]],
+        body: "CLAUDE.md so conventions are never re-explained. Skills for anything done twice. Hooks for the rules that must not be talked past. The tooling knows the project.",
+      },
+      {
+        eyebrow: "The honest part",
+        headline: [["Review is now", "primary"], ["the whole job.", "danger"]],
+        body: "Generating code stopped being the constraint, so judging it became the constraint. Everything shipped is still read line by line, because it’s still mine when it breaks.",
+      },
+      {
+        eyebrow: "The result",
+        headline: [["Fewer clients.", "primary"], ["Better work.", "accent"]],
+        body: "Two builds at a time, built by the person you spoke to. That’s the entire model, and it only works because the tooling carries the parts that don’t need judgement.",
+        cta: "Two slots — DM me",
+        ctaHi: true,
+      },
+    ],
+  },
 ];
 
 module.exports = { carousels, HANDLE };

@@ -1,7 +1,7 @@
 # YusufCreates Social Media — v2 (graphic)
 
-Six carousels at **1080×1350 (4:5)**, rendered from code. Same brand as v1, but
-each slide shows a real object — a code window, a terminal, a file tree, a
+Twelve carousels at **1080×1350 (4:5)**, rendered from code. Same brand as v1,
+but each slide shows a real object — a code window, a terminal, a file tree, a
 comparison, a meter — instead of a headline on a gradient.
 
 v1 in `build/` + `posts/` is unchanged and still postable. This is additive.
@@ -116,9 +116,16 @@ before re-posting one, not just before writing a new one.
 | `v2-04-ai-tools-honestly` | What these tools don't fix |
 | `v2-05-pricing` | The tier ladder |
 | `v2-06-promo-slots` | Two build slots |
+| `v2-07-rewind` | Checkpoints, `Esc Esc`, and what rewind won't undo |
+| `v2-08-permission-modes` | `Shift+Tab`, plan mode, auto mode |
+| `v2-09-context` | `/clear` vs `/compact`, `/context` |
+| `v2-10-headless` | `claude -p`, JSON output, budget caps |
+| `v2-11-fast-sites` | Perceived speed vs measured speed |
+| `v2-12-one-person` | How one person ships this much |
 
-Captions in `CAPTIONS.md` (decks 12–15 map to v2-01 through v2-04; the pricing
-and slots captions are decks 7 and 9).
+Captions: `CAPTIONS-V2.md` covers `v2-07` onward plus the posting order.
+`v2-01`–`v2-04` reuse decks 12–15 in `CAPTIONS.md`; `v2-05`/`v2-06` reuse decks
+7 and 9.
 
 **Alt text:** headlines are baked into the image, so screen readers get nothing
 without it. Paste each slide's headline into Instagram's alt text field

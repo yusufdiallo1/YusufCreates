@@ -202,8 +202,7 @@ function terminal(t) {
     .map((ln) => {
       const [text, kind] = Array.isArray(ln) ? ln : [ln, "out"];
       if (kind === "cmd") {
-        return `<div style="white-space:pre;color:${C.text}">
-          <span style="color:${C.accent};font-weight:600">❯ </span>${text}</div>`;
+        return `<div style="white-space:pre;color:${C.text};font-weight:500"><span style="color:${C.accent};font-weight:700">❯ </span>${text}</div>`;
       }
       if (kind === "ok") {
         return `<div style="white-space:pre;color:${C.green}">${text}</div>`;
@@ -211,7 +210,7 @@ function terminal(t) {
       if (kind === "bad") {
         return `<div style="white-space:pre;color:${C.danger}">${text}</div>`;
       }
-      return `<div style="white-space:pre;color:${C.secondary}">${text}</div>`;
+      return `<div style="white-space:pre;color:#c3c9d4">${text}</div>`;
     })
     .join("");
 
@@ -282,8 +281,8 @@ function compare(cmp) {
           text-transform:uppercase;color:${isBad ? C.danger : C.green}">${side.label}</span>
       </div>
       <div style="padding:26px 24px 28px">
-        <div style="font-family:${MONO};font-size:29px;font-weight:500;color:#ffffff;
-          line-height:1.5;letter-spacing:-0.01em">${side.code.replace(/\n/g, "<br>")}</div>
+        <div style="font-family:${MONO};font-size:32px;font-weight:600;color:#ffffff;
+          line-height:1.45;letter-spacing:-0.015em">${side.code.replace(/\n/g, "<br>")}</div>
         ${
           side.note
             ? `<div style="margin-top:18px;font-size:23px;color:#a2a8b2;line-height:1.42">${side.note}</div>`
@@ -313,7 +312,7 @@ function steps(list) {
           }
         </div>
         <div style="flex:1;padding:20px 24px;${panel(16)}">
-          <div style="font-family:${MONO};font-size:28px;color:${C.text};font-weight:600;letter-spacing:-0.01em">${s.k}</div>
+          <div style="font-family:${MONO};font-size:31px;color:${C.accent};font-weight:700;letter-spacing:-0.01em">${s.k}</div>
           <div style="font-size:24px;color:#a2a8b2;margin-top:9px;line-height:1.4">${s.v}</div>
         </div>
       </div>`
