@@ -32,6 +32,22 @@ const ALL: IconRecord[] = Object.values(
 const byTitle = new Map(ALL.map((icon) => [icon.title.toLowerCase(), icon]));
 
 /**
+ * Marks that simple-icons does not carry.
+ *
+ * Groq is taken from @lobehub/icons, which covers AI brands specifically. The
+ * path is inlined rather than imported: that package ships React components
+ * per brand behind a directory-import entry point, so pulling one in drags a
+ * component tree into the bundle to draw a single 24-grid path. Same viewBox
+ * as everything else, so it needs no special handling.
+ */
+const EXTRA: Record<string, IconRecord> = {
+  groq: {
+    title: "Groq",
+    path: "M12.036 2c-3.853-.035-7 3-7.036 6.781-.035 3.782 3.055 6.872 6.908 6.907h2.42v-2.566h-2.292c-2.407.028-4.38-1.866-4.408-4.23-.029-2.362 1.901-4.298 4.308-4.326h.1c2.407 0 4.358 1.915 4.365 4.278v6.305c0 2.342-1.944 4.25-4.323 4.279a4.375 4.375 0 01-3.033-1.252l-1.851 1.818A7 7 0 0012.029 22h.092c3.803-.056 6.858-3.083 6.879-6.816v-6.5C18.907 4.963 15.817 2 12.036 2z",
+  },
+};
+
+/**
  * Skill name to the brand's registered title, where they differ.
  *
  * Only entries that genuinely need translating. "Framer Motion" is filed
@@ -44,14 +60,16 @@ const TITLE_FOR: Record<string, string> = {
 };
 
 /**
- * Skills with no mark, and why.
+ * Two skills still have no mark, and both are correct.
  *
- * "Responsive design" is a practice, not a product — a logo would be an
- * invention. Groq is absent from simple-icons at this version.
+ * "Responsive design" is a practice rather than a product, so a logo would be
+ * an invention. Conductor is in neither simple-icons nor @lobehub/icons, and
+ * drawing it from memory is exactly what produced a Swift blob and a Netlify
+ * plus sign the first time round.
  */
 function lookup(name: string): IconRecord | null {
-  const title = TITLE_FOR[name] ?? name;
-  return byTitle.get(title.toLowerCase()) ?? null;
+  const title = (TITLE_FOR[name] ?? name).toLowerCase();
+  return byTitle.get(title) ?? EXTRA[title] ?? null;
 }
 
 export function hasTechLogo(name: string): boolean {
