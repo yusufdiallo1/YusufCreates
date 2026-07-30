@@ -2,6 +2,7 @@
 
 import { Reveal } from "@/components/motion/Reveal";
 import { SKILL_GROUPS, type Skill } from "@/lib/skills";
+import { TechLogo } from "@/components/ui/TechLogos";
 
 /**
  * Skills — grouped capability list.
@@ -36,7 +37,18 @@ export function SkillChip({
         data-cursor="link"
         className="skill-row group flex w-full items-baseline justify-between gap-4 py-3"
       >
-        <span className="shrink-0 text-sm text-primary">{skill.name}</span>
+        {/* The mark sits in a fixed box whether or not there is one to show,
+            so names stay aligned down the column. Only marks that can be
+            reproduced exactly exist — see TechLogos. */}
+        <span className="flex shrink-0 items-center gap-2.5 text-sm text-primary">
+          <span
+            aria-hidden="true"
+            className="flex size-4 shrink-0 items-center justify-center text-secondary"
+          >
+            <TechLogo name={skill.name} size={16} />
+          </span>
+          {skill.name}
+        </span>
         {skill.use ? (
           <span className="skill-row-use min-w-0 text-right text-xs text-balance text-secondary">
             {skill.use}
