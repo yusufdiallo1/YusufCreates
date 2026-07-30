@@ -30,13 +30,23 @@ const configured = Boolean(process.env.NEXT_PUBLIC_CONVEX_URL);
 
 const convexMiddleware = convexAuthNextjsMiddleware(
   async (request, { convexAuth }) => {
+    /*
+     * Only the two route groups below care whether there is a session, but
+     * this matcher runs on every page. Verifying the token unconditionally
+     * put a round-trip in front of every marketing page for an answer they
+     * never read — so the check is made lazily, per branch.
+     */
+    const protectedRoute = isProtected(request);
+    const signInRoute = isSignIn(request);
+    if (!protectedRoute && !signInRoute) return;
+
     const authed = await convexAuth.isAuthenticated();
 
-    if (isProtected(request) && !authed) {
+    if (protectedRoute && !authed) {
       return nextjsMiddlewareRedirect(request, "/sign-in-admin");
     }
 
-    if (isSignIn(request) && authed) {
+    if (signInRoute && authed) {
       return nextjsMiddlewareRedirect(request, "/admin");
     }
   },

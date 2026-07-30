@@ -19,33 +19,33 @@ import { JsonLd } from "@/components/seo/JsonLd";
 export default async function HomePage() {
   const token = isConvexConfigured ? await convexAuthNextjsToken() : undefined;
 
-  // Each degrades independently: a Convex failure must not 500 the front page.
-  const preloadedProjects = isConvexConfigured
-    ? await preloadQuery(api.projects.listFeatured, {}, { token }).catch(
-        () => null,
-      )
-    : null;
-
-  const preloadedTestimonials = isConvexConfigured
-    ? await preloadQuery(api.testimonials.listFeatured, {}, { token }).catch(
-        () => null,
-      )
-    : null;
+  /*
+   * Fetched together, not in sequence. These three do not depend on each
+   * other, so awaiting them one at a time stacked three round-trips into the
+   * time-to-first-byte of every homepage request.
+   *
+   * Each still degrades independently — the catch stays on the individual
+   * promise, so a Convex failure blanks one section rather than 500ing the
+   * front page.
+   */
+  const [preloadedProjects, preloadedTestimonials, featured] = isConvexConfigured
+    ? await Promise.all([
+        preloadQuery(api.projects.listFeatured, {}, { token }).catch(() => null),
+        preloadQuery(api.testimonials.listFeatured, {}, { token }).catch(
+          () => null,
+        ),
+        fetchQuery(api.projects.listFeatured, {}, { token }).catch(() => []),
+      ])
+    : [null, null, []];
 
   // Plain values for the hero slabs. An empty list renders the hero as a
   // single centred column rather than empty glass frames.
-  const heroProjects = isConvexConfigured
-    ? await fetchQuery(api.projects.listFeatured, {}, { token })
-        .then((rows) =>
-          rows.map((p) => ({
-            slug: p.slug,
-            title: p.title,
-            coverUrl: p.coverUrl,
-            category: p.category,
-          })),
-        )
-        .catch(() => [])
-    : [];
+  const heroProjects = featured.map((p) => ({
+    slug: p.slug,
+    title: p.title,
+    coverUrl: p.coverUrl,
+    category: p.category,
+  }));
 
   return (
     <>

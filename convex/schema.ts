@@ -589,7 +589,11 @@ export default defineSchema({
     showCountdown: v.boolean(),
   })
     .index("by_code", ["code"])
-    .index("by_kind", ["kind"]),
+    .index("by_kind", ["kind"])
+    // Referral claims look a promo up by name to stay idempotent. Without
+    // this they scanned every code promo on each lookup, and referrals are
+    // the one kind of promo whose row count grows with traffic.
+    .index("by_name", ["name"]),
 
   /**
    * Written when an invoice is ISSUED, not when a code is entered. Counting at

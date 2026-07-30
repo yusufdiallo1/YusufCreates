@@ -45,13 +45,14 @@ export const claim = mutation({
 
     const name = `Referral ${ref}`;
 
-    // Same share, same code — the referral id is the idempotency key.
-    const existing = await ctx.db
+    // Same visitor, same code — reloading the page must not mint a new one.
+    // Indexed rather than scanned: this runs on a page load, and the table it
+    // reads grows by a row per referral.
+    const already = await ctx.db
       .query("promos")
-      .withIndex("by_kind", (q) => q.eq("kind", "code"))
-      .collect();
+      .withIndex("by_name", (q) => q.eq("name", name))
+      .first();
 
-    const already = existing.find((p) => p.name === name);
     if (already?.code) {
       return {
         ok: true as const,
