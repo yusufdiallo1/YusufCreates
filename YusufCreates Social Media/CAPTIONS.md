@@ -1,6 +1,6 @@
 # Captions
 
-Handle: **@yusufcreatesdev** · 15 carousels · 5 slides each · 1080×1920
+Handle: **@yusufcreatesdev** · 15 carousels · 5 slides each · 1080×1350 (4:5)
 
 Instagram truncates around 125 characters, so the first line of each caption is
 written to stand alone before the "more" cut.
@@ -475,6 +475,10 @@ it.
 
 - **Slide 01 is the cover** — the feed thumbnail, and the only slide most people
   will ever see.
+- **Check the order before posting.** Instagram numbers each slide as you select
+  it; the filenames end `-01` to `-05` so you can confirm the sequence matches.
+  If it comes out shuffled, deselect all and tap them in order — Instagram
+  honours tap order, not filename order, once you start selecting.
 - **Alt text:** headlines are baked into the image, so screen readers get
   nothing without it. Paste each slide's headline into Instagram's alt text
   field (Advanced settings → Write alt text). Deck 11 argues for accessibility;

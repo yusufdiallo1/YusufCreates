@@ -16,7 +16,7 @@ const OUT = path.join(__dirname, "..", "posts");
 (async () => {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({
-    viewport: { width: 1080, height: 1920 },
+    viewport: { width: 1080, height: 1350 },
     deviceScaleFactor: 1,
   });
   const p = await ctx.newPage();
@@ -53,9 +53,15 @@ const OUT = path.join(__dirname, "..", "posts");
       warnings++;
     }
 
+    // Filenames are prefixed with the deck slug rather than being a bare
+    // "01.png" repeated in every folder. Instagram's picker sorts by filename
+    // and shows them in one flat recents view, so identical names across decks
+    // came back in the wrong order on upload. A globally unique, alphabetically
+    // sortable name means selecting all five gives the intended sequence.
     const nodes = await p.locator("section.slide").all();
     for (let i = 0; i < nodes.length; i++) {
-      const file = path.join(dir, `${String(i + 1).padStart(2, "0")}.png`);
+      const n = String(i + 1).padStart(2, "0");
+      const file = path.join(dir, `${carousel.slug}-${n}.png`);
       await nodes[i].screenshot({ path: file });
       count++;
     }

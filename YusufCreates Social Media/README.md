@@ -1,7 +1,20 @@
 # YusufCreates Social Media
 
-Instagram carousels at 1080×1920 (9:16), rendered from code so the branding and
+Instagram carousels at 1080×1350 (4:5), rendered from code so the branding and
 the numbers stay consistent with the site.
+
+**4:5 is a hard limit, not a preference.** These were originally rendered at
+1080×1920 (9:16) — the Reels/Stories ratio. Instagram carousels don't accept it:
+it centre-crops to 4:5 on upload, which cut the logo lockup off the top and the
+progress dots off the bottom of every slide. 4:5 is the tallest ratio a carousel
+takes, so it's what the template targets. Changing the canvas size means
+re-tuning the type scale with it — the sizes in `template.js` are chosen for this
+height.
+
+**Filenames carry the deck slug** (`12-claude-code-context-01.png`, not
+`01.png`). Instagram's picker sorts by filename in a single flat recents view, so
+five files called `01.png` from different decks came back shuffled. Unique,
+alphabetically sortable names upload in the intended order.
 
 ```
 YusufCreates Social Media/
