@@ -998,7 +998,7 @@ const carousels = [
     slides: [
       {
         eyebrow: "Claude Code",
-        headline: [["Your context is", "primary"], ["full of things", "primary"], ["you’ll never", "accent"]],
+        headline: [["Your context is", "primary"], ["full of things you", "primary"], ["won’t read again.", "accent"]],
         body: "Every file it searched is still sitting there, crowding out the work. Subagents fix that.",
         cta: "Swipe",
       },

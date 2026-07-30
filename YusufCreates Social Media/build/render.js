@@ -58,14 +58,33 @@ const OUT = path.join(__dirname, "..", "posts");
     // and shows them in one flat recents view, so identical names across decks
     // came back in the wrong order on upload. A globally unique, alphabetically
     // sortable name means selecting all five gives the intended sequence.
-    const nodes = await p.locator("section.slide").all();
-    for (let i = 0; i < nodes.length; i++) {
+    //
+    // One slide per page load, captured full-viewport. Element screenshots
+    // scroll the target into view to photograph it, and the layered background
+    // did not reliably repaint at the new offset — producing an occasional
+    // slide with its chrome intact and everything below the fold flat black.
+    // Rendering one at a time keeps every capture at scroll offset zero.
+    for (let i = 0; i < carousel.slides.length; i++) {
+      await p.setContent(page([carousel.slides[i]], HANDLE, i, carousel.slides.length), { waitUntil: "load" });
+      await p.evaluate(async () => {
+        await document.fonts.load('700 104px "InterEmbedded"');
+        await document.fonts.ready;
+      });
+
       const n = String(i + 1).padStart(2, "0");
       const file = path.join(dir, `${carousel.slug}-${n}.png`);
-      await nodes[i].screenshot({ path: file });
+      await p.screenshot({ path: file, clip: { x: 0, y: 0, width: 1080, height: 1350 } });
+
+      // A slide that failed to paint compresses to a fraction of a real one,
+      // because it is mostly flat black. Cheap check, catches at the source.
+      const kb = fs.statSync(file).size / 1024;
+      if (kb < 400) {
+        console.warn(`  ! ${carousel.slug} slide ${i + 1} is only ${Math.round(kb)}KB — likely failed to paint`);
+        warnings++;
+      }
       count++;
     }
-    console.log(`${carousel.slug}: ${nodes.length} slides`);
+    console.log(`${carousel.slug}: ${carousel.slides.length} slides`);
   }
 
   await browser.close();

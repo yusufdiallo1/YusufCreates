@@ -396,9 +396,14 @@ const PAGE_CSS = `
   }
 `;
 
-function page(slides, handle) {
+/**
+ * `offset` and `total` let the renderer emit one slide per page while still
+ * drawing the correct progress dots — necessary since rendering moved to one
+ * slide at a time to avoid the scroll-repaint bug.
+ */
+function page(slides, handle, offset = 0, total = slides.length) {
   const body = slides
-    .map((s, i) => slide(s, i, slides.length, handle))
+    .map((s, i) => slide(s, offset + i, total, handle))
     .join("");
   return `<!doctype html><html><head><meta charset="utf-8">
     <style>${PAGE_CSS}</style>

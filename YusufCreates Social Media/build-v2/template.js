@@ -734,8 +734,14 @@ const PAGE_CSS = `
   }
 `;
 
-function page(slides, handle) {
-  const body = slides.map((s, i) => slide(s, i, slides.length, handle)).join("");
+/**
+ * `offset` and `total` let the renderer emit one slide per page while still
+ * drawing the correct progress dots. Without them a single-slide page would
+ * always report "1 of 1" — which is exactly what happened when rendering moved
+ * to one slide at a time to dodge the scroll-repaint bug.
+ */
+function page(slides, handle, offset = 0, total = slides.length) {
+  const body = slides.map((s, i) => slide(s, offset + i, total, handle)).join("");
   return `<!doctype html><html><head><meta charset="utf-8">
     <style>${PAGE_CSS}</style>
   </head><body>${refractionFilter()}${body}</body></html>`;

@@ -60,14 +60,40 @@ const H = 1350;
       warnings++;
     }
 
-    const nodes = await p.locator("section.slide").all();
-    for (let i = 0; i < nodes.length; i++) {
+    // One slide per page load, captured as a full-viewport shot.
+    //
+    // Element screenshots looked equivalent and were not: to photograph a slide
+    // far down the page, Playwright scrolls it into view, and the layered
+    // background did not always repaint at the new scroll offset. The result
+    // was an occasional slide with its chrome intact and everything below the
+    // fold rendered flat black — visible only as a suspiciously small PNG
+    // beside its siblings, which is exactly how it reached a real upload.
+    //
+    // Loading each slide alone means the capture always happens at scroll
+    // offset zero, so there is nothing to repaint and nothing to get wrong.
+    for (let i = 0; i < carousel.slides.length; i++) {
+      await p.setContent(page([carousel.slides[i]], HANDLE, i, carousel.slides.length), { waitUntil: "load" });
+      await p.evaluate(async () => {
+        await document.fonts.load('700 104px "InterEmbedded"');
+        await document.fonts.ready;
+      });
+
       const n = String(i + 1).padStart(2, "0");
       const file = path.join(dir, `${carousel.slug}-${n}.png`);
-      await nodes[i].screenshot({ path: file });
+      await p.screenshot({ path: file, clip: { x: 0, y: 0, width: W, height: H } });
+
+      // A slide that failed to paint compresses to a fraction of a real one,
+      // because it is mostly flat black. That is precisely how a broken slide
+      // reached a live upload once — it looked fine in the file listing and
+      // nobody opens 130 PNGs by hand. Cheap check, catches it at the source.
+      const kb = fs.statSync(file).size / 1024;
+      if (kb < 400) {
+        console.warn(`  ! ${carousel.slug} slide ${i + 1} is only ${Math.round(kb)}KB — likely failed to paint`);
+        warnings++;
+      }
       count++;
     }
-    console.log(`${carousel.slug}: ${nodes.length} slides`);
+    console.log(`${carousel.slug}: ${carousel.slides.length} slides`);
   }
 
   await browser.close();
