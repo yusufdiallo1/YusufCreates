@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Parallax } from "@/components/motion/Parallax";
 import { Reveal } from "@/components/motion/Reveal";
 import { TextReveal } from "@/components/motion/TextReveal";
 import { NameMark } from "@/components/ui/NameMark";
@@ -47,11 +46,6 @@ export default function AboutPage() {
         <TextReveal as="p" by="word" className="mt-4 block text-secondary">
           Independent developer. Here is how I work and who I work with.
         </TextReveal>
-
-        <Parallax distance={28} className="mt-12">
-          {/* TODO: replace with a real portrait at public/portrait-large.jpg */}
-          <div className="hairline aspect-[3/2] w-full overflow-hidden rounded-lg bg-surface-1" />
-        </Parallax>
 
         <section className="mt-16">
           <h2 className="text-2xl">The story</h2>
