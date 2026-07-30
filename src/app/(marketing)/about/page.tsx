@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Reveal } from "@/components/motion/Reveal";
 import { TextReveal } from "@/components/motion/TextReveal";
+import { Typewriter } from "@/components/motion/Typewriter";
 import { NameMark } from "@/components/ui/NameMark";
 import { personJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/lib/constants";
@@ -77,6 +78,18 @@ export default function AboutPage() {
             </p>
           </Reveal>
         </section>
+
+        {/* Typed out when you reach it. The story above earns this line;
+            putting it at the top would be a claim, here it is a conclusion. */}
+        <div className="hairline-t mt-16 pt-12">
+          <Typewriter
+            as="blockquote"
+            speed={26}
+            className="text-xl leading-snug text-primary text-balance"
+          >
+            {"I would rather hand over something small that you can run yourself than something impressive that needs me forever."}
+          </Typewriter>
+        </div>
 
         <section className="mt-16">
           <h2 className="text-2xl">What working with me is like</h2>

@@ -32,6 +32,34 @@ export const getAll = query({
   },
 });
 
+/**
+ * The floating currency rates, for the public pricing page.
+ *
+ * Narrow on purpose. The pricing page briefly read `getAll`, which is
+ * admin-gated — so every visitor hit "Not authenticated" and the error
+ * boundary took the whole component down. Widening getAll would have been the
+ * wrong fix: it returns every setting, and this page needs exactly two.
+ *
+ * Rates are not secret. They are printed on the page.
+ */
+export const publicRates = query({
+  args: {},
+  handler: async (ctx) => {
+    const read = async (key: string) => {
+      const row = await ctx.db
+        .query("settings")
+        .withIndex("by_key", (q) => q.eq("key", key))
+        .unique();
+      const n = Number(row?.value);
+      // A blank or malformed setting falls back in the client rather than
+      // pricing at zero here.
+      return Number.isFinite(n) && n > 0 ? n : null;
+    };
+
+    return { GBP: await read("rate.GBP"), EUR: await read("rate.EUR") };
+  },
+});
+
 export const set = mutation({
   args: { key: v.string(), value: v.any() },
   handler: async (ctx, args) => {

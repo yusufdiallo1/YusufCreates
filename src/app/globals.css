@@ -993,6 +993,34 @@
     border-radius: var(--radius-full);
   }
 
+  /* Typewriter caret. inline-block with a fixed width rather than a border on
+     the text, so it never shifts the character before it as it blinks. */
+  .type-caret {
+    display: inline-block;
+    width: 2px;
+    height: 1em;
+    margin-left: 2px;
+    vertical-align: -0.12em;
+    background-color: var(--accent);
+    animation: caret-blink 1.05s step-end infinite;
+  }
+
+  @keyframes caret-blink {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .type-caret {
+      animation: none;
+    }
+  }
+
   /* A horizontally swipeable row of cards.
 
      The native scrollbar is hidden and replaced by a slim track that only

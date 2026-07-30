@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQuery } from "convex/react";
 import { Reveal } from "@/components/motion/Reveal";
 import { CountUp } from "@/components/motion/CountUp";
 import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
 import { useCurrency } from "@/lib/useCurrency";
+import { api, isConvexConfigured } from "@/lib/convex-api";
 import {
   CARE_FEATURES,
   CARE_MONTHS_FREE,
@@ -16,6 +18,7 @@ import {
   GROWTH,
   NATIVE_TIER,
   PACKAGED_TIERS,
+  PEGGED,
   convert,
   formatCarePrice,
   growthPriceUsd,
@@ -50,6 +53,27 @@ export function PricingTables() {
   const [pages, setPages] = useState<number>(GROWTH.minPages);
   const [period, setPeriod] = useState<BillingPeriod>("monthly");
 
+  /*
+   * Live rates for the floating currencies.
+   *
+   * publicRates, not getAll — the latter is admin-gated, so reading it here
+   * threw "Not authenticated" for every visitor and the error boundary took
+   * the whole pricing page down with it.
+   *
+   * SAR and AED are pegged and need none of this. GBP and EUR move, so the
+   * constants in pricing.ts are the fallback for the moment before this
+   * resolves, for an unset rate, and for Convex not being configured at all.
+   */
+  const live = useQuery(
+    api.settings.publicRates,
+    isConvexConfigured ? {} : "skip",
+  );
+  const rates = useMemo(
+    () => ({ GBP: live?.GBP ?? undefined, EUR: live?.EUR ?? undefined }),
+    [live],
+  );
+
+  const floating = !PEGGED.includes(currency);
   const growthUsd = growthPriceUsd(pages);
 
   return (
@@ -78,6 +102,17 @@ export function PricingTables() {
               </button>
             ))}
           </div>
+
+          {/* Said only for the floating currencies. SAR and AED are pegged,
+              so their figures are exact and a hedge would be noise; GBP and
+              EUR move between quoting and invoicing, and saying so up front
+              is better than explaining it after. */}
+          {floating ? (
+            <p className="mt-3 text-center text-xs text-secondary">
+              {CURRENCY_SYMBOL[currency].trim()} prices are indicative.
+              Invoices are raised in USD at the rate on the day.
+            </p>
+          ) : null}
         </Reveal>
       </div>
 
@@ -112,8 +147,8 @@ export function PricingTables() {
           {PACKAGED_TIERS.map((tier, index) => {
             const isGrowth = tier.id === "growth";
             const amount = isGrowth
-              ? convert(growthUsd, currency)
-              : tierPrice(tier.id, currency);
+              ? convert(growthUsd, currency, rates)
+              : tierPrice(tier.id, currency, rates);
 
             return (
               <Reveal
@@ -235,7 +270,7 @@ export function PricingTables() {
                 <span className="text-secondary">
                   {CURRENCY_SYMBOL[currency]}
                 </span>
-                <CountUp value={tierPrice("native", currency)} duration={0.5} />
+                <CountUp value={tierPrice("native", currency, rates)} duration={0.5} />
               </p>
 
               <ul className="mt-6 flex-1 space-y-2">
@@ -279,7 +314,7 @@ export function PricingTables() {
                   {CURRENCY_SYMBOL[currency]}
                 </span>
                 <CountUp
-                  value={tierPrice("enterprise", currency)}
+                  value={tierPrice("enterprise", currency, rates)}
                   duration={0.5}
                 />
               </p>
@@ -347,7 +382,7 @@ export function PricingTables() {
               </div>
 
               <p className="mt-5 text-3xl tabular-nums">
-                {formatCarePrice(period, currency)}
+                {formatCarePrice(period, currency, rates)}
                 <span className="text-base text-secondary">
                   {period === "monthly" ? "/mo" : "/yr"}
                 </span>

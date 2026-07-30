@@ -8,6 +8,7 @@ import { About } from "@/components/marketing/About";
 import { Process } from "@/components/marketing/Process";
 import { HowIWork } from "@/components/marketing/HowIWork";
 import { Testimonials } from "@/components/marketing/Testimonials";
+import { TypedQuote } from "@/components/marketing/TypedQuote";
 import { ContactCTA } from "@/components/marketing/ContactCTA";
 import { TechMarquee } from "@/components/marketing/TechMarquee";
 import { WhatIDo } from "@/components/marketing/WhatIDo";
@@ -72,6 +73,12 @@ export default async function HomePage() {
       {/* Trust. Answers the two questions nobody asks out loud: will this
           person disappear, and can I reach them. */}
       <HowIWork />
+
+      {/* A breath between the how and the what. Typed rather than faded in,
+          so it reads as something being said rather than another panel. */}
+      <TypedQuote attribution="How I build">
+        {"Anyone can make it look finished. The work is making it still work in a year, in someone else’s hands."}
+      </TypedQuote>
 
       <Skills />
 

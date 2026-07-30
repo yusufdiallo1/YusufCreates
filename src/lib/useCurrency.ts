@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { type Currency, currencyFromLocale } from "./pricing";
+import { CURRENCIES, type Currency, currencyFromLocale } from "./pricing";
 
 const KEY = "yc-currency";
 
@@ -16,9 +16,11 @@ export function useCurrency(): [Currency, (next: Currency) => void] {
   const [currency, setCurrency] = useState<Currency>("USD");
 
   useEffect(() => {
+    // Checked against the list rather than a hardcoded set, so adding a
+    // currency does not silently leave stored selections unrecognised.
     const stored = localStorage.getItem(KEY) as Currency | null;
     const resolved =
-      stored === "USD" || stored === "SAR" || stored === "AED"
+      stored && CURRENCIES.includes(stored)
         ? stored
         : currencyFromLocale(navigator.language);
 

@@ -7,7 +7,7 @@
  * nearest sensible unit so nobody sees "3,374.99".
  */
 
-export type Currency = "USD" | "SAR" | "AED";
+export type Currency = "USD" | "SAR" | "AED" | "GBP" | "EUR";
 export type TierId =
   | "launch"
   | "growth"
@@ -16,20 +16,37 @@ export type TierId =
   | "enterprise"
   | "care";
 
-/** Pegged rates. Both currencies are fixed against the dollar. */
+/**
+ * Rates against the dollar.
+ *
+ * SAR and AED are PEGGED — those two numbers are fixed by their central banks
+ * and do not need maintaining.
+ *
+ * GBP and EUR FLOAT. The figures here are fallbacks; the live values are
+ * settings rows (`rate.GBP`, `rate.EUR`) editable in the admin, because a
+ * hardcoded floating rate is wrong within a week. A quote in either is
+ * indicative and converted at invoice time.
+ */
 export const RATES: Record<Currency, number> = {
   USD: 1,
   SAR: 3.75,
   AED: 3.67,
+  GBP: 0.79,
+  EUR: 0.92,
 };
+
+/** Fixed against the dollar, so a stale rate is impossible. */
+export const PEGGED: Currency[] = ["USD", "SAR", "AED"];
 
 export const CURRENCY_SYMBOL: Record<Currency, string> = {
   USD: "$",
   SAR: "SAR ",
   AED: "AED ",
+  GBP: "£",
+  EUR: "€",
 };
 
-export const CURRENCIES: Currency[] = ["USD", "SAR", "AED"];
+export const CURRENCIES: Currency[] = ["USD", "GBP", "EUR", "SAR", "AED"];
 
 /**
  * Growth tier.
@@ -92,18 +109,23 @@ export const CARE_ANNUAL_USD = 1800;
 export type BillingPeriod = "monthly" | "yearly";
 
 /** Care Plan price for a billing period, in the given currency. */
-export function carePrice(period: BillingPeriod, currency: Currency): number {
+export function carePrice(
+  period: BillingPeriod,
+  currency: Currency,
+  rates?: Partial<Record<Currency, number>>,
+): number {
   return period === "yearly"
-    ? convert(CARE_ANNUAL_USD, currency)
-    : tierPrice("care", currency);
+    ? convert(CARE_ANNUAL_USD, currency, rates)
+    : tierPrice("care", currency, rates);
 }
 
 /** Formatted Care Plan price, with the period suffix the page shows after it. */
 export function formatCarePrice(
   period: BillingPeriod,
   currency: Currency,
+  rates?: Partial<Record<Currency, number>>,
 ): string {
-  return `${CURRENCY_SYMBOL[currency]}${carePrice(period, currency).toLocaleString("en-US")}`;
+  return `${CURRENCY_SYMBOL[currency]}${carePrice(period, currency, rates).toLocaleString("en-US")}`;
 }
 
 /** Months covered free by paying for a year. Shown as the toggle's incentive. */
@@ -117,8 +139,14 @@ export const CARE_MONTHS_FREE =
  * market is 49,000. These are commercial decisions, not arithmetic, so the
  * published figure wins and the conversion is only a fallback for amounts not
  * listed here (notably the Growth slider, which is genuinely computed).
+ *
+ * Only the pegged currencies appear. GBP and EUR float, so a figure written
+ * down here would be a commercial decision made against last month's rate —
+ * they are always converted.
  */
-const PUBLISHED: Partial<Record<TierId, Record<Currency, number>>> = {
+const PUBLISHED: Partial<
+  Record<TierId, Partial<Record<Currency, number>>>
+> = {
   launch: { USD: 400, SAR: 1500, AED: 1475 },
   growth: { USD: 750, SAR: 2800, AED: 2750 },
   app: { USD: 2500, SAR: 9375, AED: 9175 },
@@ -127,16 +155,30 @@ const PUBLISHED: Partial<Record<TierId, Record<Currency, number>>> = {
   care: { USD: 180, SAR: 675, AED: 660 },
 };
 
-/** Published price for a fixed tier, falling back to the pegged conversion. */
-export function tierPrice(tier: TierId, currency: Currency): number {
-  const published = PUBLISHED[tier];
-  if (published) return published[currency];
-  return convert(BASE_USD[tier as keyof typeof BASE_USD], currency);
+/**
+ * Published price for a fixed tier, falling back to conversion.
+ *
+ * The lookup can miss in two ways and both fall through to the same place: a
+ * tier with no published figures at all, or a floating currency that
+ * deliberately has none.
+ */
+export function tierPrice(
+  tier: TierId,
+  currency: Currency,
+  rates?: Partial<Record<Currency, number>>,
+): number {
+  const published = PUBLISHED[tier]?.[currency];
+  if (published !== undefined) return published;
+  return convert(BASE_USD[tier as keyof typeof BASE_USD], currency, rates);
 }
 
 /** Formatted published price for a fixed tier. */
-export function formatTierPrice(tier: TierId, currency: Currency): string {
-  return `${CURRENCY_SYMBOL[currency]}${tierPrice(tier, currency).toLocaleString("en-US")}`;
+export function formatTierPrice(
+  tier: TierId,
+  currency: Currency,
+  rates?: Partial<Record<Currency, number>>,
+): string {
+  return `${CURRENCY_SYMBOL[currency]}${tierPrice(tier, currency, rates).toLocaleString("en-US")}`;
 }
 
 /**
@@ -157,13 +199,26 @@ export function growthPriceUsd(pages: number): number {
 /**
  * Convert a USD amount to the target currency.
  *
- * Rounded to the nearest 25 for SAR and AED so published prices land on clean
- * numbers, which is how they are quoted in market.
+ * Rounded to the nearest 25 for SAR and AED, which are pegged and quoted in
+ * larger units — a 3.75x multiplier makes 400 into 1,500, and 1,487 would
+ * look like arithmetic rather than a price.
+ *
+ * GBP and EUR round to 5. Their rates are close to parity, so rounding to 25
+ * would move the figure by up to 3% — enough to be a different price rather
+ * than a tidier one.
+ *
+ * A `rates` override is accepted so a caller holding live settings can pass
+ * them in; without it the fallbacks apply.
  */
-export function convert(usd: number, currency: Currency): number {
+export function convert(
+  usd: number,
+  currency: Currency,
+  rates: Partial<Record<Currency, number>> = {},
+): number {
   if (currency === "USD") return usd;
-  const raw = usd * RATES[currency];
-  return Math.round(raw / 25) * 25;
+  const raw = usd * (rates[currency] ?? RATES[currency]);
+  const step = currency === "GBP" || currency === "EUR" ? 5 : 25;
+  return Math.round(raw / step) * step;
 }
 
 /** Format an amount for display, with thousands separators and no decimals. */
@@ -333,11 +388,20 @@ export const CARE_FEATURES = [
 export const ENTERPRISE_PRICE_USD = BASE_USD.enterprise;
 export const CARE_PRICE_USD = BASE_USD.care;
 
+/** Eurozone members, for guessing a currency from a locale. */
+const EUR_REGIONS = new Set([
+  "AT", "BE", "CY", "DE", "EE", "ES", "FI", "FR", "GR", "HR", "IE", "IT",
+  "LT", "LU", "LV", "MT", "NL", "PT", "SI", "SK",
+]);
+
 /** Best-guess currency from the visitor's locale. Always overridable. */
 export function currencyFromLocale(locale: string | undefined): Currency {
   if (!locale) return "USD";
   const region = locale.split("-")[1]?.toUpperCase();
+  if (!region) return "USD";
   if (region === "SA") return "SAR";
   if (region === "AE") return "AED";
+  if (region === "GB") return "GBP";
+  if (EUR_REGIONS.has(region)) return "EUR";
   return "USD";
 }
