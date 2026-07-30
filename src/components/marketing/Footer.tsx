@@ -70,7 +70,7 @@ export function Footer() {
               </CopyButton>
               <div className="space-y-1.5">
                 <Link
-                  href="/start"
+                  href="/pricing"
                   className="block text-sm text-accent transition-colors duration-fast hover:text-primary"
                 >
                   Start a project

@@ -79,7 +79,7 @@ export function ContactCTA() {
         <Reveal delay={0.18}>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <Link
-              href="/start"
+              href="/pricing"
               className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
             >
               Start a project

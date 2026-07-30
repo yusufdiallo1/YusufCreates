@@ -134,7 +134,7 @@ export default function AboutPage() {
           <div className="hairline-t mt-16 pt-10">
             <p className="text-lg">Working on something?</p>
             <Link
-              href="/start"
+              href="/pricing"
               className="mt-4 inline-block rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
             >
               Start a project

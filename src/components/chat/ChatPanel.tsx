@@ -268,7 +268,7 @@ export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
 
               {showCta ? (
                 <Link
-                  href="/start"
+                  href="/pricing"
                   onClick={() => track("cta_click", { cta: "chat-start" })}
                   className="inline-block rounded-full bg-[color:var(--accent-solid)] px-4 py-2 text-xs font-medium text-white"
                 >

@@ -993,6 +993,35 @@
     border-radius: var(--radius-full);
   }
 
+  /* A horizontally swipeable row of cards.
+
+     The native scrollbar is hidden and replaced by a slim track that only
+     appears where the row actually scrolls, because a full-width scrollbar
+     under a card row reads as a rendering artefact rather than a control.
+     The clipped next card carries most of the signal; this confirms it. */
+  .scroll-row {
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    /* overscroll-behaviour-x contain: swiping past the last card must not
+       trigger the browser's back-navigation gesture. */
+    overscroll-behavior-x: contain;
+  }
+  .scroll-row::-webkit-scrollbar {
+    height: 3px;
+  }
+  .scroll-row::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scroll-row::-webkit-scrollbar-thumb {
+    background: var(--border-glass);
+    border-radius: var(--radius-full);
+  }
+  @media (min-width: 640px) {
+    .scroll-row::-webkit-scrollbar {
+      height: 0;
+    }
+  }
+
   /* Divider. A gradient rule that fades out at both ends rather than a solid
      line — a hard 1px edge is exactly the border this system removes. */
   .rule {

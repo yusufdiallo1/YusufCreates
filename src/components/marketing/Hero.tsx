@@ -277,7 +277,7 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
             className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center"
           >
             <Link
-              href="/start"
+              href="/pricing"
               data-cursor="link"
               onClick={() => track("cta_click", { cta: "hero-start" })}
               className="rounded-full bg-[color:var(--accent-solid)] px-6 py-3 text-center text-sm font-medium text-white transition-opacity duration-fast hover:opacity-90"

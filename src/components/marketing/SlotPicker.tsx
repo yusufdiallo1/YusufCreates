@@ -77,7 +77,7 @@ export function SlotPicker({
         </p>
         <p className="mt-6 text-sm text-secondary">
           Something urgent in the meantime?{" "}
-          <Link href="/start" className="text-accent">
+          <Link href="/pricing" className="text-accent">
             Send the details
           </Link>{" "}
           and I&apos;ll see what I can do.

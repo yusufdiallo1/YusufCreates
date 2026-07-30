@@ -269,6 +269,25 @@ export const BUILD_TIERS: BuildTier[] = [
 ];
 
 
+/**
+ * The three packaged tiers — the ones that are genuinely comparable.
+ *
+ * Native is a build tier too, but it is not an alternative to a website: it
+ * is a second codebase alongside one, and it is quoted from rather than
+ * fixed. Sitting it in the comparison row invited a like-for-like reading
+ * against Launch and Growth that does not hold. It is presented with
+ * Enterprise instead, where "from this figure, scoped on a call" is the
+ * shared idea.
+ */
+export const PACKAGED_TIERS: BuildTier[] = BUILD_TIERS.filter(
+  (t) => t.id !== "native",
+);
+
+/** Native, pulled out of the comparison row. */
+export const NATIVE_TIER: BuildTier = BUILD_TIERS.find(
+  (t) => t.id === "native",
+)!;
+
 export const ENTERPRISE_FEATURES = [
   "Everything in the other plans",
   "Up to 25 pages, or an app of matching scope",

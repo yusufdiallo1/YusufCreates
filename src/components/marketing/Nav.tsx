@@ -123,7 +123,7 @@ export function Nav() {
 
           <div className="flex items-center gap-2">
             <Link
-              href="/start"
+              href="/pricing"
               className="hidden rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90 sm:block"
             >
               Start a project
@@ -243,7 +243,7 @@ export function Nav() {
             </ul>
 
             <Link
-              href="/start"
+              href="/pricing"
               className="mt-auto rounded-full bg-primary py-3 text-center text-sm font-medium text-canvas"
             >
               Start a project

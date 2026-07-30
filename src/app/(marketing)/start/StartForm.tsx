@@ -45,7 +45,6 @@ type Values = Record<string, string>;
 
 export function StartForm() {
   const params = useSearchParams();
-  const [step, setStep] = useState(1);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Honeypot: hidden from sighted users and screen readers alike.
@@ -57,7 +56,16 @@ export function StartForm() {
 
   const tier = params.get("tier") ?? "";
   // Arriving from a pricing CTA answers step 1 already; don't ask again.
-  const [plan, setPlan] = useState<PlanId | "">(planFromTier(tier) ?? "");
+  const preselected = planFromTier(tier);
+  const [plan, setPlan] = useState<PlanId | "">(preselected ?? "");
+  /*
+   * Start past the picker when the plan arrived in the URL.
+   *
+   * The plan was being preselected and the visitor was still shown the "What
+   * kind of project?" step to confirm a choice they had already made by
+   * clicking a specific tier — which reads as the button having ignored them.
+   */
+  const [step, setStep] = useState(preselected ? 2 : 1);
 
   const [values, setValues] = useState<Values>({
     name: "",

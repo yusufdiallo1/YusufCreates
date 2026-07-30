@@ -8,13 +8,14 @@ import { CountUp } from "@/components/motion/CountUp";
 import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
 import { useCurrency } from "@/lib/useCurrency";
 import {
-  BUILD_TIERS,
   CARE_FEATURES,
   CARE_MONTHS_FREE,
   CURRENCIES,
   CURRENCY_SYMBOL,
   ENTERPRISE_FEATURES,
   GROWTH,
+  NATIVE_TIER,
+  PACKAGED_TIERS,
   convert,
   formatCarePrice,
   growthPriceUsd,
@@ -80,19 +81,49 @@ export function PricingTables() {
         </Reveal>
       </div>
 
-      {/* BAND 1 — the build tiers */}
-      <div className="mx-auto mt-16 max-w-5xl px-6">
-        {/* Two columns, not three: BUILD_TIERS holds four, and four into three
-            leaves one stranded on its own row looking like a footnote. */}
-        <div className="grid gap-6 sm:grid-cols-2">
-          {BUILD_TIERS.map((tier, index) => {
+      {/* BAND 1 — the packaged build tiers */}
+      <div className="mx-auto mt-16 max-w-5xl">
+        {/* Said out loud on a phone. The clipped card at the edge is the
+            real affordance, but it is easy to miss on a first glance at a
+            page that scrolls vertically everywhere else. */}
+        <p
+          aria-hidden="true"
+          className="mb-3 px-6 text-xs text-secondary sm:hidden"
+        >
+          Swipe to compare →
+        </p>
+
+        {/*
+          One swipeable row on a phone, a grid from sm up.
+
+          snap-x with snap-start on each card stops a swipe halfway between
+          two of them. touch-action: pan-x lets the browser hand vertical
+          gestures back to the page, so swiping the row sideways never
+          swallows an attempt to scroll down the page.
+
+          The right-hand padding is deliberately short of the left so the next
+          card is always clipped at the edge — that sliver is the only honest
+          signal that there is more to swipe to.
+        */}
+        <div
+          className="scroll-row flex snap-x snap-mandatory gap-6 overflow-x-auto px-6 pb-4 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-6 sm:pb-0 lg:grid-cols-3"
+          style={{ touchAction: "pan-x pan-y" }}
+        >
+          {PACKAGED_TIERS.map((tier, index) => {
             const isGrowth = tier.id === "growth";
             const amount = isGrowth
               ? convert(growthUsd, currency)
               : tierPrice(tier.id, currency);
 
             return (
-              <Reveal key={tier.id} delay={index * 0.07}>
+              <Reveal
+                key={tier.id}
+                delay={index * 0.07}
+                /* w-[82vw] on a phone: narrow enough that the next card is
+                   always partly visible, which is what makes the row read as
+                   swipeable without a scrollbar. */
+                className="w-[82vw] shrink-0 snap-start sm:w-auto sm:shrink"
+              >
                 <div
                   className={`flex h-full flex-col rounded-xl border p-6 ${
                     tier.popular
@@ -186,10 +217,56 @@ export function PricingTables() {
         </div>
       </div>
 
-      {/* BAND 2 — Enterprise and Care Plan, same card shape as the tiers */}
+      {/* BAND 2 — quoted-from work and aftercare, below the comparison row */}
       <div className="mx-auto mt-6 max-w-5xl px-6">
-        <div className="grid gap-6 sm:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-3">
           <Reveal>
+            {/* Same treatment as Enterprise: both are "from this figure,
+                scoped on a call" rather than a fixed price you can buy off
+                the page. */}
+            <div className="enterprise-band flex h-full flex-col rounded-xl p-6">
+              <h2 className="text-xl">{NATIVE_TIER.name}</h2>
+              <p className="mt-1 text-sm text-secondary">
+                {NATIVE_TIER.blurb}
+              </p>
+
+              <p className="mt-6 text-3xl tabular-nums">
+                <span className="text-base text-secondary">From </span>
+                <span className="text-secondary">
+                  {CURRENCY_SYMBOL[currency]}
+                </span>
+                <CountUp value={tierPrice("native", currency)} duration={0.5} />
+              </p>
+
+              <ul className="mt-6 flex-1 space-y-2">
+                {NATIVE_TIER.features.map((feature) => (
+                  <li
+                    key={feature}
+                    className="flex gap-2.5 text-sm text-secondary"
+                  >
+                    <span aria-hidden="true" className="text-accent">
+                      —
+                    </span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-8">
+                <SlideToConfirm
+                  purpose="submit-lead"
+                  label="Slide to start a native app"
+                  completedLabel="Request received"
+                  ariaLabel="Slide to start an iOS or macOS project"
+                  onConfirm={async () => {
+                    router.push("/start?tier=native");
+                  }}
+                />
+              </div>
+            </div>
+          </Reveal>
+
+          <Reveal delay={0.07}>
             <div className="enterprise-band flex h-full flex-col rounded-xl p-6">
               <h2 className="text-xl">Enterprise</h2>
               <p className="mt-1 text-sm text-secondary">
@@ -238,7 +315,7 @@ export function PricingTables() {
             </div>
           </Reveal>
 
-          <Reveal delay={0.07}>
+          <Reveal delay={0.14}>
             <div className="flex h-full flex-col rounded-xl border border-[color:var(--border-hairline)] bg-surface-1 p-6">
               <h2 className="text-xl">Care Plan</h2>
               <p className="mt-1 text-sm text-secondary">
