@@ -257,9 +257,11 @@ export function ImageUpload({
     <div>
       <span className="text-sm text-secondary">{label}</span>
 
-      {/* Plain img, not next/image: these are arbitrary Convex storage URLs
-          and this is an admin-only preview, so optimisation buys nothing and
-          the remote-pattern config it would need is pure overhead. */}
+      {/* Plain img, not next/image: this is an admin-only preview of an image
+          that was just uploaded, so running it through the optimiser would
+          add a round-trip and a cache entry for a thumbnail only I ever see.
+          The public pages do use next/image — see images.remotePatterns in
+          next.config.ts. */}
       {value ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

@@ -44,6 +44,27 @@ const nextConfig: NextConfig = {
     root: __dirname,
   },
 
+  /*
+   * Uploaded covers and avatars live in Convex file storage, which serves them
+   * from the deployment host. next/image refuses any remote host it has not
+   * been told about, so without this every uploaded image 400s at the
+   * optimizer and renders as a broken icon.
+   *
+   * The subdomain is wildcarded because the deployment name differs between
+   * dev and prod — pinning the literal host would work in one and silently
+   * break the other. `pathname` is scoped to the storage route so this does
+   * not become a general-purpose proxy for anything else on the host.
+   */
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**.convex.cloud",
+        pathname: "/api/storage/**",
+      },
+    ],
+  },
+
   async headers() {
     return [
       {
