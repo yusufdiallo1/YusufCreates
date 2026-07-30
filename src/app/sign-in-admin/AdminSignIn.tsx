@@ -11,23 +11,23 @@ import { FieldError } from "@/components/ui/FieldError";
  *
  * The password is sent to Convex and checked against a stored hash there. It
  * is never compared in the browser, so nothing sensitive ships in the bundle.
+ * That claim used to be false in a small way: the admin address was a
+ * constant in this file, so it went out in a public chunk. Both fields are
+ * typed now.
  *
- * The field is disappearing ink: characters stay legible for a moment then
- * fade, and Reveal fades the whole value back in. That is presentation only —
- * the security is entirely server-side.
+ * Convex is the only side that decides anything. It checks the address
+ * against ADMIN_EMAIL on every attempt and fails closed when that is unset,
+ * so this form grants nothing on its own.
+ *
+ * The password field is disappearing ink: characters stay legible for a
+ * moment then fade, and Reveal fades the whole value back in. That is
+ * presentation only — the security is entirely server-side.
  */
-
-/**
- * Must match ADMIN_EMAIL on the Convex deployment, which is the side that
- * actually enforces it — Convex deletes the account and refuses sign-in for
- * any other address. This constant only decides what gets sent; it grants
- * nothing on its own, so it is not a secret.
- */
-const ADMIN_EMAIL = "yusufdiallo11@gmail.com";
 
 export function AdminSignIn() {
   const router = useRouter();
   const { signIn } = useAuthActions();
+  const [email, setEmail] = useState("");
   const [value, setValue] = useState("");
   const [revealed, setRevealed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -57,34 +57,35 @@ export function AdminSignIn() {
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (busy || value === "") return;
+    if (busy || value === "" || email.trim() === "") return;
 
     setBusy(true);
     setError(null);
 
-    const attempt = async (flow: "signIn" | "signUp") => {
-      const form = new FormData();
-      form.set("email", ADMIN_EMAIL);
-      form.set("password", value);
-      form.set("flow", flow);
-      await signIn("password", form);
-    };
-
     try {
-      await attempt("signIn");
+      const form = new FormData();
+      form.set("email", email.trim());
+      form.set("password", value);
+      form.set("flow", "signIn");
+      await signIn("password", form);
       router.push("/admin");
     } catch {
-      // First run: no account exists yet, so create it. Convex still rejects
-      // any address other than ADMIN_EMAIL server-side.
-      try {
-        await attempt("signUp");
-        router.push("/admin");
-      } catch {
-        // Deliberately vague: naming which part was wrong tells an attacker
-        // whether the account exists.
-        setError("That didn't match. Try again.");
-        setBusy(false);
-      }
+      /*
+       * No signUp fallback.
+       *
+       * It used to retry as signUp when sign-in failed, so that a fresh
+       * deployment could create the account on first use. But Convex only
+       * checks that the address matches ADMIN_EMAIL — not who is typing — so
+       * before I had signed in even once, the first visitor to guess the
+       * address could have claimed the admin account with a password of their
+       * choosing. Creating it is a one-off, and it belongs on the deployment,
+       * not on a public form.
+       *
+       * Deliberately vague: naming which part was wrong tells an attacker
+       * whether the account exists.
+       */
+      setError("That didn't match. Try again.");
+      setBusy(false);
     }
   }
 
@@ -93,7 +94,31 @@ export function AdminSignIn() {
       <Logo variant="mark" className="mx-auto h-8 w-auto" />
       <h1 className="mt-8 text-2xl">Admin</h1>
 
-      <div className="relative mt-8">
+      {/* Typed rather than hardcoded. The address used to be a constant in
+          this file, which put my personal email in a public JS chunk for
+          anyone reading the page source. Convex checks it against ADMIN_EMAIL
+          on every attempt and fails closed, so sending it from here grants
+          nothing — there is no reason to publish it. */}
+      <div className="mt-8">
+        <label htmlFor="admin-email" className="sr-only">
+          Email
+        </label>
+        <input
+          id="admin-email"
+          type="email"
+          autoComplete="username"
+          spellCheck={false}
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            setError(null);
+          }}
+          placeholder="Email"
+          className="hairline w-full rounded-full bg-surface-1 px-5 py-3 text-center text-sm"
+        />
+      </div>
+
+      <div className="relative mt-3">
         <label htmlFor="passphrase" className="sr-only">
           Password
         </label>
@@ -146,7 +171,7 @@ export function AdminSignIn() {
 
       <button
         type="submit"
-        disabled={busy || value === ""}
+        disabled={busy || value === "" || email.trim() === ""}
         className="mt-6 w-full rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-60"
       >
         {busy ? "Checking…" : "Continue"}
