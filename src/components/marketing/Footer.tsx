@@ -50,7 +50,7 @@ export function Footer() {
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    className="text-sm text-secondary transition-colors duration-fast hover:text-primary"
+                    className="inline-flex min-h-11 items-center text-sm text-secondary transition-colors duration-fast hover:text-primary sm:min-h-0"
                   >
                     {item.label}
                   </Link>
@@ -72,7 +72,7 @@ export function Footer() {
               <div className="space-y-1.5">
                 <Link
                   href="/pricing"
-                  className="block text-sm text-accent transition-colors duration-fast hover:text-primary"
+                  className="flex min-h-11 items-center text-sm text-accent transition-colors duration-fast hover:text-primary sm:min-h-0"
                 >
                   Start a project
                 </Link>
@@ -81,13 +81,13 @@ export function Footer() {
                     a list. */}
                 <Link
                   href="/waitlist"
-                  className="block text-sm text-secondary transition-colors duration-fast hover:text-primary"
+                  className="flex min-h-11 items-center text-sm text-secondary transition-colors duration-fast hover:text-primary sm:min-h-0"
                 >
                   Hold a slot
                 </Link>
                 <Link
                   href="/audit"
-                  className="block text-sm text-secondary transition-colors duration-fast hover:text-primary"
+                  className="flex min-h-11 items-center text-sm text-secondary transition-colors duration-fast hover:text-primary sm:min-h-0"
                 >
                   Free site audit
                 </Link>
@@ -121,8 +121,8 @@ export function Footer() {
               offer most visitors are not ready to act on was taking the same
               weight as the newsletter beside it. */}
           <div className="flex flex-col items-start gap-3 md:items-end">
-            <ShareWithFriendLink className="text-sm text-primary transition-colors duration-fast hover:text-accent" />
-            <FeedbackModal className="text-sm text-secondary transition-colors duration-fast hover:text-primary" />
+            <ShareWithFriendLink className="inline-flex min-h-11 items-center text-sm text-primary transition-colors duration-fast hover:text-accent sm:min-h-0" />
+            <FeedbackModal className="inline-flex min-h-11 items-center text-sm text-secondary transition-colors duration-fast hover:text-primary sm:min-h-0" />
           </div>
         </div>
       </div>
@@ -143,7 +143,10 @@ export function Footer() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="transition-colors duration-fast hover:text-primary"
+                /* These were the smallest targets on the site at 16px. The
+                   row keeps its height on a pointer; only touch gets the
+                   larger hit area. */
+                className="inline-flex min-h-11 items-center transition-colors duration-fast hover:text-primary sm:min-h-0"
               >
                 {item.label}
               </Link>

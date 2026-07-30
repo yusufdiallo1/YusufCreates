@@ -92,7 +92,11 @@ export function PricingTables() {
                 type="button"
                 onClick={() => setCurrency(code)}
                 aria-pressed={currency === code}
-                className={`rounded-full px-4 py-1.5 text-xs transition-colors duration-fast ${
+                /* 44px on touch, tighter on a pointer. These were 28px tall,
+                   which is under every published minimum and genuinely fiddly
+                   with a thumb — five of them in a row means the neighbour is
+                   the likely hit. */
+                className={`min-h-11 rounded-full px-4 py-1.5 text-xs transition-colors duration-fast sm:min-h-0 ${
                   currency === code
                     ? "bg-primary text-canvas"
                     : "text-secondary hover:text-primary"
@@ -254,7 +258,11 @@ export function PricingTables() {
 
       {/* BAND 2 — quoted-from work and aftercare, below the comparison row */}
       <div className="mx-auto mt-6 max-w-5xl px-6">
-        <div className="grid gap-6 lg:grid-cols-3">
+        {/* Two up on a tablet, three on desktop. Without the sm step these
+            three sat one per row at 768px — full-width cards with a short
+            feature list each, which reads as three separate sections rather
+            than a set to compare. */}
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <Reveal>
             {/* Same treatment as Enterprise: both are "from this figure,
                 scoped on a call" rather than a fixed price you can buy off
@@ -370,7 +378,7 @@ export function PricingTables() {
                     type="button"
                     onClick={() => setPeriod(option)}
                     aria-pressed={period === option}
-                    className={`rounded-full px-3 py-1 text-xs transition-colors duration-fast ${
+                    className={`min-h-11 rounded-full px-4 py-1 text-xs transition-colors duration-fast sm:min-h-0 sm:px-3 ${
                       period === option
                         ? "bg-primary text-canvas"
                         : "text-secondary hover:text-primary"
