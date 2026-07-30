@@ -494,6 +494,172 @@ const carousels = [
       },
     ],
   },
+  // =====================================================================
+  // AI CODING TOOLS — Claude Code and Cursor.
+  //
+  // Every claim in this section is verified against official documentation,
+  // not recalled. File paths, frontmatter fields and hook event names are
+  // exact, because a wrong path is a post that teaches people something
+  // broken. Deliberately excluded: subscription prices, model names, rate
+  // limits and token costs — all of which change faster than a post can be
+  // edited, and none of which are checkable from this repo.
+  //
+  // Verified: docs.claude.com/en/docs/claude-code (memory, skills, subagents,
+  // hooks, permission modes) and cursor.com/docs/context/rules.
+  // =====================================================================
+
+  // 12. The context-file deck. The single highest-leverage habit, and the one
+  //     most people skip. Uses this repo’s own CLAUDE.md as the example.
+  {
+    slug: "12-claude-code-context",
+    title: "Stop re-explaining your codebase",
+    slides: [
+      {
+        eyebrow: "Claude Code",
+        headline: [["You re-explain", "primary"], ["your codebase", "primary"], ["every session.", "accent"]],
+        body: "There is one file that fixes this, and most people never create it.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "The file",
+        headline: [["CLAUDE.md, at", "primary"], ["your repo root.", "muted"]],
+        body: "It loads automatically at the start of every session. Your stack, your conventions, the commands to run — written once instead of typed into the chat again on Monday.",
+      },
+      {
+        eyebrow: "The syntax",
+        headline: [["One line beats", "primary"], ["one more copy.", "muted"]],
+        body: "Write @AGENTS.md and it imports that file inline. My entire CLAUDE.md is that single line, so Claude Code and every other agent read the same instructions and can’t drift apart.",
+      },
+      {
+        eyebrow: "The mistake",
+        headline: [["Longer is not", "primary"], ["better.", "danger"]],
+        body: "Past roughly 200 lines, adherence drops — it’s competing for the same context the actual work needs. Keep it short. Scope the rest to file paths with .claude/rules/ so it loads only when relevant.",
+      },
+      {
+        eyebrow: "The habit",
+        headline: [["Correct it once.", "primary"], ["Not weekly.", "accent"]],
+        body: "When you catch yourself giving the same correction twice, that’s not a prompt — that’s a missing line in CLAUDE.md. Every repo I work in has one before I write any code.",
+        cta: "Follow for more",
+      },
+    ],
+  },
+
+  // 13. Skills, subagents and hooks. The three features that separate people
+  //     who use Claude Code from people who have configured it.
+  {
+    slug: "13-claude-code-setup",
+    title: "Three features you’re not using",
+    slides: [
+      {
+        eyebrow: "Claude Code",
+        headline: [["Three features", "primary"], ["you’re paying", "primary"], ["for, unused.", "accent"]],
+        body: "Not obscure flags. The difference between a chat window and a system that knows your project.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "01 — Skills",
+        eyebrowColor: "#4cc38a",
+        headline: [["Your workflow,", "primary"], ["written down once.", "muted"]],
+        body: "A SKILL.md in .claude/skills/ becomes a command you can invoke by name. Your deploy checklist, your review standard — repeatable instead of remembered.",
+      },
+      {
+        eyebrow: "02 — Subagents",
+        eyebrowColor: "#4cc38a",
+        headline: [["Delegate the", "primary"], ["messy reading.", "muted"]],
+        body: "Files in .claude/agents/ can be given their own model and a restricted tool list. An auditor with read access only, whose thousand lines of searching never touch your main conversation.",
+      },
+      {
+        eyebrow: "03 — Hooks",
+        eyebrowColor: "#4cc38a",
+        headline: [["Rules the model", "primary"], ["cannot talk", "primary"], ["past.", "muted"]],
+        body: "Configured in settings.json, hooks fire on real events — PreToolUse, PostToolUse, SessionStart. A PreToolUse hook exiting with code 2 blocks the command outright. That’s enforcement, not instruction.",
+      },
+      {
+        eyebrow: "The shift",
+        headline: [["Configure it", "primary"], ["like a tool.", "accent"]],
+        body: "Prompting harder has a ceiling. Setup doesn’t — every one of these is a file you commit, so it works the same next week and for anyone else who clones the repo.",
+        cta: "Save this",
+      },
+    ],
+  },
+
+  // 14. Cursor rules. Paths and frontmatter fields verified against
+  //     cursor.com/docs/context/rules — the .md-is-ignored detail is the
+  //     genuinely useful part, since it fails silently.
+  {
+    slug: "14-cursor-rules",
+    title: "Cursor rules that actually load",
+    slides: [
+      {
+        eyebrow: "Cursor",
+        headline: [["Your Cursor", "primary"], ["rules are being", "primary"], ["ignored.", "danger"]],
+        body: "There’s a silent failure here that people spend weeks not noticing.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "The trap",
+        headline: [[".md in that", "primary"], ["folder does", "primary"], ["nothing.", "danger"]],
+        body: "Project rules live in .cursor/rules and must be .mdc files. A plain .md sitting in there is skipped with no warning — so you assume it’s loaded and blame the model for ignoring you.",
+      },
+      {
+        eyebrow: "The frontmatter",
+        headline: [["Four ways a", "primary"], ["rule can load.", "muted"]],
+        rows: [
+          { k: "01", v: "alwaysApply — in every request" },
+          { k: "02", v: "globs — only for matching files" },
+          { k: "03", v: "description — Agent decides" },
+          { k: "04", v: "None of them — @-mention manually" },
+        ],
+      },
+      {
+        eyebrow: "The default",
+        headline: [["Not everything", "primary"], ["is always-on.", "muted"]],
+        body: "alwaysApply: true on every rule rebuilds the problem you were solving — a context window full of instructions that don’t apply. Scope with globs and let the rest load on demand.",
+      },
+      {
+        eyebrow: "Both tools",
+        headline: [["AGENTS.md is", "primary"], ["the common", "primary"], ["ground.", "accent"]],
+        body: "Cursor reads AGENTS.md at the project root, and Claude Code reaches it with a one-line import. Write your conventions once, and switching editors stops costing you your setup.",
+        cta: "Save this",
+      },
+    ],
+  },
+
+  // 15. The judgement deck. Honest about what these tools don’t do — the
+  //     angle that separates a working developer from an AI hype account.
+  {
+    slug: "15-ai-tools-honestly",
+    title: "What AI coding tools don’t fix",
+    slides: [
+      {
+        eyebrow: "Hard truths",
+        headline: [["AI writes the", "primary"], ["code. You still", "primary"], ["own it.", "accent"]],
+        body: "I build with these tools daily. Here’s the part the demos leave out.",
+        cta: "Swipe",
+      },
+      {
+        eyebrow: "Speed",
+        headline: [["Faster typing,", "primary"], ["same thinking.", "muted"]],
+        body: "The bottleneck was never how fast the code appeared. Deciding what to build, and what to leave out, is still the whole job — and it’s still yours.",
+      },
+      {
+        eyebrow: "Review",
+        headline: [["Plausible is not", "primary"], ["the same as", "primary"], ["correct.", "danger"]],
+        body: "Generated code reads well by construction, which is exactly what makes a wrong version dangerous. If you shipped it without understanding it, you can’t fix it at 2am when it breaks.",
+      },
+      {
+        eyebrow: "Taste",
+        headline: [["It will not save", "primary"], ["you from a bad", "primary"], ["decision.", "muted"]],
+        body: "Ask for a worse architecture and you’ll get one, built quickly and consistently. These tools amplify judgement in both directions.",
+      },
+      {
+        eyebrow: "The upside",
+        headline: [["Used well, it’s", "primary"], ["a real edge.", "accent"]],
+        body: "It’s why one person can ship accounts, payments, admin and native apps properly. Not because the work got smaller — because none of it starts from a blank file now.",
+        cta: "See what I’ve shipped",
+      },
+    ],
+  },
 ];
 
 module.exports = { carousels, HANDLE };

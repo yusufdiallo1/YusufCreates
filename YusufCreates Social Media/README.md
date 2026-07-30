@@ -24,7 +24,7 @@ From the repo root:
 node "YusufCreates Social Media/build/render.js"
 ```
 
-Writes 55 slides across 11 carousels. The script fails loudly rather than
+Writes 75 slides across 15 carousels. The script fails loudly rather than
 producing wrong output: it aborts if the embedded font doesn't load, and warns
 per slide if content overflows the safe area.
 
@@ -71,3 +71,19 @@ honour or walk back.
 
 No deck claims traffic, revenue, or client counts — none of that is recorded in
 the repo, and inventing it on a public post is a liability.
+
+## ⚠️ Tool claims must be verified, not recalled
+
+Decks 12–15 teach Claude Code and Cursor. Every file path, frontmatter field and
+hook event name in them was checked against official documentation at the time
+of writing — `docs.claude.com/en/docs/claude-code` and
+`cursor.com/docs/context/rules`. A wrong path is worse than no post: it teaches
+people something broken and it's the kind of error the audience for these decks
+will spot immediately.
+
+Deliberately excluded, and worth keeping excluded: subscription prices, model
+names, rate limits and token costs. These change faster than a published post
+can be edited and none of them are checkable from this repo.
+
+**These are the decks most likely to go stale.** Both tools ship constantly. Re-read
+the docs before re-posting one, not just before writing a new one.

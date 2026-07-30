@@ -1,6 +1,6 @@
 # Captions
 
-Handle: **@yusufcreatesdev** · 11 carousels · 5 slides each · 1080×1920
+Handle: **@yusufcreatesdev** · 15 carousels · 5 slides each · 1080×1920
 
 Instagram truncates around 125 characters, so the first line of each caption is
 written to stand alone before the "more" cut.
@@ -318,24 +318,160 @@ written to stand alone before the "more" cut.
 
 ---
 
+## 12. `12-claude-code-context`
+
+> You re-explain your codebase to Claude Code every session. There's one file
+> that fixes it, and most people never create it.
+>
+> THE FILE — CLAUDE.md at your repo root. It loads automatically at the start of
+> every session: your stack, your conventions, the commands to run. Written
+> once, instead of typed into the chat again on Monday.
+>
+> THE SYNTAX — `@AGENTS.md` imports that file inline. My entire CLAUDE.md is
+> that single line, so Claude Code and every other agent read the same
+> instructions and can't drift apart.
+>
+> THE MISTAKE — longer is not better. Past roughly 200 lines adherence drops,
+> because it's competing for the same context the actual work needs. Keep it
+> short and scope the rest to file paths with `.claude/rules/`.
+>
+> The habit that matters: when you catch yourself giving the same correction
+> twice, that's not a prompt — that's a missing line in CLAUDE.md.
+>
+> What's in yours?
+
+```
+#claudecode #aicoding #developertools #buildinpublic #softwareengineer
+#codingtips #devworkflow #aitools #programming #webdev #devcommunity
+#codingproductivity #anthropic #fullstackdeveloper #devtools
+```
+
+---
+
+## 13. `13-claude-code-setup`
+
+> Three Claude Code features you're paying for and probably not using. Not
+> obscure flags — the difference between a chat window and a system that knows
+> your project.
+>
+> 01 — SKILLS. A `SKILL.md` in `.claude/skills/` becomes a command you invoke by
+> name. Your deploy checklist, your review standard: repeatable instead of
+> remembered.
+>
+> 02 — SUBAGENTS. Files in `.claude/agents/` can be given their own model and a
+> restricted tool list. An auditor with read access only, whose thousand lines
+> of searching never touch your main conversation.
+>
+> 03 — HOOKS. Configured in `settings.json`, they fire on real events —
+> PreToolUse, PostToolUse, SessionStart. A PreToolUse hook exiting with code 2
+> blocks the command outright. That's enforcement, not instruction.
+>
+> Prompting harder has a ceiling. Setup doesn't — every one of these is a file
+> you commit, so it works the same next week and for anyone else who clones the
+> repo.
+>
+> Save this for your next project setup.
+
+```
+#claudecode #aiagents #developerproductivity #devops #codingworkflow
+#automation #softwaredevelopment #aicoding #terminal #cli #buildinpublic
+#engineeringculture #devtools #programmerlife #techtips
+```
+
+---
+
+## 14. `14-cursor-rules`
+
+> Your Cursor rules might be silently ignored. There's a failure here people
+> spend weeks not noticing.
+>
+> THE TRAP — project rules live in `.cursor/rules` and must be `.mdc` files. A
+> plain `.md` sitting in that folder is skipped with no warning. So you assume
+> it loaded, and blame the model for ignoring you.
+>
+> FOUR WAYS A RULE LOADS —
+> → `alwaysApply: true` — in every request
+> → `globs` — only for matching files
+> → `description` — the Agent decides when it's relevant
+> → none of them — you `@`-mention it manually
+>
+> THE DEFAULT TRAP — `alwaysApply: true` on every rule rebuilds the problem you
+> were solving: a context window full of instructions that don't apply. Scope
+> with globs, let the rest load on demand.
+>
+> BOTH TOOLS — Cursor reads AGENTS.md at the project root, and Claude Code
+> reaches it with a one-line import. Write your conventions once and switching
+> editors stops costing you your setup.
+>
+> Which editor are you in right now?
+
+```
+#cursor #cursorai #aicoding #developertools #vibecoding #codeeditor
+#programming #webdevelopment #devtips #softwareengineer #aitools
+#codingsetup #buildinpublic #frontenddeveloper #productivity
+```
+
+---
+
+## 15. `15-ai-tools-honestly`
+
+> AI writes the code. You still own it. I build with these tools daily — here's
+> the part the demos leave out.
+>
+> SPEED — faster typing, same thinking. The bottleneck was never how fast code
+> appeared on screen. Deciding what to build, and what to leave out, is still
+> the whole job.
+>
+> REVIEW — plausible is not the same as correct. Generated code reads well by
+> construction, which is exactly what makes a wrong version dangerous. If you
+> shipped it without understanding it, you can't fix it at 2am when it breaks.
+>
+> TASTE — it will not save you from a bad decision. Ask for a worse
+> architecture and you'll get one, built quickly and consistently. These tools
+> amplify judgement in both directions.
+>
+> THE UPSIDE — used well, it's a real edge. It's why one person can ship
+> accounts, payments, admin and native apps properly. Not because the work got
+> smaller, but because none of it starts from a blank file now.
+>
+> Agree or disagree?
+
+```
+#aicoding #softwareengineering #devlife #codereview #buildinpublic
+#programming #techopinion #developercommunity #aitools #engineering
+#codequality #indiehacker #softwaredeveloper #webdev #craftsmanship
+```
+
+---
+
 ## Posting notes
 
-**Suggested six-week order.** Craft and process build the audience; work and
+**Suggested eight-week order.** Craft and process build the audience; work and
 pricing convert it. Don't lead with pricing to a cold following.
+
+The AI-tools decks (12–15) are the reach engine — they're the most searched and
+shared subject here, and they cost nothing to publish because they teach rather
+than sell. Each one is placed just before something that does sell, so the
+audience they pull in arrives ahead of a work or pricing post rather than after
+it.
 
 | Week | Deck |
 |---|---|
 | 1 | `01-why-it-looks-cheap` |
 | 1 | `10-five-mistakes` |
+| 2 | `12-claude-code-context` |
 | 2 | `03-how-i-work` |
-| 2 | `04-work-docutrackr-family` |
-| 3 | `02-the-stack` |
-| 3 | `11-accessibility` |
-| 4 | `05-work-docutrackr-business` |
-| 4 | `08-pricing-flat` |
-| 5 | `06-work-shipped` |
-| 5 | `07-pricing` |
-| 6 | `09-promo-slots` |
+| 3 | `04-work-docutrackr-family` |
+| 3 | `14-cursor-rules` |
+| 4 | `02-the-stack` |
+| 4 | `11-accessibility` |
+| 5 | `13-claude-code-setup` |
+| 5 | `05-work-docutrackr-business` |
+| 6 | `15-ai-tools-honestly` |
+| 6 | `08-pricing-flat` |
+| 7 | `06-work-shipped` |
+| 7 | `07-pricing` |
+| 8 | `09-promo-slots` |
 
 - **Slide 01 is the cover** — the feed thumbnail, and the only slide most people
   will ever see.
