@@ -32,6 +32,8 @@ export function FeedbackAdmin() {
 
       <SiteFeedbackList />
 
+      <CommentsList />
+
       {groups === undefined ? (
         <Skeleton />
       ) : groups.length === 0 ? (
@@ -173,6 +175,85 @@ function SiteFeedbackList() {
                 className="hairline ml-auto rounded-full px-3 py-1 text-xs text-primary transition-colors duration-fast hover:bg-surface-2"
               >
                 {row.read ? "Mark unread" : "Mark read"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void remove({ id: row._id })}
+                className="rounded-full px-3 py-1 text-xs text-secondary transition-colors duration-fast hover:text-[color:var(--danger)]"
+              >
+                Delete
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/**
+ * Blog comments awaiting a decision.
+ *
+ * Held rather than published on submit — an open comment box under writing
+ * that sells software is a spam target, and unmoderated spam costs more than
+ * the comments are worth. Pending sort first because they are the only ones
+ * that need anything from me.
+ */
+function CommentsList() {
+  const rows = useQuery(api.engagement.listComments, {});
+  const approve = useMutation(api.engagement.approveComment);
+  const remove = useMutation(api.engagement.removeComment);
+
+  if (rows === undefined) return <Skeleton />;
+  if (rows.length === 0) return null;
+
+  const pending = rows.filter((r) => !r.approved).length;
+
+  return (
+    <section>
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 className="text-lg text-primary">Blog comments</h2>
+        {pending > 0 ? (
+          <span className="badge badge-hot">{pending} to review</span>
+        ) : null}
+      </div>
+
+      <ul className="mt-3 divide-y divide-[color:var(--border-hairline)]">
+        {rows.map((row) => (
+          <li key={row._id} className="py-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="text-sm text-primary">
+                {row.name}
+                <a
+                  href={`mailto:${row.email}`}
+                  className="ml-2 text-xs text-accent transition-opacity duration-fast hover:opacity-80"
+                >
+                  {row.email}
+                </a>
+              </p>
+              <span className="text-xs text-secondary">
+                on {row.postTitle}
+              </span>
+            </div>
+
+            <p className="mt-2 text-sm whitespace-pre-wrap text-secondary">
+              {row.body}
+            </p>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {row.approved ? (
+                <span className="badge">published</span>
+              ) : (
+                <span className="badge badge-cold">held</span>
+              )}
+              <button
+                type="button"
+                onClick={() =>
+                  void approve({ id: row._id, approved: !row.approved })
+                }
+                className="hairline ml-auto rounded-full px-3 py-1 text-xs text-primary transition-colors duration-fast hover:bg-surface-2"
+              >
+                {row.approved ? "Unpublish" : "Publish"}
               </button>
               <button
                 type="button"

@@ -52,6 +52,11 @@ export const create = mutation({
     // rather than saved as a draft and then immediately edited to publish it.
     published: v.optional(v.boolean()),
     publishedAt: v.optional(v.number()),
+    kind: v.optional(
+      v.union(v.literal("text"), v.literal("images"), v.literal("video")),
+    ),
+    images: v.optional(v.array(v.string())),
+    videoUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -115,6 +120,11 @@ export const update = mutation({
     tags: v.optional(v.array(v.string())),
     published: v.optional(v.boolean()),
     publishedAt: v.optional(v.number()),
+    kind: v.optional(
+      v.union(v.literal("text"), v.literal("images"), v.literal("video")),
+    ),
+    images: v.optional(v.array(v.string())),
+    videoUrl: v.optional(v.string()),
   },
   handler: async (ctx, { id, ...patch }) => {
     await requireAdmin(ctx);

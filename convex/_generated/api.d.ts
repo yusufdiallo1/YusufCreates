@@ -17,6 +17,7 @@ import type * as capacity from "../capacity.js";
 import type * as chat from "../chat.js";
 import type * as cleanup from "../cleanup.js";
 import type * as crons from "../crons.js";
+import type * as engagement from "../engagement.js";
 import type * as events from "../events.js";
 import type * as feedback from "../feedback.js";
 import type * as files from "../files.js";
@@ -54,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   chat: typeof chat;
   cleanup: typeof cleanup;
   crons: typeof crons;
+  engagement: typeof engagement;
   events: typeof events;
   feedback: typeof feedback;
   files: typeof files;

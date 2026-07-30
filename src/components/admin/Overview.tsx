@@ -18,6 +18,9 @@ import { ADMIN_PATH } from "@/lib/constants";
  */
 export function Overview() {
   const data = useQuery(api.admin.overview, {});
+  // Separate from overview so a blog with no engagement cannot make the whole
+  // dashboard wait on two extra table scans.
+  const engagement = useQuery(api.engagement.stats, {});
 
   if (data === undefined) {
     return (
@@ -151,6 +154,18 @@ export function Overview() {
           <Stat label="Published projects" value={counts.projectsPublished} />
           <Stat label="Drafts" value={counts.projectsDraft} />
           <Stat label="Leads in last 7 days" value={counts.leadsLast7} />
+        </div>
+
+        {/* Reader response. Held comments are emphasised because they are the
+            only number here that is waiting on me. */}
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <Stat label="Post likes" value={engagement?.likes ?? 0} />
+          <Stat label="Comments" value={engagement?.comments ?? 0} />
+          <Stat
+            label="Comments held"
+            value={engagement?.pendingComments ?? 0}
+            emphasis={(engagement?.pendingComments ?? 0) > 0}
+          />
         </div>
       </section>
     </div>

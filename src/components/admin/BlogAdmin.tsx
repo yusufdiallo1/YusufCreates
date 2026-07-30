@@ -32,7 +32,19 @@ const EMPTY = {
   tags: [] as string[],
   published: false,
   publishedAt: "",
+  kind: "text" as PostKind,
+  images: [] as string[],
+  videoUrl: "",
 };
+
+type PostKind = "text" | "images" | "video";
+
+/** The three shapes a post can take, and what each one asks for. */
+const KINDS: { id: PostKind; label: string; hint: string }[] = [
+  { id: "text", label: "Text", hint: "Writing, with an optional cover." },
+  { id: "images", label: "Images", hint: "A gallery. Words optional." },
+  { id: "video", label: "Video", hint: "An upload, or a YouTube link." },
+];
 
 export function BlogAdmin() {
   const posts = useQuery(api.posts.listAll, {});
@@ -123,6 +135,12 @@ export function BlogAdmin() {
                 tags: draft.tags,
                 published: draft.published,
                 publishedAt,
+                kind: draft.kind,
+                // Only the media the chosen type uses. Sending a stale
+                // gallery on a post switched to video would keep images
+                // attached to something that no longer shows them.
+                images: draft.kind === "images" ? draft.images : [],
+                videoUrl: draft.kind === "video" ? draft.videoUrl : "",
               });
             } else {
               await update({
@@ -135,6 +153,12 @@ export function BlogAdmin() {
                 tags: draft.tags,
                 published: draft.published,
                 publishedAt,
+                kind: draft.kind,
+                // Only the media the chosen type uses. Sending a stale
+                // gallery on a post switched to video would keep images
+                // attached to something that no longer shows them.
+                images: draft.kind === "images" ? draft.images : [],
+                videoUrl: draft.kind === "video" ? draft.videoUrl : "",
               });
             }
             setEditing(null);
@@ -182,6 +206,11 @@ function PostDrawer({
           tags: post.tags ?? [],
           published: post.published,
           publishedAt: toLocalInput(post.publishedAt ?? post._creationTime),
+          // Absent on every post written before kinds existed, and those are
+          // all text posts.
+          kind: post.kind ?? "text",
+          images: post.images ?? [],
+          videoUrl: post.videoUrl ?? "",
         }
       : { ...EMPTY, publishedAt: toLocalInput(Date.now()) },
   );
@@ -192,10 +221,21 @@ function PostDrawer({
   const set = <K extends keyof typeof EMPTY>(k: K, v: (typeof EMPTY)[K]) =>
     setDraft((d) => ({ ...d, [k]: v }));
 
+  /*
+   * A body is only required for a text post.
+   *
+   * A gallery or a video is the content on those, and forcing a paragraph
+   * before you can save one means writing filler to satisfy the form.
+   */
+  const hasContent =
+    draft.kind === "text"
+      ? draft.body.trim() !== ""
+      : draft.kind === "images"
+        ? draft.images.length > 0
+        : draft.videoUrl.trim() !== "";
+
   const valid =
-    draft.title.trim() !== "" &&
-    draft.slug.trim() !== "" &&
-    draft.body.trim() !== "";
+    draft.title.trim() !== "" && draft.slug.trim() !== "" && hasContent;
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -214,6 +254,41 @@ function PostDrawer({
         <h2 className="text-lg text-primary">
           {post ? "Edit post" : "New post"}
         </h2>
+
+        {/* First decision, before anything else is asked.
+            What kind of post this is changes which fields matter, so choosing
+            it after filling the form means filling the wrong form. */}
+        <div className="mt-6">
+          <span className="text-sm text-secondary">Post type</span>
+          <div
+            role="radiogroup"
+            aria-label="Post type"
+            className="mt-2 grid gap-2 sm:grid-cols-3"
+          >
+            {KINDS.map((k) => {
+              const active = draft.kind === k.id;
+              return (
+                <button
+                  key={k.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => set("kind", k.id)}
+                  className={`rounded-xl border p-3 text-left transition-colors duration-fast ${
+                    active
+                      ? "border-[color:var(--accent)] bg-surface-2"
+                      : "border-[color:var(--border-hairline)] bg-surface-1 hover:bg-surface-2"
+                  }`}
+                >
+                  <span className="block text-sm text-primary">{k.label}</span>
+                  <span className="mt-0.5 block text-xs text-secondary">
+                    {k.hint}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         <div className="mt-6 space-y-4">
           <Field
@@ -245,12 +320,33 @@ function PostDrawer({
             help="Used in the list, the RSS feed and the share card."
           />
           <ImageUpload
-            label="Cover image"
+            label={draft.kind === "video" ? "Poster image" : "Cover image"}
             value={draft.coverUrl}
             onChange={(v) => set("coverUrl", v)}
           />
+
+          {/* Only the fields the chosen type actually uses. A gallery
+              uploader sitting empty on a text post is a question that never
+              needed asking. */}
+          {draft.kind === "images" ? (
+            <GalleryUpload
+              values={draft.images}
+              onChange={(v) => set("images", v)}
+            />
+          ) : null}
+
+          {draft.kind === "video" ? (
+            <Field
+              label="Video"
+              value={draft.videoUrl}
+              onChange={(v) => set("videoUrl", v)}
+              placeholder="https://youtube.com/watch?v=… or an MP4 URL"
+              help="YouTube, Vimeo or a direct MP4. The player works it out from the link."
+            />
+          ) : null}
+
           <Markdown
-            label="Body"
+            label={draft.kind === "text" ? "Body" : "Body (optional)"}
             value={draft.body}
             onChange={(v) => set("body", v)}
           />
@@ -328,6 +424,67 @@ function PostDrawer({
             <DeleteRow what={draft.title} onDelete={onDelete} />
           </div>
         ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Gallery uploader for an images post.
+ *
+ * Built on ImageUpload rather than a new upload path: one field appends, and
+ * each existing image gets its own control so replacing image three does not
+ * mean re-uploading the set. Order is upload order, which is the order they
+ * were chosen in.
+ */
+function GalleryUpload({
+  values,
+  onChange,
+}: {
+  values: string[];
+  onChange: (next: string[]) => void;
+}) {
+  return (
+    <div>
+      <span className="text-sm text-secondary">
+        Images{values.length > 0 ? ` (${values.length})` : ""}
+      </span>
+
+      <div className="mt-2 space-y-3">
+        {values.map((url, i) => (
+          <div key={`${url}-${i}`} className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <ImageUpload
+                label={`Image ${i + 1}`}
+                value={url}
+                onChange={(v) => {
+                  const next = [...values];
+                  // Clearing an image removes it rather than leaving a hole.
+                  if (v) next[i] = v;
+                  else next.splice(i, 1);
+                  onChange(next);
+                }}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => onChange(values.filter((_, j) => j !== i))}
+              aria-label={`Remove image ${i + 1}`}
+              className="mt-7 shrink-0 rounded-full px-3 py-1 text-xs text-secondary transition-colors duration-fast hover:text-[color:var(--danger)]"
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+
+        {/* Always one empty slot at the end, so adding is never a mode. */}
+        <ImageUpload
+          label={values.length === 0 ? "Add the first image" : "Add another"}
+          value=""
+          onChange={(v) => {
+            if (v) onChange([...values, v]);
+          }}
+        />
       </div>
     </div>
   );

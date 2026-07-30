@@ -231,9 +231,59 @@ export default defineSchema({
     publishedAt: v.optional(v.number()),
     tags: v.optional(v.array(v.string())),
     readingTime: v.optional(v.number()),
+
+    /**
+     * What kind of post this is.
+     *
+     * Optional because every existing post predates it and is a text post —
+     * a required field would invalidate all of them. Absent reads as "text".
+     */
+    kind: v.optional(
+      v.union(v.literal("text"), v.literal("images"), v.literal("video")),
+    ),
+
+    /** Gallery, for an images post. Ordered as uploaded. */
+    images: v.optional(v.array(v.string())),
+
+    /**
+     * A video post's source: either an uploaded MP4 or a YouTube/Vimeo URL.
+     * Stored as given; the player decides how to render it.
+     */
+    videoUrl: v.optional(v.string()),
   })
     .index("by_slug", ["slug"])
     .index("by_published", ["published", "publishedAt"]),
+
+  /**
+   * Reactions and comments on a post.
+   *
+   * Likes are one row per visitor per post, keyed by a client-generated id
+   * rather than an account — asking someone to sign in to like a blog post is
+   * how a blog post gets no likes. The id is not trusted for anything else.
+   */
+  postLikes: defineTable({
+    postId: v.id("posts"),
+    visitorId: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_post", ["postId"])
+    .index("by_post_visitor", ["postId", "visitorId"]),
+
+  /**
+   * Comments are held for approval by default. An open comment box on a site
+   * that sells software is a spam target, and unmoderated spam under my own
+   * writing costs more than the comments are worth.
+   */
+  postComments: defineTable({
+    postId: v.id("posts"),
+    name: v.string(),
+    email: v.string(),
+    body: v.string(),
+    approved: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_post", ["postId", "approved"])
+    .index("by_approved", ["approved", "createdAt"]),
 
   kb: defineTable({
     question: v.string(),

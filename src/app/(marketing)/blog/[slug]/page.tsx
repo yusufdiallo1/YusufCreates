@@ -8,6 +8,8 @@ import { SITE } from "@/lib/constants";
 import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { renderMarkdown } from "@/lib/markdown";
+import { VideoPlayer } from "@/components/ui/VideoPlayer";
+import { PostEngagement } from "@/components/marketing/PostEngagement";
 
 /**
  * Blog post.
@@ -99,7 +101,15 @@ export default async function BlogPostPage({
           {post.readingTime ? ` · ${post.readingTime} min read` : ""}
         </p>
 
-        {post.coverUrl ? (
+        {/* A video post leads with the player rather than a still — the
+            poster image is already the video's first frame. */}
+        {post.kind === "video" && post.videoUrl ? (
+          <VideoPlayer
+            url={post.videoUrl}
+            poster={post.coverUrl}
+            className="mt-10"
+          />
+        ) : post.coverUrl ? (
           <div className="relative mt-10 aspect-[2/1] overflow-hidden rounded-xl bg-surface-2">
             <Image
               src={post.coverUrl}
@@ -112,7 +122,33 @@ export default async function BlogPostPage({
           </div>
         ) : null}
 
-        <div className="legal-prose mt-12">{renderMarkdown(post.body)}</div>
+        {post.body.trim() ? (
+          <div className="legal-prose mt-12">{renderMarkdown(post.body)}</div>
+        ) : null}
+
+        {/* Gallery below the words, so any framing text is read first. Each
+            image keeps its own aspect ratio rather than being cropped to a
+            uniform box — a gallery of crops is a contact sheet. */}
+        {post.kind === "images" && post.images && post.images.length > 0 ? (
+          <div className="mt-12 space-y-6">
+            {post.images.map((src: string, i: number) => (
+              <div
+                key={`${src}-${i}`}
+                className="relative overflow-hidden rounded-xl bg-surface-2"
+              >
+                <Image
+                  src={src}
+                  alt=""
+                  width={1600}
+                  height={1200}
+                  sizes="(max-width: 768px) 100vw, 42rem"
+                  className="h-auto w-full"
+                  priority={i === 0}
+                />
+              </div>
+            ))}
+          </div>
+        ) : null}
 
         {post.tags && post.tags.length > 0 ? (
           <div className="mt-14 flex flex-wrap gap-2">
@@ -126,6 +162,8 @@ export default async function BlogPostPage({
             ))}
           </div>
         ) : null}
+
+        <PostEngagement postId={post._id} />
       </article>
     </>
   );
