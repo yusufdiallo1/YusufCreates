@@ -201,6 +201,31 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_read", ["read", "createdAt"]),
 
+  /**
+   * Custom payment links, kept after they are made.
+   *
+   * These were created in Stripe and then forgotten — the URL existed only in
+   * the response that made it, so closing the tab lost it and there was no
+   * record that money had been asked for at all. Stripe holds the truth about
+   * payment; this holds what the link was for.
+   */
+  paymentLinks: defineTable({
+    stripeId: v.string(),
+    url: v.string(),
+    label: v.string(),
+    amount: v.number(),
+    currency: v.string(),
+    /** Who it was sent to, when known. Free text — often just a name. */
+    forWhom: v.optional(v.string()),
+    /** Set by the webhook when a payment against this link succeeds. */
+    paidAt: v.optional(v.number()),
+    paidAmount: v.optional(v.number()),
+    active: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_created", ["createdAt"])
+    .index("by_stripe", ["stripeId"]),
+
   events: defineTable({
     type: v.string(),
     path: v.optional(v.string()),

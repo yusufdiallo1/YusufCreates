@@ -15,12 +15,14 @@ import * as simpleIcons from "simple-icons";
  * A title lookup that misses returns null and the skill renders as text,
  * which is the same graceful outcome as before.
  *
- * Every mark inherits currentColor rather than brand colour. Twenty logos in
- * twenty palettes is a ransom note, and these sit beside body text where one
- * ink keeps the rhythm.
+ * At rest every mark inherits currentColor. Twenty logos in twenty palettes
+ * is a ransom note, and these sit beside body text where one ink keeps the
+ * rhythm. Brand colour arrives on hover — and on tap, since a phone has no
+ * hover — so the colour is a reward for pointing at something rather than the
+ * default state of the page.
  */
 
-type IconRecord = { title: string; path: string };
+type IconRecord = { title: string; path: string; hex?: string };
 
 const ALL: IconRecord[] = Object.values(
   simpleIcons as unknown as Record<string, IconRecord>,
@@ -28,6 +30,31 @@ const ALL: IconRecord[] = Object.values(
   (icon): icon is IconRecord =>
     Boolean(icon) && typeof icon?.title === "string" && typeof icon?.path === "string",
 );
+
+/**
+ * Perceived brightness of a brand hex, 0–1.
+ *
+ * Six of these brands are officially black — Vercel, Next.js, GitHub, Cursor,
+ * Resend and Anime.js. On a near-black canvas their "brand colour" is
+ * invisible, so hovering would make the mark vanish rather than light up.
+ * Those fall back to full white, which is what each of them uses on a dark
+ * background in its own material anyway.
+ */
+function luminance(hex: string): number {
+  const n = parseInt(hex, 16);
+  if (Number.isNaN(n)) return 1;
+  const channels = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
+/** The colour a mark should take on hover, or null to leave it alone. */
+function brandColor(icon: IconRecord): string | null {
+  if (!icon.hex) return null;
+  return luminance(icon.hex) < 0.06 ? "#ffffff" : `#${icon.hex}`;
+}
 
 const byTitle = new Map(ALL.map((icon) => [icon.title.toLowerCase(), icon]));
 
@@ -88,6 +115,8 @@ export function TechLogo({
   const icon = lookup(name);
   if (!icon) return null;
 
+  const colour = brandColor(icon);
+
   return (
     <svg
       width={size}
@@ -96,7 +125,15 @@ export function TechLogo({
       fill="currentColor"
       aria-hidden="true"
       focusable="false"
-      className={className}
+      /*
+       * The colour is carried as a custom property rather than applied here.
+       * A hover rule in CSS can then read it, which keeps one selector in
+       * globals.css responsible for the behaviour instead of every caller
+       * repeating a hover class — and lets the same rule answer both hover
+       * and the tap state a phone uses instead.
+       */
+      style={colour ? ({ "--brand": colour } as React.CSSProperties) : undefined}
+      className={`tech-logo ${className ?? ""}`}
     >
       <path d={icon.path} />
     </svg>

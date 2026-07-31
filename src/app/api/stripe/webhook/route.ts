@@ -111,6 +111,34 @@ export async function POST(request: Request) {
       }
 
       /*
+       * A custom payment link was paid.
+       *
+       * Payment links do not raise an invoice, so none of the invoice cases
+       * below ever fire for them — without this the link sat unpaid in the
+       * admin forever while the money had actually arrived.
+       */
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const linkId =
+          typeof session.payment_link === "string"
+            ? session.payment_link
+            : session.payment_link?.id;
+
+        // A checkout not started from one of our links has nothing to match.
+        if (!linkId) break;
+
+        // serverSecret, not a local one — the handler already resolved it and
+        // returned 500 if it was missing, so a second lookup here would only
+        // shadow the outer name and drift from that check.
+        await fetchMutation(api.paymentLinks.markPaid, {
+          secret: serverSecret,
+          stripeId: linkId,
+          paidAmount: session.amount_total ?? undefined,
+        });
+        break;
+      }
+
+      /*
        * Paid from the embedded portal. A PaymentIntent, not an invoice, so it
        * is matched by the id we put in its metadata rather than by a Stripe
        * invoice id — which does not exist for this route.

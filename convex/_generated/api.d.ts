@@ -27,6 +27,7 @@ import type * as kb from "../kb.js";
 import type * as leads from "../leads.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as maintenance from "../maintenance.js";
+import type * as paymentLinks from "../paymentLinks.js";
 import type * as portal from "../portal.js";
 import type * as posts from "../posts.js";
 import type * as projects from "../projects.js";
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   leads: typeof leads;
   "lib/auth": typeof lib_auth;
   maintenance: typeof maintenance;
+  paymentLinks: typeof paymentLinks;
   portal: typeof portal;
   posts: typeof posts;
   projects: typeof projects;

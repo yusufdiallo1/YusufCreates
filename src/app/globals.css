@@ -993,6 +993,44 @@
     border-radius: var(--radius-full);
   }
 
+  /* Brand marks.
+
+     One ink at rest — twenty logos in twenty palettes is a ransom note next
+     to body text. Brand colour arrives when you point at one, so the colour
+     is a reward for attention rather than the default state of the page.
+
+     --brand is set inline per mark by TechLogo, and is absent when the brand
+     ships no hex, in which case the mark simply keeps currentColor. */
+  .tech-logo {
+    transition: color var(--dur-fast) var(--ease-out-expo);
+  }
+
+  /* Pointer devices only. :hover on a touchscreen sticks after a tap and
+     leaves the last-touched logo coloured until something else is tapped. */
+  @media (hover: hover) {
+    .skill-row:hover .tech-logo,
+    .skill-row:focus-within .tech-logo,
+    .tech-logo:hover {
+      color: var(--brand, currentColor);
+    }
+  }
+
+  /* Touch: the colour arrives on tap and stays for the press. :active is the
+     honest equivalent of hover here — it begins on contact and ends on
+     release, so nothing is left stuck. */
+  @media (hover: none) {
+    .skill-row:active .tech-logo,
+    .tech-logo:active {
+      color: var(--brand, currentColor);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tech-logo {
+      transition: none;
+    }
+  }
+
   /* Typewriter caret. inline-block with a fixed width rather than a border on
      the text, so it never shifts the character before it as it blinks. */
   .type-caret {

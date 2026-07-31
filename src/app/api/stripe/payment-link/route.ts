@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchQuery } from "convex/nextjs";
+import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { convexAuthNextjsToken } from "@convex-dev/auth/nextjs/server";
 import { api } from "@/lib/convex-api";
 import { getStripe, toMinorUnits } from "@/lib/stripe";
@@ -44,6 +44,8 @@ export async function POST(request: Request) {
     amount?: number;
     currency?: string;
     description?: string;
+    /** Who the link is for. Recorded only — Stripe never sees it. */
+    forWhom?: string;
   };
   try {
     body = await request.json();
@@ -100,6 +102,33 @@ export async function POST(request: Request) {
       },
       metadata: { source: "admin_custom_link" },
     });
+
+    /*
+     * Saved before responding.
+     *
+     * The link used to exist only in this response — close the tab and the
+     * URL was unrecoverable, with no record that money had been asked for.
+     *
+     * A failure here must not fail the request: the link is already live in
+     * Stripe and returning an error would suggest otherwise. It is logged
+     * instead, and the URL still reaches the caller.
+     */
+    try {
+      await fetchMutation(
+        api.paymentLinks.record,
+        {
+          stripeId: link.id,
+          url: link.url,
+          label: description,
+          amount: toMinorUnits(amount, currency),
+          currency,
+          forWhom: typeof body.forWhom === "string" ? body.forWhom : undefined,
+        },
+        { token: await convexAuthNextjsToken() },
+      );
+    } catch (err) {
+      console.error("[stripe] link created but not recorded:", err);
+    }
 
     return NextResponse.json({ ok: true, url: link.url, id: link.id });
   } catch (err) {

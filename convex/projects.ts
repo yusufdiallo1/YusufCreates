@@ -129,3 +129,22 @@ export const reorder = mutation({
     }
   },
 });
+
+/**
+ * How many projects are published.
+ *
+ * Public and deliberately narrow — it returns a number, not the rows. The
+ * About section stated a hardcoded 12, which was wrong the moment a project
+ * was added or unpublished, and a portfolio that miscounts its own work is
+ * the least convincing thing it can do.
+ */
+export const publishedCount = query({
+  args: {},
+  handler: async (ctx) => {
+    const rows = await ctx.db
+      .query("projects")
+      .withIndex("by_status", (q) => q.eq("status", "published"))
+      .collect();
+    return rows.length;
+  },
+});

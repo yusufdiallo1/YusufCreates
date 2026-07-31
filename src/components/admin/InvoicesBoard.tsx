@@ -110,6 +110,8 @@ export function InvoicesBoard() {
             </div>
           ) : null}
 
+          <PaymentLinksList />
+
           {data.rows.length === 0 ? (
             <p className="admin-card text-sm text-secondary">
               No invoices yet. Create a pair from a won lead.
@@ -625,5 +627,96 @@ function PaymentLinkDialog({ onClose }: { onClose: () => void }) {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Custom payment links that have been created.
+ *
+ * These used to exist only in the response that made them — close the tab and
+ * the URL was gone, with no record that money had been asked for. Unpaid
+ * sort first: those are the ones still waiting on someone.
+ */
+function PaymentLinksList() {
+  const rows = useQuery(api.paymentLinks.listAll, {});
+  const remove = useMutation(api.paymentLinks.remove);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  if (rows === undefined || rows.length === 0) return null;
+
+  const outstanding = rows.filter((r) => r.paidAt === undefined).length;
+
+  return (
+    <section>
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 className="text-lg text-primary">Payment links</h2>
+        {outstanding > 0 ? (
+          <span className="badge badge-cold">{outstanding} unpaid</span>
+        ) : null}
+      </div>
+
+      <ul className="mt-3 divide-y divide-[color:var(--border-hairline)]">
+        {rows.map((row) => (
+          <li key={row._id} className="flex flex-wrap items-center gap-3 py-3">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm text-primary">{row.label}</p>
+              <p className="mt-0.5 text-xs text-secondary">
+                {/* Minor units in, major units shown — the amount is stored
+                    the way Stripe stores it. */}
+                {(row.amount / 100).toLocaleString("en-US", {
+                  style: "currency",
+                  currency: row.currency.toUpperCase(),
+                })}
+                {row.forWhom ? ` · ${row.forWhom}` : ""}
+                {" · "}
+                {new Date(row.createdAt).toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "short",
+                })}
+              </p>
+            </div>
+
+            {row.paidAt !== undefined ? (
+              <span className="badge">paid</span>
+            ) : (
+              <span className="badge badge-cold">awaiting</span>
+            )}
+
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(row.url);
+                  setCopied(row._id);
+                  setTimeout(() => setCopied(null), 2000);
+                } catch {
+                  // Clipboard can be blocked; the link is still openable.
+                }
+              }}
+              className="hairline rounded-full px-3 py-1 text-xs text-primary transition-colors duration-fast hover:bg-surface-2"
+            >
+              {copied === row._id ? "Copied" : "Copy link"}
+            </button>
+
+            <a
+              href={row.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-accent transition-opacity duration-fast hover:opacity-80"
+            >
+              Open
+            </a>
+
+            <button
+              type="button"
+              onClick={() => void remove({ id: row._id })}
+              className="rounded-full px-2 py-1 text-xs text-secondary transition-colors duration-fast hover:text-[color:var(--danger)]"
+            >
+              Delete
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
