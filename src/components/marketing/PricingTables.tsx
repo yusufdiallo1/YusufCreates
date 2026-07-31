@@ -19,10 +19,14 @@ import {
   NATIVE_TIER,
   PACKAGED_TIERS,
   PEGGED,
+  carePrice,
   convert,
+  discountLabel,
+  discountedPrice,
   formatCarePrice,
   growthPriceUsd,
   tierPrice,
+  type ActivePromo,
   type BillingPeriod,
 } from "@/lib/pricing";
 
@@ -68,6 +72,13 @@ export function PricingTables() {
     api.settings.publicRates,
     isConvexConfigured ? {} : "skip",
   );
+
+  // The running automatic promo, if there is one. Display only — the server
+  // decides what is actually charged when an invoice is raised.
+  const promo = useQuery(
+    api.promos.activeAutomatic,
+    isConvexConfigured ? {} : "skip",
+  ) as ActivePromo | null | undefined;
   const rates = useMemo(
     () => ({ GBP: live?.GBP ?? undefined, EUR: live?.EUR ?? undefined }),
     [live],
@@ -75,6 +86,15 @@ export function PricingTables() {
 
   const floating = !PEGGED.includes(currency);
   const growthUsd = growthPriceUsd(pages);
+
+  // Native and Care render outside the tier loop, so their discounted
+  // figures are derived here rather than inline — same helper, same rule.
+  const nativeFull = tierPrice("native", currency, rates);
+  const nativeCut = discountedPrice(promo, "native", nativeFull);
+  const nativeShown = nativeCut ?? nativeFull;
+
+  const careFull = carePrice(period, currency, rates);
+  const careCut = discountedPrice(promo, "care", careFull);
 
   return (
     <>
@@ -127,7 +147,7 @@ export function PricingTables() {
             page that scrolls vertically everywhere else. */}
         <p
           aria-hidden="true"
-          className="mb-3 px-6 text-xs text-secondary sm:hidden"
+          className="mb-3 px-6 text-xs text-secondary lg:hidden"
         >
           Swipe to compare →
         </p>
@@ -145,7 +165,7 @@ export function PricingTables() {
           signal that there is more to swipe to.
         */}
         <div
-          className="scroll-row flex snap-x snap-mandatory gap-6 overflow-x-auto px-6 pb-4 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-6 sm:pb-0 lg:grid-cols-3"
+          className="scroll-row flex snap-x snap-mandatory gap-6 overflow-x-auto px-6 pb-4 lg:grid lg:grid-cols-3 lg:overflow-visible lg:pb-0"
           style={{ touchAction: "pan-x pan-y" }}
         >
           {PACKAGED_TIERS.map((tier, index) => {
@@ -153,6 +173,7 @@ export function PricingTables() {
             const amount = isGrowth
               ? convert(growthUsd, currency, rates)
               : tierPrice(tier.id, currency, rates);
+            const discounted = discountedPrice(promo, tier.id, amount);
 
             return (
               <Reveal
@@ -161,7 +182,7 @@ export function PricingTables() {
                 /* w-[82vw] on a phone: narrow enough that the next card is
                    always partly visible, which is what makes the row read as
                    swipeable without a scrollbar. */
-                className="w-[82vw] shrink-0 snap-start sm:w-auto sm:shrink"
+                className="w-[82vw] shrink-0 snap-start sm:w-[min(24rem,70vw)] lg:w-auto lg:shrink"
               >
                 <div
                   className={`flex h-full flex-col rounded-xl border p-6 ${
@@ -179,6 +200,15 @@ export function PricingTables() {
                   <h2 className="text-xl">{tier.name}</h2>
                   <p className="mt-1 text-sm text-secondary">{tier.blurb}</p>
 
+                  {/* The discount is stated on the card, not only in a
+                      banner that scrolls away. Old price struck through so
+                      the saving is visible rather than asserted. */}
+                  {discounted !== null ? (
+                    <span className="mt-4 w-fit rounded-full bg-[color:var(--accent)] px-2.5 py-0.5 text-xs font-medium text-primary">
+                      {discountLabel(promo!)}
+                    </span>
+                  ) : null}
+
                   <p className="mt-6 text-3xl tabular-nums">
                     {tier.from ? (
                       <span className="text-base text-secondary">From </span>
@@ -187,7 +217,14 @@ export function PricingTables() {
                       {CURRENCY_SYMBOL[currency]}
                     </span>
                     {/* Animates rather than snapping when the figure changes. */}
-                    <CountUp value={amount} duration={0.5} />
+                    <CountUp value={discounted ?? amount} duration={0.5} />
+
+                    {discounted !== null ? (
+                      <span className="ml-2.5 align-middle text-base text-[color:var(--danger)] line-through decoration-[color:var(--danger)]">
+                        {CURRENCY_SYMBOL[currency]}
+                        {amount.toLocaleString("en-US")}
+                      </span>
+                    ) : null}
                   </p>
 
                   {isGrowth ? (
@@ -258,10 +295,11 @@ export function PricingTables() {
 
       {/* BAND 2 — quoted-from work and aftercare, below the comparison row */}
       <div className="mx-auto mt-6 max-w-5xl px-6">
-        {/* Two up on a tablet, three on desktop. Without the sm step these
-            three sat one per row at 768px — full-width cards with a short
-            feature list each, which reads as three separate sections rather
-            than a set to compare. */}
+        {/* Underneath the swipeable row, not part of it.
+            These three are not alternatives to the build tiers — two are
+            quoted from and one is aftercare — so they sit below rather than
+            competing for the same swipe. Stacked on a phone, three across
+            once there is room. */}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <Reveal>
             {/* Same treatment as Enterprise: both are "from this figure,
@@ -273,12 +311,24 @@ export function PricingTables() {
                 {NATIVE_TIER.blurb}
               </p>
 
+              {nativeCut !== null ? (
+                <span className="mt-4 w-fit rounded-full bg-[color:var(--accent)] px-2.5 py-0.5 text-xs font-medium text-primary">
+                  {discountLabel(promo!)}
+                </span>
+              ) : null}
+
               <p className="mt-6 text-3xl tabular-nums">
                 <span className="text-base text-secondary">From </span>
                 <span className="text-secondary">
                   {CURRENCY_SYMBOL[currency]}
                 </span>
-                <CountUp value={tierPrice("native", currency, rates)} duration={0.5} />
+                <CountUp value={nativeShown} duration={0.5} />
+                {nativeCut !== null ? (
+                  <span className="ml-2.5 align-middle text-base text-[color:var(--danger)] line-through decoration-[color:var(--danger)]">
+                    {CURRENCY_SYMBOL[currency]}
+                    {nativeFull.toLocaleString("en-US")}
+                  </span>
+                ) : null}
               </p>
 
               <ul className="mt-6 flex-1 space-y-2">
@@ -390,7 +440,14 @@ export function PricingTables() {
               </div>
 
               <p className="mt-5 text-3xl tabular-nums">
-                {formatCarePrice(period, currency, rates)}
+                {CURRENCY_SYMBOL[currency]}
+                {(careCut ?? careFull).toLocaleString("en-US")}
+                {careCut !== null ? (
+                  <span className="ml-2.5 align-middle text-base text-[color:var(--danger)] line-through decoration-[color:var(--danger)]">
+                    {CURRENCY_SYMBOL[currency]}
+                    {careFull.toLocaleString("en-US")}
+                  </span>
+                ) : null}
                 <span className="text-base text-secondary">
                   {period === "monthly" ? "/mo" : "/yr"}
                 </span>

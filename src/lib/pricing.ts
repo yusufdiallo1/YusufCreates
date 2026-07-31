@@ -405,3 +405,63 @@ export function currencyFromLocale(locale: string | undefined): Currency {
   if (EUR_REGIONS.has(region)) return "EUR";
   return "USD";
 }
+
+/* ------------------------------------------------------------- promos --- */
+
+/** The shape convex/promos.activeAutomatic returns for display. */
+export interface ActivePromo {
+  id: string;
+  name: string;
+  bannerText: string | null;
+  showCountdown: boolean;
+  endsAt: number | null;
+  discountType: "percentage" | "fixed" | "override";
+  discountValue: number;
+  appliesTo: string[];
+}
+
+/**
+ * Whether a promo covers a tier.
+ *
+ * Mirrors coversTier in convex/promos.ts deliberately — the server decides
+ * what is actually charged, and this only decides what is shown. They agree
+ * on the same rule: an empty appliesTo means everything except Enterprise,
+ * because discounting a five-figure build with a site-wide banner cheapens it
+ * and that pricing is negotiated in the proposal anyway.
+ */
+export function promoCoversTier(promo: ActivePromo, tier: TierId): boolean {
+  if (promo.appliesTo.length > 0) return promo.appliesTo.includes(tier);
+  return tier !== "enterprise";
+}
+
+/**
+ * The discounted figure, or null when nothing applies.
+ *
+ * Returns null rather than the original price so a caller cannot accidentally
+ * render a "was" line where there is no discount.
+ */
+export function discountedPrice(
+  promo: ActivePromo | null | undefined,
+  tier: TierId,
+  price: number,
+): number | null {
+  if (!promo || !promoCoversTier(promo, tier)) return null;
+
+  const next =
+    promo.discountType === "percentage"
+      ? price * (1 - promo.discountValue / 100)
+      : promo.discountType === "fixed"
+        ? price - promo.discountValue
+        : promo.discountValue;
+
+  const rounded = Math.max(0, Math.round(next));
+  // A "discount" that saves nothing is noise with a strikethrough.
+  return rounded < price ? rounded : null;
+}
+
+/** "20% off" or "$100 off", for the badge on a card. */
+export function discountLabel(promo: ActivePromo): string {
+  if (promo.discountType === "percentage") return `${promo.discountValue}% off`;
+  if (promo.discountType === "fixed") return `$${promo.discountValue} off`;
+  return "Reduced";
+}

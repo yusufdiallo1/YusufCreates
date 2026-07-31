@@ -33,6 +33,31 @@ export function PromoBanner() {
     }
   });
   const [remaining, setRemaining] = useState<string | null>(null);
+  /** Retired after its moment, or as soon as the reader moves past it. */
+  const [hidden, setHidden] = useState(false);
+
+  /*
+   * Fifteen seconds, or the first scroll — whichever comes first.
+   *
+   * A banner pinned over the nav for the whole visit is a banner that has
+   * stopped being an announcement and started being furniture. Scrolling is
+   * the clearest signal someone has read it and moved on, and the timer
+   * covers the case where they simply left it on screen.
+   */
+  useEffect(() => {
+    if (!promo?.bannerText) return;
+
+    const timer = setTimeout(() => setHidden(true), 15_000);
+    const onScroll = () => {
+      if (window.scrollY > 24) setHidden(true);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [promo?.bannerText]);
 
   // Countdown ticks once a minute, not once a second. A ticking seconds
   // counter on a discount reads as a pressure tactic — the kind of thing that
@@ -61,15 +86,23 @@ export function PromoBanner() {
 
   if (!promo || !promo.bannerText) return null;
   if (dismissed.includes(promo.id)) return null;
+  if (hidden) return null;
 
   return (
     <AnimatePresence>
       <motion.div
-        initial={reduceMotion ? false : { height: 0, opacity: 0 }}
-        animate={{ height: "auto", opacity: 1 }}
-        exit={{ height: 0, opacity: 0 }}
+        initial={reduceMotion ? false : { y: -48, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: -48, opacity: 0 }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-50 overflow-hidden bg-[color:var(--accent-solid)] text-white"
+        /*
+         * Fixed above the nav, not in the document flow.
+         *
+         * In flow it pushed the whole page down and left a gap when it went,
+         * so the layout moved twice for an announcement. Fixed at z-[60] it
+         * sits over the nav's z-50 and the page never shifts.
+         */
+        className="fixed inset-x-0 top-0 z-[60] overflow-hidden bg-[color:var(--accent-solid)] text-white"
       >
         <div className="mx-auto flex max-w-5xl items-center justify-center gap-3 px-6 py-2.5 text-sm">
           <span>{promo.bannerText}</span>
