@@ -14,15 +14,12 @@ import { api, isConvexConfigured } from "@/lib/convex-api";
  */
 
 /**
- * The two figures that do not come from the database.
+ * The figure that does not come from the database.
  *
- * Projects shipped is counted live — see below. These two are facts about me
- * rather than rows, so they are stated here.
+ * Projects shipped is counted live — see below. This one is a fact about me
+ * rather than a row, so it is stated here.
  */
-export const ABOUT_STATS = [
-  { label: "Years building", value: 6 },
-  { label: "Countries served", value: 8 },
-];
+export const ABOUT_STATS = [{ label: "Years building", value: 2 }];
 
 export async function About() {
   /*
@@ -91,7 +88,9 @@ export async function About() {
         </Reveal>
 
         <Reveal delay={0.32}>
-          <div className="mt-10 grid grid-cols-3 gap-6">
+          {/* Two figures, so two columns — a three-column grid left a third
+              of the row empty once countries came out. */}
+          <div className="mt-10 grid grid-cols-2 gap-6 sm:max-w-sm">
             {/* Live count first. Hidden entirely if Convex is unreachable,
                 rather than falling back to a number that might be wrong. */}
             {shipped !== null ? (
