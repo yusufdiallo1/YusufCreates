@@ -247,7 +247,25 @@ export function SlideToConfirm({
     };
     measure();
     window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+
+    /*
+     * Re-measured whenever the track itself changes size, not only when the
+     * window does.
+     *
+     * These sit inside drawers, modals and tab panels that are laid out after
+     * mount — and inside a container that is display:none at that moment the
+     * track measures 0, which makes maxX 0 and the thumb immovable. The
+     * control then looks broken in exactly the way a stuck slider looks
+     * broken: it accepts the drag and goes nowhere.
+     */
+    const observer =
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    if (observer && trackRef.current) observer.observe(trackRef.current);
+
+    return () => {
+      window.removeEventListener("resize", measure);
+      observer?.disconnect();
+    };
     // currentLabel changes as the control moves through pending and done, and
     // those strings differ in length, so the fit has to be recomputed.
   }, [currentLabel]);

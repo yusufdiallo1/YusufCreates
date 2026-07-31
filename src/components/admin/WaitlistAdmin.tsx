@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
+import { DeleteSlide } from "@/components/admin/shared/Fields";
 import { Empty, Skeleton } from "@/components/admin/ProjectsAdmin";
 
 /**
@@ -120,13 +121,12 @@ export function WaitlistAdmin() {
                         </option>
                       ))}
                     </select>
-                    <button
-                      type="button"
-                      onClick={() => void remove({ id: row._id })}
-                      className="text-xs text-secondary transition-colors duration-fast hover:text-[color:var(--text-notice)]"
-                    >
-                      Remove
-                    </button>
+                    <DeleteSlide
+                      what="this waitlist entry"
+                      onDelete={async () => {
+                        await remove({ id: row._id });
+                      }}
+                    />
                   </div>
                 </li>
               ))}

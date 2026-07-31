@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
-import { FileUpload } from "@/components/admin/shared/Fields";
+import { FileUpload,
+  DeleteSlide,
+} from "@/components/admin/shared/Fields";
 import type { Id } from "@convex/_generated/dataModel";
 
 /**
@@ -325,13 +327,12 @@ function Files({ projectId }: { projectId: Id<"clientProjects"> }) {
                 {f.approvedAt ? " · approved by client" : ""}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => void remove({ id: f._id })}
-              className="shrink-0 text-xs text-secondary transition-colors duration-fast hover:text-[color:var(--text-notice)]"
-            >
-              Remove
-            </button>
+            <DeleteSlide
+              what="this file"
+              onDelete={async () => {
+                await remove({ id: f._id });
+              }}
+            />
           </li>
         ))}
       </ul>

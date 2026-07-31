@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-label="YusufCreates">
+  <title>YusufCreates</title>
+  <!--
+    Dark ink, for light backgrounds: emails, the Google favicon card,
+    printed invoices, anything not on the near-black canvas. Geometry is
+    identical to favicon.svg — only the stroke colour differs.
+
+    The mark on a 24 grid. Source geometry is kept verbatim and scaled uniformly
+    by a single transform, so the deliberate one-stroke gap between the chevron
+    tip and the arm is preserved exactly as authored. Stroke is raised 15 -> 22
+    so the form survives at 16px (~2.2px effective); no angle or vertex changes.
+  -->
+  <g transform="translate(-4.730, -4.160) scale(0.15209)">
+    <g fill="none"
+       stroke="#0a0a0a"
+       stroke-width="22"
+       stroke-linecap="square"
+       stroke-linejoin="miter">
+      <path d="M61 48 L92 79 L61 110" />
+      <path d="M159 48 L115 92 L115 137" />
+    </g>
+    <rect x="99" y="155" width="34" height="17" fill="#5e6ad2" />
+  </g>
+</svg>

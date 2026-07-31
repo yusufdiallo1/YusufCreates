@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
+import { DeleteSlide } from "@/components/admin/shared/Fields";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
 import type { Doc } from "@convex/_generated/dataModel";
@@ -707,13 +708,12 @@ function PaymentLinksList() {
               Open
             </a>
 
-            <button
-              type="button"
-              onClick={() => void remove({ id: row._id })}
-              className="rounded-full px-2 py-1 text-xs text-secondary transition-colors duration-fast hover:text-[color:var(--danger)]"
-            >
-              Delete
-            </button>
+            <DeleteSlide
+              what="this payment link record"
+              onDelete={async () => {
+                await remove({ id: row._id });
+              }}
+            />
           </li>
         ))}
       </ul>

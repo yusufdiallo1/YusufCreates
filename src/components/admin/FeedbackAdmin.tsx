@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
+import { DeleteSlide } from "@/components/admin/shared/Fields";
 import { Empty, Skeleton } from "@/components/admin/ProjectsAdmin";
 
 /**
@@ -176,13 +177,12 @@ function SiteFeedbackList() {
               >
                 {row.read ? "Mark unread" : "Mark read"}
               </button>
-              <button
-                type="button"
-                onClick={() => void remove({ id: row._id })}
-                className="rounded-full px-3 py-1 text-xs text-secondary transition-colors duration-fast hover:text-[color:var(--danger)]"
-              >
-                Delete
-              </button>
+              <DeleteSlide
+                what="this comment"
+                onDelete={async () => {
+                  await remove({ id: row._id });
+                }}
+              />
             </div>
           </li>
         ))}
@@ -255,13 +255,12 @@ function CommentsList() {
               >
                 {row.approved ? "Unpublish" : "Publish"}
               </button>
-              <button
-                type="button"
-                onClick={() => void remove({ id: row._id })}
-                className="rounded-full px-3 py-1 text-xs text-secondary transition-colors duration-fast hover:text-[color:var(--danger)]"
-              >
-                Delete
-              </button>
+              <DeleteSlide
+                what="this comment"
+                onDelete={async () => {
+                  await remove({ id: row._id });
+                }}
+              />
             </div>
           </li>
         ))}

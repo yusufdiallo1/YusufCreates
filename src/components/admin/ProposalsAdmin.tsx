@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
-import { Field, TextArea } from "@/components/admin/shared/Fields";
+import { Field, TextArea,
+  DeleteSlide,
+} from "@/components/admin/shared/Fields";
 import { Empty, Skeleton } from "@/components/admin/ProjectsAdmin";
 import { CopyButton } from "@/components/ui/CopyButton";
 import type { Doc, Id } from "@convex/_generated/dataModel";
@@ -100,13 +102,12 @@ export function ProposalsAdmin() {
                       Issue
                     </button>
                   ) : null}
-                  <button
-                    type="button"
-                    onClick={() => void remove({ id: p._id })}
-                    className="text-xs text-secondary hover:text-[color:var(--text-notice)]"
-                  >
-                    Delete
-                  </button>
+                  <DeleteSlide
+                    what="this proposal"
+                    onDelete={async () => {
+                      await remove({ id: p._id });
+                    }}
+                  />
                 </div>
               </div>
 

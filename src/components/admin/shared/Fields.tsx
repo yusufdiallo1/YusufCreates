@@ -6,6 +6,7 @@ import { api } from "@/lib/convex-api";
 import { uploadFile, uploadImage } from "@/lib/upload";
 import { renderMarkdown } from "@/lib/markdown";
 import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
+import { MiniSlide } from "@/components/ui/MiniSlide";
 import { FieldError } from "@/components/ui/FieldError";
 
 /**
@@ -322,6 +323,34 @@ export function DeleteRow({
       <SlideToConfirm
         purpose="delete"
         label={`Slide to delete`}
+        ariaLabel={`Slide to permanently delete ${what}`}
+        onConfirm={onDelete}
+      />
+    </div>
+  );
+}
+
+/**
+ * Slide-to-delete sized for a list row.
+ *
+ * DeleteRow is the drawer-footer version at 14rem; this is the same gesture
+ * in the space a table row has. Both exist because a delete that can be
+ * triggered by one stray click is the wrong control for something with no
+ * undo — and every list here had exactly that.
+ */
+export function DeleteSlide({
+  what,
+  onDelete,
+}: {
+  what: string;
+  onDelete: () => Promise<void>;
+}) {
+  return (
+    <div className="w-[11.5rem] shrink-0">
+      <MiniSlide
+        label="Slide to delete"
+        pendingLabel="Deleting"
+        doneLabel="Deleted"
         ariaLabel={`Slide to permanently delete ${what}`}
         onConfirm={onDelete}
       />

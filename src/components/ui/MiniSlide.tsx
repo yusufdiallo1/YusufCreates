@@ -58,7 +58,18 @@ export function MiniSlide({
     };
     measure();
     window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+
+    // Same reason as SlideToConfirm: these live in drawers and table rows
+    // that are laid out after mount, and a track measured at 0 gives maxX 0,
+    // which leaves the thumb immovable and the control looking broken.
+    const observer =
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    if (observer && trackRef.current) observer.observe(trackRef.current);
+
+    return () => {
+      window.removeEventListener("resize", measure);
+      observer?.disconnect();
+    };
   }, []);
 
   const complete = useCallback(async () => {

@@ -80,8 +80,24 @@ export function DateTimePicker({
   const [open, setOpen] = useState(false);
   const [view, setView] = useState(() => parse(value));
   const wrapRef = useRef<HTMLDivElement>(null);
+  /** True when the panel would run off the right edge if left-anchored. */
+  const [flip, setFlip] = useState(false);
 
   const selected = value ? parse(value) : null;
+
+  /*
+   * Decided on open, from where the field actually is.
+   *
+   * A breakpoint cannot answer this: the same component sits in a full-width
+   * row on one screen and in the right column of a two-up grid on another,
+   * and only the second one needs flipping.
+   */
+  useEffect(() => {
+    if (!open || !wrapRef.current) return;
+    const PANEL = 19 * 16; // w-[19rem]
+    const left = wrapRef.current.getBoundingClientRect().left;
+    setFlip(left + PANEL > window.innerWidth - 16);
+  }, [open]);
 
   // Close on outside click and on Escape. Without both, a picker opened by
   // mistake has to be dismissed by selecting something.
@@ -171,7 +187,22 @@ export function DateTimePicker({
              * z-50 with an opaque surface and a real shadow: it sits above
              * the drawer, and nothing shows through it.
              */
-            className="absolute z-50 mt-2 w-[19rem] rounded-2xl border border-[color:var(--border-hairline)] bg-surface-2 p-4 shadow-2xl"
+            /*
+             * Right-anchored when there is not room to the left.
+             *
+             * This was always positioned from its field's left edge, so on a
+             * field in the right-hand column of a drawer the 19rem panel ran
+             * past the drawer edge and was clipped — Saturday, Sunday and the
+             * next-month arrow all disappeared. `flip` is measured on open
+             * rather than guessed from a breakpoint, because it depends on
+             * where the field happens to sit, not on the viewport.
+             *
+             * max-w keeps it inside a narrow phone drawer, where neither edge
+             * has 19rem to give.
+             */
+            className={`absolute z-50 mt-2 w-[19rem] max-w-[calc(100vw-3rem)] rounded-2xl border border-[color:var(--border-hairline)] bg-surface-2 p-4 shadow-2xl ${
+              flip ? "right-0" : "left-0"
+            }`}
           >
             <div className="flex items-center justify-between">
               <button
