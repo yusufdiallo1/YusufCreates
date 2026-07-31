@@ -116,6 +116,101 @@ const FIX_COPY: Record<string, { title: string; detail: string }> = {
   },
 };
 
+
+/**
+ * Reads a site's own name, description and logo out of its HTML.
+ *
+ * A report that opens with someone's own logo and name reads as being about
+ * them; one that opens with a bare URL reads as a form response. Everything
+ * here is best-effort — a site with no metadata still gets a full audit, it
+ * just gets its hostname as the title.
+ *
+ * Deliberately not a parser. Four regexes over the first 200KB is enough for
+ * og: tags in a <head>, and pulling in a DOM library to read four strings
+ * from a stranger's markup is a large dependency and a larger attack surface.
+ */
+async function readSiteIdentity(url: string): Promise<{
+  siteName?: string;
+  siteLogo?: string;
+  siteDescription?: string;
+}> {
+  try {
+    const res = await fetch(url, {
+      // A site that blocks unknown agents outright would otherwise look
+      // identityless rather than protected.
+      headers: { "user-agent": "Mozilla/5.0 (compatible; YusufCreatesAudit/1.0)" },
+      signal: AbortSignal.timeout(12_000),
+      redirect: "follow",
+    });
+    if (!res.ok) return {};
+
+    // Head only. The rest of the document cannot contain what we are after,
+    // and a huge page should not be pulled into memory for four tags.
+    const html = (await res.text()).slice(0, 200_000);
+
+    const meta = (pattern: RegExp) => html.match(pattern)?.[1]?.trim();
+
+    const siteName =
+      meta(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)/i) ??
+      meta(/<meta[^>]+name=["']application-name["'][^>]+content=["']([^"']+)/i) ??
+      meta(/<title[^>]*>([^<]+)</i);
+
+    const siteDescription =
+      meta(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)/i) ??
+      meta(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)/i);
+
+    const rawLogo =
+      meta(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i) ??
+      meta(/<link[^>]+rel=["'][^"']*apple-touch-icon[^"']*["'][^>]+href=["']([^"']+)/i) ??
+      meta(/<link[^>]+rel=["'][^"']*icon[^"']*["'][^>]+href=["']([^"']+)/i);
+
+    // Resolved against the page, since these are routinely relative.
+    let siteLogo: string | undefined;
+    if (rawLogo) {
+      try {
+        const abs = new URL(rawLogo, res.url || url);
+        if (abs.protocol === "https:" || abs.protocol === "http:") {
+          siteLogo = abs.toString();
+        }
+      } catch {
+        // A malformed href is simply no logo.
+      }
+    }
+
+    const clean = (v?: string) =>
+      v ? v.replace(/\s+/g, " ").slice(0, 200) : undefined;
+
+    return {
+      siteName: clean(siteName),
+      siteDescription: clean(siteDescription),
+      siteLogo,
+    };
+  } catch {
+    // Unreachable, slow, or hostile to bots. The audit still runs.
+    return {};
+  }
+}
+
+
+/**
+ * Which Lighthouse category an audit belongs to.
+ *
+ * The audits object is flat, so the only way to group a finding is to look it
+ * up in each category's auditRefs. Falls back to "performance" because that
+ * is where the majority live and an ungrouped finding is worse than a
+ * slightly misfiled one.
+ */
+function categoryOf(
+  auditId: string,
+  categories?: Record<string, { auditRefs?: { id: string }[] }>,
+): string {
+  if (!categories) return "performance";
+  for (const [name, cat] of Object.entries(categories)) {
+    if (cat.auditRefs?.some((r) => r.id === auditId)) return name;
+  }
+  return "performance";
+}
+
 export async function POST(request: Request) {
   if (!isConvexConfigured) {
     return NextResponse.json({ error: "Not configured." }, { status: 503 });
@@ -270,11 +365,18 @@ async function runAudit(id: string, url: string, email: string) {
 
     const data = (await res.json()) as {
       lighthouseResult?: {
-        categories?: Record<string, { score?: number }>;
+        // score is nullable in the API: a category Lighthouse could not
+        // compute comes back as null, not absent.
+        categories?: Record<
+          string,
+          { score?: number | null; auditRefs?: { id: string }[] }
+        >;
         audits?: Record<
           string,
           {
             score?: number | null;
+            scoreDisplayMode?: string;
+            description?: string;
             title?: string;
             details?: { overallSavingsMs?: number };
           }
@@ -283,8 +385,21 @@ async function runAudit(id: string, url: string, email: string) {
     };
 
     const cats = data.lighthouseResult?.categories ?? {};
-    const pct = (n?: number) =>
-      n === undefined ? undefined : Math.round(n * 100);
+    /*
+     * Null is not zero.
+     *
+     * Lighthouse returns `score: null` for a category it could not compute —
+     * best-practices does this regularly. The old guard only checked for
+     * undefined, so null fell through to Math.round(null * 100) and the
+     * report showed a confident 0, which then dragged the overall average
+     * down with it. A site that renders at all does not score zero here.
+     *
+     * Undefined means "no score", and the average below already skips it.
+     */
+    const pct = (n?: number | null) =>
+      typeof n === "number" && Number.isFinite(n)
+        ? Math.round(n * 100)
+        : undefined;
 
     const categories = {
       performance: pct(cats.performance?.score),
@@ -324,7 +439,42 @@ async function runAudit(id: string, url: string, email: string) {
         };
       });
 
-    await finish({ score, categories, fixes });
+    /*
+     * Every failing audit, not only the three with hand-written copy.
+     *
+     * The three fixes above are what someone acts on — ranked by time saved
+     * and written in plain English. This is the honest total underneath, so
+     * a site with thirty problems does not read as a site with three.
+     *
+     * Manual and informative audits are excluded: "does this site have a
+     * privacy policy" is not something Lighthouse can score, and listing it
+     * as a problem would be wrong.
+     */
+    const issues = Object.entries(audits)
+      .filter(([, a]) => {
+        if (a.scoreDisplayMode === "manual" ||
+            a.scoreDisplayMode === "informative" ||
+            a.scoreDisplayMode === "notApplicable") return false;
+        return typeof a.score === "number" && a.score < 0.9;
+      })
+      .map(([id, a]) => ({
+        title: a.title ?? id,
+        detail: FIX_COPY[id]?.detail ?? a.description ?? undefined,
+        category: categoryOf(id, data.lighthouseResult?.categories),
+        score: typeof a.score === "number" ? a.score : undefined,
+        savingsMs: a.details?.overallSavingsMs ?? undefined,
+      }))
+      // Worst first, then by the time they would save.
+      .sort(
+        (a, b) =>
+          (a.score ?? 1) - (b.score ?? 1) ||
+          (b.savingsMs ?? 0) - (a.savingsMs ?? 0),
+      )
+      .slice(0, 60);
+
+    const identity = await readSiteIdentity(url);
+
+    await finish({ score, categories, fixes, issues, ...identity });
 
     /*
      * The form says "where to send the results", so this is what makes that

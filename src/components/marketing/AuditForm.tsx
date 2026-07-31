@@ -19,6 +19,14 @@ import { AuditProgress } from "@/components/marketing/AuditProgress";
  * fills in when the run completes. A spinner that sits for forty seconds is
  * indistinguishable from a broken page.
  */
+/** Report order. Performance first — it is what people feel. */
+const CATEGORY_ORDER = [
+  { id: "performance", label: "Speed" },
+  { id: "accessibility", label: "Accessibility" },
+  { id: "best-practices", label: "Best practices" },
+  { id: "seo", label: "SEO" },
+] as const;
+
 export function AuditForm() {
   const [url, setUrl] = useState("");
   const [email, setEmail] = useState("");
@@ -150,6 +158,16 @@ function Result({
         score?: number;
         categories?: Record<string, number | undefined>;
         fixes?: { title: string; detail: string; impact: string }[];
+        issues?: {
+          title: string;
+          detail?: string;
+          category: string;
+          score?: number;
+          savingsMs?: number;
+        }[];
+        siteName?: string;
+        siteLogo?: string;
+        siteDescription?: string;
         error?: string;
         url: string;
       }
@@ -205,6 +223,36 @@ function Result({
 
   return (
     <div className="mt-12">
+      {/* Their name and mark, not just a URL. A report that opens with the
+          reader's own branding reads as being about them; one that opens with
+          a bare address reads as a form response. All best-effort — a site
+          with no metadata simply shows its URL as before. */}
+      {audit.siteName || audit.siteLogo ? (
+        <div className="mb-10 flex items-center justify-center gap-4">
+          {audit.siteLogo ? (
+            // Plain img: an arbitrary third-party URL, so it cannot go
+            // through next/image without allowing every host on the web.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={audit.siteLogo}
+              alt=""
+              className="hairline size-12 rounded-lg object-cover"
+              loading="lazy"
+            />
+          ) : null}
+          <div className="min-w-0">
+            {audit.siteName ? (
+              <p className="truncate text-lg text-primary">{audit.siteName}</p>
+            ) : null}
+            {audit.siteDescription ? (
+              <p className="mt-0.5 line-clamp-2 max-w-md text-xs text-secondary">
+                {audit.siteDescription}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       <div className="flex flex-col items-center">
         <svg width={140} height={140} viewBox="0 0 140 140" role="img"
              aria-label={`Overall score ${score} out of 100`}>
@@ -270,6 +318,67 @@ function Result({
               </li>
             ))}
           </ol>
+        </section>
+      ) : null}
+
+      {/* The honest total. Three fixes is what someone acts on; this is how
+          many there actually are, grouped so the shape of the problem is
+          visible rather than a flat wall of forty rows. */}
+      {audit.issues && audit.issues.length > 0 ? (
+        <section className="mt-12">
+          <h2 className="text-lg">
+            Everything else found ({audit.issues.length})
+          </h2>
+          <p className="mt-1.5 text-sm text-secondary">
+            The full list, worst first. Not all of these are worth your time —
+            the three above are the ones I would start with.
+          </p>
+
+          <div className="mt-6 space-y-8">
+            {CATEGORY_ORDER.map((cat) => {
+              const inCat = audit.issues!.filter((i) => i.category === cat.id);
+              if (inCat.length === 0) return null;
+
+              return (
+                <div key={cat.id}>
+                  <h3 className="text-xs tracking-normal text-secondary uppercase">
+                    {cat.label} · {inCat.length}
+                  </h3>
+                  <ul className="mt-3 divide-y divide-[color:var(--border-hairline)]">
+                    {inCat.map((issue, i) => (
+                      <li key={`${issue.title}-${i}`} className="py-3">
+                        <div className="flex items-baseline gap-3">
+                          {/* A dot rather than a number: severity, not rank. */}
+                          <span
+                            aria-hidden="true"
+                            className={`mt-1.5 size-1.5 shrink-0 rounded-full ${
+                              (issue.score ?? 1) < 0.5
+                                ? "bg-[color:var(--danger)]"
+                                : "bg-[color:var(--text-notice)]"
+                            }`}
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm text-primary">{issue.title}</p>
+                            {issue.detail ? (
+                              <p className="mt-1 text-xs text-secondary">
+                                {issue.detail}
+                              </p>
+                            ) : null}
+                            {issue.savingsMs && issue.savingsMs > 100 ? (
+                              <p className="mt-1 text-xs text-[color:var(--text-notice)]">
+                                About {(issue.savingsMs / 1000).toFixed(1)}s
+                                faster if fixed.
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
         </section>
       ) : null}
 

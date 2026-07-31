@@ -398,6 +398,40 @@ export default defineSchema({
         }),
       ),
     ),
+
+    /**
+     * Everything Lighthouse actually flagged, not only the top three.
+     *
+     * The three fixes above stay: they are the ones ranked by time saved and
+     * written in plain English, and they are what someone acts on. This is
+     * the full list underneath, so the report is honest about scale rather
+     * than implying three problems is all there is.
+     */
+    issues: v.optional(
+      v.array(
+        v.object({
+          title: v.string(),
+          detail: v.optional(v.string()),
+          /** performance | accessibility | best-practices | seo */
+          category: v.string(),
+          /** 0-1 from Lighthouse. Lower is worse. */
+          score: v.optional(v.number()),
+          /** Estimated milliseconds saved, where Lighthouse gives one. */
+          savingsMs: v.optional(v.number()),
+        }),
+      ),
+    ),
+
+    /**
+     * The site's own identity, read from its metadata.
+     *
+     * A report that shows someone their own name and logo reads as being
+     * about them. One that opens with a bare URL reads as a form response.
+     */
+    siteName: v.optional(v.string()),
+    siteLogo: v.optional(v.string()),
+    siteDescription: v.optional(v.string()),
+
     error: v.optional(v.string()),
     leadId: v.optional(v.id("leads")),
     createdAt: v.number(),

@@ -71,6 +71,20 @@ export const complete = mutation({
         }),
       ),
     ),
+    issues: v.optional(
+      v.array(
+        v.object({
+          title: v.string(),
+          detail: v.optional(v.string()),
+          category: v.string(),
+          score: v.optional(v.number()),
+          savingsMs: v.optional(v.number()),
+        }),
+      ),
+    ),
+    siteName: v.optional(v.string()),
+    siteLogo: v.optional(v.string()),
+    siteDescription: v.optional(v.string()),
     error: v.optional(v.string()),
   },
   handler: async (ctx, { secret, id, ...fields }) => {
