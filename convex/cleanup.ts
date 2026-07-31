@@ -104,6 +104,15 @@ export const removeTestData = internalMutation({
       }
     }
 
+    const builds = await ctx.db.query("expressBuilds").collect();
+    let removedBuilds = 0;
+    for (const b of builds) {
+      if (b.email === "timing@example.com") {
+        await ctx.db.delete(b._id);
+        removedBuilds++;
+      }
+    }
+
     const audits = await ctx.db.query("audits").collect();
     let removedAudits = 0;
     for (const a of audits) {
@@ -122,7 +131,7 @@ export const removeTestData = internalMutation({
       }
     }
 
-    return { removedPromos, removedFeedback, removedComments, removedAudits };
+    return { removedPromos, removedFeedback, removedComments, removedAudits, removedBuilds };
   },
 });
 
@@ -172,4 +181,5 @@ export const setAdminPassword = internalMutation({
     };
   },
 });
+
 

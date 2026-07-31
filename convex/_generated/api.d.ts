@@ -19,6 +19,7 @@ import type * as cleanup from "../cleanup.js";
 import type * as crons from "../crons.js";
 import type * as engagement from "../engagement.js";
 import type * as events from "../events.js";
+import type * as express from "../express.js";
 import type * as feedback from "../feedback.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
@@ -58,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   engagement: typeof engagement;
   events: typeof events;
+  express: typeof express;
   feedback: typeof feedback;
   files: typeof files;
   http: typeof http;

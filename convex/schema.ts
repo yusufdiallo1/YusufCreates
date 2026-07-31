@@ -226,6 +226,61 @@ export default defineSchema({
     .index("by_created", ["createdAt"])
     .index("by_stripe", ["stripeId"]),
 
+  /**
+   * Express builds — up to two pages, delivered within two hours.
+   *
+   * The clock is the product, so the timing rules live here rather than in a
+   * component: it starts when I ACCEPT, not when they pay. An order landing
+   * at 3am must not already be late by breakfast, and accepting is also the
+   * point where I can decline a brief that is not actually two pages.
+   *
+   * They pay 50% to start. If I deliver inside the window they owe the rest;
+   * if I miss it they keep it — which is the whole promise, and the reason
+   * acceptedAt and deliveredAt are both stored rather than derived.
+   */
+  expressBuilds: defineTable({
+    name: v.string(),
+    email: v.string(),
+    /** What they want. Free text — two pages does not need a form. */
+    brief: v.string(),
+    pages: v.number(),
+
+    status: v.union(
+      v.literal("awaiting_payment"),
+      /** Paid, waiting for me to start the clock. */
+      v.literal("queued"),
+      v.literal("building"),
+      v.literal("delivered"),
+      v.literal("cancelled"),
+    ),
+
+    /** Half up front, in minor units. The balance is only owed if I am on time. */
+    depositAmount: v.number(),
+    balanceAmount: v.number(),
+    currency: v.string(),
+    depositPaidAt: v.optional(v.number()),
+    balancePaidAt: v.optional(v.number()),
+    /** True once the window is missed. The balance is written off. */
+    balanceWaived: v.optional(v.boolean()),
+
+    /** The clock. Both stored, never derived — this decides who owes what. */
+    acceptedAt: v.optional(v.number()),
+    deliveredAt: v.optional(v.number()),
+    /** acceptedAt + the window, so the portal counts down to a fixed instant. */
+    dueAt: v.optional(v.number()),
+
+    /** Where the finished site lives. */
+    deliveredUrl: v.optional(v.string()),
+
+    stripeSessionId: v.optional(v.string()),
+    /** Their own key for the portal, so no account is needed. */
+    token: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_token", ["token"])
+    .index("by_status", ["status", "createdAt"])
+    .index("by_email", ["email"]),
+
   events: defineTable({
     type: v.string(),
     path: v.optional(v.string()),

@@ -828,10 +828,26 @@
     transition:
       border-color var(--dur-base) var(--ease-out-expo),
       transform var(--dur-base) var(--ease-out-expo);
+
+    /*
+     * Promoted to its own layer, and composited on whole pixels.
+     *
+     * The card lifts 3px while the image inside it scales, and the image is
+     * clipped by a 1px border. Mid-transition the clip edge lands on a
+     * fractional pixel and the browser resamples it every frame, which reads
+     * as a thin line flickering along the top of the card.
+     *
+     * translateZ(0) gives it a compositor layer so the transform no longer
+     * repaints the border, and backface-visibility stops the seam that
+     * appears where a scaled child meets a rounded clip.
+     */
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
   }
   .project-card:hover {
     border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-    transform: translateY(-3px);
+    transform: translate3d(0, -3px, 0);
   }
   @media (prefers-reduced-motion: reduce) {
     .project-card,

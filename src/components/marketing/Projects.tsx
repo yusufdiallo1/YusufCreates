@@ -295,14 +295,18 @@ export function ProjectCard({ project }: { project: Project }) {
       data-cursor="view"
       className="project-card group block h-full overflow-hidden rounded-xl"
     >
-      <div className="relative aspect-[3/2] w-full overflow-hidden bg-surface-2">
+      <div /* transform-gpu on the clipping box as well as the image: the
+                clip and the thing being clipped have to composite on the
+                same layer, or their edges disagree by a fraction of a pixel
+                for the length of the transition. */
+            className="relative aspect-[3/2] w-full transform-gpu overflow-hidden bg-surface-2">
         {project.coverUrl ? (
           <Image
             src={project.coverUrl}
             alt=""
             fill
             sizes="(max-width: 640px) 100vw, 480px"
-            className="object-cover object-top transition-transform duration-slow ease-out-expo group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+            className="transform-gpu object-cover object-top transition-transform duration-slow ease-out-expo group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
           />
         ) : null}
 

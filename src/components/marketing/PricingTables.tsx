@@ -9,12 +9,17 @@ import { CountUp } from "@/components/motion/CountUp";
 import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
 import { useCurrency } from "@/lib/useCurrency";
 import { api, isConvexConfigured } from "@/lib/convex-api";
+import { CurrencyMark, hasCurrencyMark } from "@/components/ui/CurrencyMark";
 import {
   CARE_FEATURES,
   CARE_MONTHS_FREE,
   CURRENCIES,
   CURRENCY_SYMBOL,
   ENTERPRISE_FEATURES,
+  EXPRESS_DEPOSIT_USD,
+  EXPRESS_FEATURES,
+  EXPRESS_PRICE_USD,
+  EXPRESS_WINDOW_HOURS,
   GROWTH,
   NATIVE_TIER,
   PACKAGED_TIERS,
@@ -29,6 +34,7 @@ import {
   growthPriceUsd,
   tierPrice,
   type ActivePromo,
+  type Currency,
   type BillingPeriod,
 } from "@/lib/pricing";
 
@@ -52,6 +58,26 @@ import {
  * here that are not cleanly reversible. Every other tier CTA is an ordinary
  * link into the lead form.
  */
+
+/**
+ * The currency's symbol, drawn or typed.
+ *
+ * AED and SAR use SVG marks — their official symbols are too new for
+ * installed fonts and render as tofu boxes. Everything else uses its text
+ * glyph, which every font has.
+ */
+function Sym({ code }: { code: string }) {
+  if (hasCurrencyMark(code)) {
+    return (
+      <CurrencyMark
+        code={code}
+        size={22}
+        className="mr-1 inline-block align-[-0.12em] text-secondary"
+      />
+    );
+  }
+  return <span className="text-secondary">{CURRENCY_SYMBOL[code as Currency]}</span>;
+}
 
 export function PricingTables() {
   const router = useRouter();
@@ -142,6 +168,66 @@ export function PricingTables() {
         </Reveal>
       </div>
 
+      {/* BAND 0 — express. Above the tiers because it is the one thing on
+          this page someone might buy in the next ten minutes, and burying it
+          under six considered-purchase cards hides it from exactly them. */}
+      <div className="mx-auto mt-12 max-w-5xl px-6">
+        <Reveal>
+          <div className="enterprise-band flex flex-col gap-6 rounded-xl p-6 sm:flex-row sm:items-center">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="text-xl">Express</h2>
+                <span className="rounded-full bg-[color:var(--accent)] px-2.5 py-0.5 text-xs font-medium text-primary">
+                  {EXPRESS_WINDOW_HOURS} hours or it is free
+                </span>
+              </div>
+
+              <p className="mt-1.5 text-sm text-secondary">
+                Up to two pages, live today. Half up front — if I miss the two
+                hours, you keep the rest.
+              </p>
+
+              <ul className="mt-4 grid gap-1.5 sm:grid-cols-2">
+                {EXPRESS_FEATURES.map((feature) => (
+                  <li
+                    key={feature}
+                    className="flex gap-2.5 text-sm text-secondary"
+                  >
+                    <span aria-hidden="true" className="text-accent">
+                      —
+                    </span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="shrink-0 sm:text-right">
+              <p className="text-3xl tabular-nums">
+                <Sym code={currency} />
+                {convert(EXPRESS_PRICE_USD, currency, rates).toLocaleString(
+                  "en-US",
+                )}
+              </p>
+              <p className="mt-1 text-xs text-secondary">
+                <Sym code={currency} />
+                {convert(EXPRESS_DEPOSIT_USD, currency, rates).toLocaleString(
+                  "en-US",
+                )}{" "}
+                to start
+              </p>
+
+              <Link
+                href="/express"
+                className="mt-4 inline-block rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+              >
+                Start now
+              </Link>
+            </div>
+          </div>
+        </Reveal>
+      </div>
+
       {/* BAND 1 — the packaged build tiers */}
       <div className="mx-auto mt-16 max-w-5xl">
         {/* Said out loud on a phone. The clipped card at the edge is the
@@ -215,15 +301,13 @@ export function PricingTables() {
                     {tier.from ? (
                       <span className="text-base text-secondary">From </span>
                     ) : null}
-                    <span className="text-secondary">
-                      {CURRENCY_SYMBOL[currency]}
-                    </span>
+                    <Sym code={currency} />
                     {/* Animates rather than snapping when the figure changes. */}
                     <CountUp value={discounted ?? amount} duration={0.5} />
 
                     {discounted !== null ? (
                       <span className="ml-2.5 align-middle text-base text-[color:var(--danger)] line-through decoration-[color:var(--danger)]">
-                        {CURRENCY_SYMBOL[currency]}
+                        <Sym code={currency} />
                         {amount.toLocaleString("en-US")}
                       </span>
                     ) : null}
@@ -324,13 +408,11 @@ export function PricingTables() {
 
               <p className="mt-6 text-3xl tabular-nums">
                 <span className="text-base text-secondary">From </span>
-                <span className="text-secondary">
-                  {CURRENCY_SYMBOL[currency]}
-                </span>
+                <Sym code={currency} />
                 <CountUp value={nativeShown} duration={0.5} />
                 {nativeCut !== null ? (
                   <span className="ml-2.5 align-middle text-base text-[color:var(--danger)] line-through decoration-[color:var(--danger)]">
-                    {CURRENCY_SYMBOL[currency]}
+                    <Sym code={currency} />
                     {nativeFull.toLocaleString("en-US")}
                   </span>
                 ) : null}
@@ -373,9 +455,7 @@ export function PricingTables() {
 
               <p className="mt-6 text-3xl tabular-nums">
                 <span className="text-base text-secondary">From </span>
-                <span className="text-secondary">
-                  {CURRENCY_SYMBOL[currency]}
-                </span>
+                <Sym code={currency} />
                 <CountUp
                   value={tierPrice("enterprise", currency, rates)}
                   duration={0.5}
@@ -426,9 +506,7 @@ export function PricingTables() {
 
               <p className="mt-6 text-3xl tabular-nums">
                 <span className="text-base text-secondary">From </span>
-                <span className="text-secondary">
-                  {CURRENCY_SYMBOL[currency]}
-                </span>
+                <Sym code={currency} />
                 <CountUp
                   value={convert(REVIVE_PRICE_USD, currency, rates)}
                   duration={0.5}
@@ -494,11 +572,11 @@ export function PricingTables() {
               </div>
 
               <p className="mt-5 text-3xl tabular-nums">
-                {CURRENCY_SYMBOL[currency]}
+                <Sym code={currency} />
                 {(careCut ?? careFull).toLocaleString("en-US")}
                 {careCut !== null ? (
                   <span className="ml-2.5 align-middle text-base text-[color:var(--danger)] line-through decoration-[color:var(--danger)]">
-                    {CURRENCY_SYMBOL[currency]}
+                    <Sym code={currency} />
                     {careFull.toLocaleString("en-US")}
                   </span>
                 ) : null}

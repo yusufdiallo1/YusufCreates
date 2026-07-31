@@ -388,6 +388,32 @@ export const CARE_FEATURES = [
 export const ENTERPRISE_PRICE_USD = BASE_USD.enterprise;
 export const CARE_PRICE_USD = BASE_USD.care;
 
+/* ------------------------------------------------------------- express --- */
+
+/**
+ * Express — up to two pages, live within two hours.
+ *
+ * Priced under seventy dollars deliberately: it is a decision someone makes
+ * in one sitting, not one they get quotes for. Half up front and half on
+ * delivery, and if the two hours are missed the balance is written off. That
+ * guarantee is the product — without it this is just a cheap page.
+ *
+ * The clock starts when the build is accepted, not when they pay. An order
+ * placed overnight must not already be late by morning.
+ */
+export const EXPRESS_PRICE_USD = 69;
+export const EXPRESS_DEPOSIT_USD = 35;
+export const EXPRESS_WINDOW_HOURS = 2;
+
+export const EXPRESS_FEATURES = [
+  "Up to two pages, whatever you need on them",
+  "Live within two hours or you keep the balance",
+  "Half up front, half only if I am on time",
+  "A live countdown you can watch",
+  "Mobile and desktop, both done properly",
+  "Yours outright — hosting and domain in your name",
+];
+
 /* -------------------------------------------------------------- revive --- */
 
 /**
