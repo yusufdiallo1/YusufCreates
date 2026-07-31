@@ -115,6 +115,15 @@ const CATALOGUE = [
     recurring: null,
   },
   {
+    // The one-off rescue fee. Care follows it; this is the way in.
+    key: "revive",
+    name: "Revive — fix an existing site",
+    description:
+      "A full audit, then speed, accessibility, SEO, mobile and security fixes applied to a site you already have. Handover notes included. Continue on the Care Plan to keep it that way.",
+    amount: 650_00,
+    recurring: null,
+  },
+  {
     key: "care_monthly",
     name: "Care Plan",
     description:

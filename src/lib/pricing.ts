@@ -388,6 +388,33 @@ export const CARE_FEATURES = [
 export const ENTERPRISE_PRICE_USD = BASE_USD.enterprise;
 export const CARE_PRICE_USD = BASE_USD.care;
 
+/* -------------------------------------------------------------- revive --- */
+
+/**
+ * Revive — taking over a site someone already has.
+ *
+ * Not a build tier and deliberately not priced beside them. Someone with a
+ * live site that is slow, broken or unmaintainable is not shopping for a new
+ * build; they want the one they have to work. Sitting it in the comparison
+ * row would invite exactly the wrong reading — that the answer is to start
+ * again.
+ *
+ * A one-off fee to fix what is there, then the Care Plan to keep it that way.
+ * The recurring half is the point: a site rescued once and abandoned again is
+ * back where it started within a year.
+ */
+export const REVIVE_PRICE_USD = 650;
+
+export const REVIVE_FEATURES = [
+  "A full audit of what is actually wrong",
+  "Speed, accessibility and SEO fixes applied",
+  "Broken links, forms and checkout paths repaired",
+  "Mobile layout fixed properly, not patched",
+  "Dependencies and security patches brought current",
+  "An admin you can use, if there is not one already",
+  "Handover notes so the next person is not stuck",
+];
+
 /** Eurozone members, for guessing a currency from a locale. */
 const EUR_REGIONS = new Set([
   "AT", "BE", "CY", "DE", "EE", "ES", "FI", "FR", "GR", "HR", "IE", "IT",

@@ -18,6 +18,7 @@ export type PlanId =
   | "web-app"
   | "native"
   | "enterprise"
+  | "revive"
   | "support";
 
 /** Fields a step may show. Keys match the `leads` table columns. */
@@ -148,6 +149,18 @@ export const PLANS: Plan[] = [
     skipsPricing: true,
   },
   {
+    id: "revive",
+    label: "Fix an existing site",
+    hint: "You have one already. It needs to work.",
+    fields: ["existingUrl", "currentState", "projectPurpose", "timeline"],
+    messagePrompt:
+      "What is going wrong with it, and is there anything you already know needs doing?",
+    // Priced from the audit rather than a band: what a rescue costs depends
+    // entirely on what is actually broken, and guessing a budget before
+    // looking is how a fixed price becomes a wrong one.
+    skipsPricing: true,
+  },
+  {
     id: "support",
     label: "Ongoing support",
     hint: "Care plan for something already live.",
@@ -170,6 +183,7 @@ export function planFromTier(tier: string | undefined): PlanId | undefined {
   if (!tier) return undefined;
   const t = tier.toLowerCase();
   if (t.includes("enterprise")) return "enterprise";
+  if (t.includes("revive")) return "revive";
   if (t.includes("care") || t.includes("support")) return "support";
   if (t.includes("growth")) return "multi-page";
   if (t.includes("launch") || t.includes("starter")) return "one-page";

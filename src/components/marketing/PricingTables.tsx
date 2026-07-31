@@ -19,6 +19,8 @@ import {
   NATIVE_TIER,
   PACKAGED_TIERS,
   PEGGED,
+  REVIVE_FEATURES,
+  REVIVE_PRICE_USD,
   carePrice,
   convert,
   discountLabel,
@@ -300,7 +302,10 @@ export function PricingTables() {
             quoted from and one is aftercare — so they sit below rather than
             competing for the same swipe. Stacked on a phone, three across
             once there is room. */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Four now, so two-up rather than three — three columns would leave
+            the fourth stranded on its own row, which is the exact problem the
+            build tiers had. */}
+        <div className="grid gap-6 sm:grid-cols-2">
           <Reveal>
             {/* Same treatment as Enterprise: both are "from this figure,
                 scoped on a call" rather than a fixed price you can buy off
@@ -409,6 +414,55 @@ export function PricingTables() {
           </Reveal>
 
           <Reveal delay={0.14}>
+            {/* The route in for someone who already has a site. Placed
+                immediately before Care because that is where it leads —
+                a rescue with no maintenance behind it is back where it
+                started within a year. */}
+            <div className="flex h-full flex-col rounded-xl border border-[color:var(--border-hairline)] bg-surface-1 p-6">
+              <h2 className="text-xl">Revive</h2>
+              <p className="mt-1 text-sm text-secondary">
+                You already have a site. Make it work.
+              </p>
+
+              <p className="mt-6 text-3xl tabular-nums">
+                <span className="text-base text-secondary">From </span>
+                <span className="text-secondary">
+                  {CURRENCY_SYMBOL[currency]}
+                </span>
+                <CountUp
+                  value={convert(REVIVE_PRICE_USD, currency, rates)}
+                  duration={0.5}
+                />
+              </p>
+
+              <p className="mt-2 text-xs text-secondary">
+                One-off. Continue on the Care Plan to keep it that way.
+              </p>
+
+              <ul className="mt-6 flex-1 space-y-2">
+                {REVIVE_FEATURES.map((feature) => (
+                  <li
+                    key={feature}
+                    className="flex gap-2.5 text-sm text-secondary"
+                  >
+                    <span aria-hidden="true" className="text-accent">
+                      —
+                    </span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+
+              <Link
+                href="/audit"
+                className="mt-8 rounded-full border border-[color:var(--border-hairline)] px-5 py-2.5 text-center text-sm font-medium text-primary transition-colors duration-fast hover:bg-surface-2"
+              >
+                Get a free audit first
+              </Link>
+            </div>
+          </Reveal>
+
+          <Reveal delay={0.21}>
             <div className="flex h-full flex-col rounded-xl border border-[color:var(--border-hairline)] bg-surface-1 p-6">
               <h2 className="text-xl">Care Plan</h2>
               <p className="mt-1 text-sm text-secondary">
