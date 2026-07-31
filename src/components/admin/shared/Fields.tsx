@@ -424,3 +424,177 @@ export function FileUpload({
     </div>
   );
 }
+
+/** Aspect ratios a gallery post can use. */
+export const IMAGE_RATIOS = [
+  { id: "4:5", label: "Portrait", hint: "4:5 — the Instagram default", css: "aspect-[4/5]" },
+  { id: "1:1", label: "Square", hint: "1:1", css: "aspect-square" },
+  { id: "16:9", label: "Landscape", hint: "16:9", css: "aspect-video" },
+  { id: "auto", label: "Auto", hint: "Keep each image as it is", css: "" },
+] as const;
+
+export type ImageRatio = (typeof IMAGE_RATIOS)[number]["id"];
+
+/**
+ * Multi-image uploader for a gallery post.
+ *
+ * Pick several at once rather than one at a time — a gallery is by definition
+ * more than one image, and a control that takes them singly turns posting
+ * eight photos into eight round trips through a file dialog.
+ *
+ * Uploads run in parallel and the order of the result matches the order they
+ * were chosen, not the order they happened to finish.
+ */
+export function GalleryUpload({
+  values,
+  onChange,
+  ratio,
+  onRatioChange,
+}: {
+  values: string[];
+  onChange: (next: string[]) => void;
+  ratio: ImageRatio;
+  onRatioChange: (next: ImageRatio) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
+  const convex = useConvex();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const frame =
+    IMAGE_RATIOS.find((r) => r.id === ratio)?.css || "aspect-[4/5]";
+
+  return (
+    <div>
+      <span className="text-sm text-secondary">
+        Images{values.length > 0 ? ` (${values.length})` : ""}
+      </span>
+
+      {/* Chosen once for the set. Mixed ratios in one gallery read as an
+          accident rather than a decision — Auto is there for the case where
+          that is genuinely wanted. */}
+      <div
+        role="radiogroup"
+        aria-label="Image shape"
+        className="mt-2 flex flex-wrap gap-2"
+      >
+        {IMAGE_RATIOS.map((r) => (
+          <button
+            key={r.id}
+            type="button"
+            role="radio"
+            aria-checked={ratio === r.id}
+            onClick={() => onRatioChange(r.id)}
+            title={r.hint}
+            className={`rounded-full border px-3 py-1.5 text-xs transition-colors duration-fast ${
+              ratio === r.id
+                ? "border-[color:var(--accent)] bg-surface-2 text-primary"
+                : "border-[color:var(--border-hairline)] text-secondary hover:text-primary"
+            }`}
+          >
+            {r.label}
+          </button>
+        ))}
+      </div>
+
+      {values.length > 0 ? (
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {values.map((url, i) => (
+            <div key={`${url}-${i}`} className="group relative">
+              <div
+                className={`overflow-hidden rounded-lg bg-surface-1 ${ratio === "auto" ? "" : frame}`}
+              >
+                {/* Plain img: an admin-only thumbnail of something just
+                    uploaded does not need the optimiser. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={url}
+                  alt=""
+                  className={
+                    ratio === "auto"
+                      ? "h-auto w-full"
+                      : "size-full object-cover"
+                  }
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onChange(values.filter((_, j) => j !== i))}
+                aria-label={`Remove image ${i + 1}`}
+                className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-[color:var(--bg-canvas)]/80 text-xs text-secondary backdrop-blur transition-colors duration-fast hover:text-[color:var(--danger)]"
+              >
+                ×
+              </button>
+
+              <span className="absolute bottom-1.5 left-1.5 rounded bg-[color:var(--bg-canvas)]/80 px-1.5 text-[10px] text-secondary backdrop-blur">
+                {i + 1}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => inputRef.current?.click()}
+          className="hairline rounded-full px-4 py-2 text-xs text-primary transition-colors duration-fast hover:bg-surface-2 disabled:opacity-40"
+        >
+          {busy
+            ? "Uploading…"
+            : values.length === 0
+              ? "Choose images"
+              : "Add more"}
+        </button>
+        <span className="text-xs text-secondary">
+          Pick as many as you like at once.
+        </span>
+      </div>
+
+      <FieldError>{error}</FieldError>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="sr-only"
+        onChange={async (e) => {
+          const files = Array.from(e.target.files ?? []);
+          if (files.length === 0) return;
+          setBusy(true);
+          setError(null);
+          try {
+            /*
+             * Parallel, but the result keeps the order they were chosen in.
+             * Promise.all preserves input order regardless of which upload
+             * finishes first, which sequential awaits would also do — far
+             * more slowly for a set of eight.
+             */
+            const uploaded = await Promise.all(
+              files.map((file) =>
+                uploadImage(
+                  file,
+                  () => generateUploadUrl(),
+                  (storageId) =>
+                    convex.query(api.files.getUrl, {
+                      storageId: storageId as never,
+                    }),
+                ),
+              ),
+            );
+            onChange([...values, ...uploaded.map((u) => u.url)]);
+          } catch (err) {
+            setError(err instanceof Error ? err.message : "Upload failed.");
+          } finally {
+            setBusy(false);
+            e.target.value = "";
+          }
+        }}
+      />
+    </div>
+  );
+}

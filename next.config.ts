@@ -32,7 +32,7 @@ const csp = [
   // Video embeds are framed, so their hosts belong here — without them a
   // pasted YouTube link renders an empty box and the only clue is a console
   // warning nobody is looking at. nocookie is the domain the player uses.
-  "frame-src https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com",
+  "frame-src https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com https://www.instagram.com",
   // Uploaded video is served from Convex storage and played, not framed.
   "media-src 'self' https://*.convex.cloud blob:",
   "frame-ancestors 'none'",

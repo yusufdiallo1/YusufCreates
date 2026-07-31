@@ -56,6 +56,14 @@ export const create = mutation({
       v.union(v.literal("text"), v.literal("images"), v.literal("video")),
     ),
     images: v.optional(v.array(v.string())),
+    imageRatio: v.optional(
+      v.union(
+        v.literal("4:5"),
+        v.literal("1:1"),
+        v.literal("16:9"),
+        v.literal("auto"),
+      ),
+    ),
     videoUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -124,6 +132,14 @@ export const update = mutation({
       v.union(v.literal("text"), v.literal("images"), v.literal("video")),
     ),
     images: v.optional(v.array(v.string())),
+    imageRatio: v.optional(
+      v.union(
+        v.literal("4:5"),
+        v.literal("1:1"),
+        v.literal("16:9"),
+        v.literal("auto"),
+      ),
+    ),
     videoUrl: v.optional(v.string()),
   },
   handler: async (ctx, { id, ...patch }) => {

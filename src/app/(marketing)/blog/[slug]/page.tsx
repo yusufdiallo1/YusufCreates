@@ -131,22 +131,40 @@ export default async function BlogPostPage({
             uniform box — a gallery of crops is a contact sheet. */}
         {post.kind === "images" && post.images && post.images.length > 0 ? (
           <div className="mt-12 space-y-6">
-            {post.images.map((src: string, i: number) => (
-              <div
-                key={`${src}-${i}`}
-                className="relative overflow-hidden rounded-xl bg-surface-2"
-              >
-                <Image
-                  src={src}
-                  alt=""
-                  width={1600}
-                  height={1200}
-                  sizes="(max-width: 768px) 100vw, 42rem"
-                  className="h-auto w-full"
-                  priority={i === 0}
-                />
-              </div>
-            ))}
+            {post.images.map((src: string, i: number) => {
+              /* The shape chosen for the set. "auto" keeps each image as it
+                 is; anything else crops to a common frame, which is what
+                 makes a gallery read as one set rather than a pile. */
+              const ratio = post.imageRatio ?? "4:5";
+              const frame =
+                ratio === "1:1"
+                  ? "aspect-square"
+                  : ratio === "16:9"
+                    ? "aspect-video"
+                    : ratio === "auto"
+                      ? ""
+                      : "aspect-[4/5]";
+
+              return (
+                <div
+                  key={`${src}-${i}`}
+                  className={`relative overflow-hidden rounded-xl bg-surface-2 ${frame}`}
+                >
+                  <Image
+                    src={src}
+                    alt=""
+                    {...(ratio === "auto"
+                      ? { width: 1600, height: 1200 }
+                      : { fill: true })}
+                    sizes="(max-width: 768px) 100vw, 42rem"
+                    className={
+                      ratio === "auto" ? "h-auto w-full" : "object-cover"
+                    }
+                    priority={i === 0}
+                  />
+                </div>
+              );
+            })}
           </div>
         ) : null}
 

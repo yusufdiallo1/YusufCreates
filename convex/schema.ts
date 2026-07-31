@@ -271,6 +271,19 @@ export default defineSchema({
     images: v.optional(v.array(v.string())),
 
     /**
+     * How the gallery is framed. "auto" keeps each image's own shape.
+     * Optional because posts written before galleries existed have none.
+     */
+    imageRatio: v.optional(
+      v.union(
+        v.literal("4:5"),
+        v.literal("1:1"),
+        v.literal("16:9"),
+        v.literal("auto"),
+      ),
+    ),
+
+    /**
      * A video post's source: either an uploaded MP4 or a YouTube/Vimeo URL.
      * Stored as given; the player decides how to render it.
      */

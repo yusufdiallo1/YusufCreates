@@ -10,7 +10,10 @@ import {
   Markdown,
   TagInput,
   TextArea,
+  GalleryUpload,
+  type ImageRatio,
 } from "@/components/admin/shared/Fields";
+import { FieldError } from "@/components/ui/FieldError";
 import { DateTimePicker } from "@/components/admin/shared/DateTimePicker";
 import { Empty, Skeleton } from "@/components/admin/ProjectsAdmin";
 import type { Doc } from "@convex/_generated/dataModel";
@@ -34,6 +37,7 @@ const EMPTY = {
   publishedAt: "",
   kind: "text" as PostKind,
   images: [] as string[],
+  imageRatio: "4:5" as ImageRatio,
   videoUrl: "",
 };
 
@@ -140,6 +144,7 @@ export function BlogAdmin() {
                 // gallery on a post switched to video would keep images
                 // attached to something that no longer shows them.
                 images: draft.kind === "images" ? draft.images : [],
+                imageRatio: draft.imageRatio,
                 videoUrl: draft.kind === "video" ? draft.videoUrl : "",
               });
             } else {
@@ -158,6 +163,7 @@ export function BlogAdmin() {
                 // gallery on a post switched to video would keep images
                 // attached to something that no longer shows them.
                 images: draft.kind === "images" ? draft.images : [],
+                imageRatio: draft.imageRatio,
                 videoUrl: draft.kind === "video" ? draft.videoUrl : "",
               });
             }
@@ -210,11 +216,15 @@ function PostDrawer({
           // all text posts.
           kind: post.kind ?? "text",
           images: post.images ?? [],
+          imageRatio: (post.imageRatio ?? "4:5") as ImageRatio,
           videoUrl: post.videoUrl ?? "",
         }
       : { ...EMPTY, publishedAt: toLocalInput(Date.now()) },
   );
   const [saving, setSaving] = useState(false);
+  const [brief, setBrief] = useState("");
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
   // Same reason as the list: sampled once, used only to show a hint.
   const [mountedAt] = useState(() => Date.now());
 
@@ -290,6 +300,65 @@ function PostDrawer({
           </div>
         </div>
 
+        {draft.kind === "text" ? (
+          <div className="admin-card mt-6">
+            <p className="text-sm text-primary">Draft it for me</p>
+            <p className="mt-1 text-xs text-secondary">
+              Say what the post is about. Everything it writes is editable, and
+              nothing publishes without you reading it.
+            </p>
+            <TextArea
+              label="Brief"
+              rows={3}
+              value={brief}
+              onChange={setBrief}
+            />
+            {draftError ? <FieldError>{draftError}</FieldError> : null}
+            <button
+              type="button"
+              disabled={drafting || brief.trim() === ""}
+              onClick={async () => {
+                setDrafting(true);
+                setDraftError(null);
+                try {
+                  const res = await fetch("/api/compose/post", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ brief }),
+                  });
+                  const json = await res.json();
+                  if (!res.ok) throw new Error(json.error ?? "Could not draft.");
+
+                  // Only fills what is empty — a redraft must not silently
+                  // discard something already written.
+                  setDraft((d) => ({
+                    ...d,
+                    title: d.title || json.title,
+                    slug:
+                      d.slug ||
+                      String(json.title ?? "")
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]+/g, "-")
+                        .replace(/^-|-$/g, ""),
+                    excerpt: d.excerpt || json.excerpt,
+                    body: d.body || json.body,
+                    tags: d.tags.length ? d.tags : (json.tags ?? []),
+                  }));
+                } catch (err) {
+                  setDraftError(
+                    err instanceof Error ? err.message : "Could not draft.",
+                  );
+                } finally {
+                  setDrafting(false);
+                }
+              }}
+              className="mt-3 rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+            >
+              {drafting ? "Drafting…" : "Draft with AI"}
+            </button>
+          </div>
+        ) : null}
+
         <div className="mt-6 space-y-4">
           <Field
             label="Title"
@@ -332,6 +401,8 @@ function PostDrawer({
             <GalleryUpload
               values={draft.images}
               onChange={(v) => set("images", v)}
+              ratio={draft.imageRatio}
+              onRatioChange={(v) => set("imageRatio", v)}
             />
           ) : null}
 
@@ -429,63 +500,3 @@ function PostDrawer({
   );
 }
 
-/**
- * Gallery uploader for an images post.
- *
- * Built on ImageUpload rather than a new upload path: one field appends, and
- * each existing image gets its own control so replacing image three does not
- * mean re-uploading the set. Order is upload order, which is the order they
- * were chosen in.
- */
-function GalleryUpload({
-  values,
-  onChange,
-}: {
-  values: string[];
-  onChange: (next: string[]) => void;
-}) {
-  return (
-    <div>
-      <span className="text-sm text-secondary">
-        Images{values.length > 0 ? ` (${values.length})` : ""}
-      </span>
-
-      <div className="mt-2 space-y-3">
-        {values.map((url, i) => (
-          <div key={`${url}-${i}`} className="flex items-start gap-3">
-            <div className="min-w-0 flex-1">
-              <ImageUpload
-                label={`Image ${i + 1}`}
-                value={url}
-                onChange={(v) => {
-                  const next = [...values];
-                  // Clearing an image removes it rather than leaving a hole.
-                  if (v) next[i] = v;
-                  else next.splice(i, 1);
-                  onChange(next);
-                }}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => onChange(values.filter((_, j) => j !== i))}
-              aria-label={`Remove image ${i + 1}`}
-              className="mt-7 shrink-0 rounded-full px-3 py-1 text-xs text-secondary transition-colors duration-fast hover:text-[color:var(--danger)]"
-            >
-              Remove
-            </button>
-          </div>
-        ))}
-
-        {/* Always one empty slot at the end, so adding is never a mode. */}
-        <ImageUpload
-          label={values.length === 0 ? "Add the first image" : "Add another"}
-          value=""
-          onChange={(v) => {
-            if (v) onChange([...values, v]);
-          }}
-        />
-      </div>
-    </div>
-  );
-}

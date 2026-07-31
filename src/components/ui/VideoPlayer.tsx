@@ -15,6 +15,7 @@
 type Parsed =
   | { kind: "youtube"; id: string }
   | { kind: "vimeo"; id: string }
+  | { kind: "instagram"; id: string }
   | { kind: "file"; src: string }
   | { kind: "unknown" };
 
@@ -31,6 +32,10 @@ export function parseVideoUrl(raw: string): Parsed {
 
   const vimeo = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
   if (vimeo) return { kind: "vimeo", id: vimeo[1] };
+
+  // Reels, posts and TV all embed through the same /p/<code>/embed path.
+  const ig = url.match(/instagram\.com\/(?:reel|reels|p|tv)\/([A-Za-z0-9_-]+)/);
+  if (ig) return { kind: "instagram", id: ig[1] };
 
   // Anything ending in a video extension, including Convex storage URLs which
   // carry no extension but are served with a video content type.
@@ -80,10 +85,19 @@ export function VideoPlayer({
       ? // youtube-nocookie: no tracking cookie is set unless the visitor
         // actually presses play.
         `https://www.youtube-nocookie.com/embed/${parsed.id}?rel=0`
-      : `https://player.vimeo.com/video/${parsed.id}`;
+      : parsed.kind === "instagram"
+        ? `https://www.instagram.com/p/${parsed.id}/embed`
+        : `https://player.vimeo.com/video/${parsed.id}`;
+
+  /* Instagram embeds are portrait and carry their own chrome, so a 16:9 box
+     letterboxes them with dead bars down both sides. */
+  const box =
+    parsed.kind === "instagram"
+      ? `relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-surface-2 ${className ?? ""}`
+      : frame;
 
   return (
-    <div className={frame}>
+    <div className={box}>
       <iframe
         src={src}
         title="Video"
