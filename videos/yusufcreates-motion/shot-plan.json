@@ -1,0 +1,122 @@
+{
+  "project": "yusufcreates-motion",
+  "envelope": {
+    "count": 5,
+    "aspect": "9:16",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "duration_each": 8,
+    "narration": false,
+    "destination": "instagram-reels"
+  },
+  "brand": {
+    "canvas": "#08090a",
+    "text": "#f7f8f8",
+    "muted": "#7e838c",
+    "accent": "#5e6ad2",
+    "accent_glow": "rgba(94,106,210,0.35)",
+    "danger": "#e5484d",
+    "green": "#4cc38a",
+    "font": "Inter, system-ui, sans-serif",
+    "logo": {
+      "chevron": "M61 48 L92 79 L61 110",
+      "arm": "M159 48 L115 92 L115 137",
+      "stroke": 15,
+      "accent_rect": { "x": 99, "y": 155, "w": 34, "h": 17 },
+      "viewBox": "40 30 140 155",
+      "source": "src/components/ui/Logo.tsx, mirrored in the carousel template"
+    },
+    "source": "src/app/globals.css — same tokens as the 103 carousel decks"
+  },
+  "shots": [
+    {
+      "id": "01-logo-sting",
+      "category": "logo-reveal",
+      "asset_needs": [],
+      "message": "YusufCreates, as a mark that draws itself.",
+      "brief": "The chevron and arm draw on as strokes, the accent block lands with weight, then the wordmark resolves beside it. Ends on the locked-up brand with the handle. Reusable as an intro or outro sting on any other video.",
+      "sustained_motion_route": "staged reveals",
+      "beats": [
+        { "t": 0.0, "event": "chevron path draws" },
+        { "t": 0.5, "event": "arm path draws, overlapping" },
+        { "t": 1.15, "event": "accent block drops in — the cause" },
+        { "t": 1.35, "event": "impact recoil, wordmark cascade ignites" },
+        { "t": 2.4, "event": "handle fades under" },
+        { "t": 3.2, "event": "settle and hold" }
+      ]
+    },
+    {
+      "id": "02-looks-cheap",
+      "category": "kinetic-type",
+      "asset_needs": [],
+      "message": "Your app works. It still looks cheap. Polish is decisions, not paint.",
+      "brief": "The strongest hook from the carousel set, as kinetic type. Line one lands flat and neutral; the turn lands in danger red; the resolution lands in accent purple. Word-level stagger, no line ever sits still.",
+      "sustained_motion_route": "staged reveals",
+      "beats": [
+        { "t": 0.0, "event": "line 1 words cascade in" },
+        { "t": 1.6, "event": "line 1 lifts away, line 2 enters mid-flight" },
+        { "t": 3.4, "event": "stillness before climax" },
+        { "t": 3.9, "event": "payoff line arrives, scale-led" },
+        { "t": 6.2, "event": "logo lockup resolves under" }
+      ]
+    },
+    {
+      "id": "03-price-ladder",
+      "category": "stat",
+      "asset_needs": [],
+      "message": "Fixed prices, published. From $400.",
+      "brief": "A count-up from 0 to 400 as the hero number, then the ladder steps in beneath it — Growth, Web app, Native — each row arriving on its own beat. Ends on 'No request a quote.' Figures are real, from src/lib/pricing.ts.",
+      "sustained_motion_route": "sequenced reveals",
+      "beats": [
+        { "t": 0.0, "event": "eyebrow lands" },
+        { "t": 0.45, "event": "count-up 0 to 400 runs, scale eases with it" },
+        { "t": 2.1, "event": "ladder rows step in, staggered" },
+        { "t": 4.6, "event": "stillness" },
+        { "t": 5.1, "event": "closing line, accent" },
+        { "t": 6.6, "event": "logo lockup" }
+      ]
+    },
+    {
+      "id": "04-two-slots",
+      "category": "stat",
+      "asset_needs": [],
+      "message": "Two build slots. Counted, not claimed.",
+      "brief": "A giant numeral 2 that arrives with weight, with two slot markers filling beside it. Real scarcity from convex/capacity.ts — BUILD_SLOTS = 2. The honesty is the hook: availability is derived from live projects, not a toggle.",
+      "sustained_motion_route": "sequenced reveals",
+      "beats": [
+        { "t": 0.0, "event": "eyebrow" },
+        { "t": 0.4, "event": "numeral 2 lands, heavy, with glow" },
+        { "t": 1.5, "event": "two slot bars fill in sequence" },
+        { "t": 3.2, "event": "supporting line reveals" },
+        { "t": 4.8, "event": "stillness" },
+        { "t": 5.3, "event": "CTA line, accent" },
+        { "t": 6.6, "event": "logo lockup" }
+      ]
+    },
+    {
+      "id": "05-week-one",
+      "category": "kinetic-type",
+      "asset_needs": [],
+      "message": "Live in week one. Rough is fine. Invisible is not.",
+      "brief": "The process promise as kinetic type, with a progress rail that advances as the lines land — the rail is the sustained motion, so nothing waits. Ends on the promise in accent, then the lockup.",
+      "sustained_motion_route": "sequenced UI life",
+      "beats": [
+        { "t": 0.0, "event": "rail appears, begins advancing" },
+        { "t": 0.35, "event": "line 1 lands as rail hits first mark" },
+        { "t": 2.0, "event": "line 2 lands on second mark" },
+        { "t": 3.6, "event": "stillness, rail nearly full" },
+        { "t": 4.1, "event": "payoff line, rail completes" },
+        { "t": 6.4, "event": "logo lockup" }
+      ]
+    }
+  ],
+  "constraints": [
+    "No idle wobble — every phase owns a sustained-motion route (motion-doctrine Part 2).",
+    "Stillness before climax: 0.3-0.75s comma before each payoff line.",
+    "Single entry <= 800ms; total stagger <= 500ms.",
+    "No bounce.out or elastic.out. back.out(1.4-1.7) permitted on entry overshoot.",
+    "Every figure traceable: prices from src/lib/pricing.ts, slots from convex/capacity.ts.",
+    "Logo geometry copied verbatim from Logo.tsx — never redrawn by eye."
+  ]
+}

@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      /*
+        "Your app works. It still looks cheap." — kinetic type, 8s, 1080x1920.
+
+        The strongest hook from the carousel set. Three statements, each
+        replacing the last: the observation, the turn, the resolution. Nothing
+        ever sits still — a line is always either arriving or leaving.
+      */
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #08090a; }
+      body { font-family: "Inter", system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+
+      #root { position: relative; width: 1080px; height: 1920px; background: #08090a; }
+
+      .bg { position: absolute; inset: 0; overflow: hidden; }
+      .orb { position: absolute; border-radius: 50%; filter: blur(110px); }
+      .orb-a {
+        top: -280px; right: -220px; width: 1000px; height: 1000px;
+        background: radial-gradient(circle at 35% 35%,
+          rgba(94,106,210,0.50) 0%, rgba(94,106,210,0.18) 40%, transparent 70%);
+      }
+      .orb-b {
+        bottom: -360px; left: -260px; width: 1060px; height: 1060px;
+        background: radial-gradient(circle at 60% 40%,
+          rgba(124,92,220,0.30) 0%, rgba(60,80,190,0.12) 44%, transparent 72%);
+      }
+      .grain {
+        position: absolute; inset: 0; opacity: 0.05; mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+
+      /* Every line occupies the same slot, so replacing one with the next reads
+         as a single thought developing rather than a list scrolling past. */
+      .slot {
+        position: absolute; left: 0; right: 0;
+        top: 50%; transform: translateY(-50%);
+        padding: 0 90px 150px;
+        display: flex; flex-direction: column; gap: 18px;
+      }
+      .line {
+        font-size: 118px; font-weight: 700;
+        letter-spacing: -0.032em; line-height: 1.04;
+      }
+      .w { display: inline-block; }
+
+      .primary { color: #f7f8f8; }
+      .muted   { color: #7e838c; }
+      .danger  { color: #e5484d; }
+      .accent  { color: #5e6ad2; }
+
+      .eyebrow {
+        position: absolute; left: 90px; top: 300px;
+        display: inline-flex; align-items: center; gap: 14px;
+        padding: 14px 26px; border-radius: 99px;
+        background: rgba(255,255,255,0.06);
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.13);
+        font-size: 26px; font-weight: 600; letter-spacing: 0.13em;
+        text-transform: uppercase; color: #f7f8f8;
+      }
+      .eyebrow .dot {
+        width: 12px; height: 12px; border-radius: 99px; background: #5e6ad2;
+        box-shadow: 0 0 16px #5e6ad2;
+      }
+
+      /* The lockup that closes every video in the set. */
+      .lockup {
+        position: absolute; left: 0; right: 0; bottom: 210px;
+        display: flex; align-items: center; justify-content: center; gap: 20px;
+      }
+      .lockup svg { width: 68px; height: auto; overflow: visible; }
+      .lockup .name { font-size: 44px; letter-spacing: -0.022em; }
+      .lockup .name .a { font-weight: 400; color: #f7f8f8; }
+      .lockup .name .b { font-weight: 600; color: #5e6ad2; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="8"
+         data-width="1080" data-height="1920">
+      <div class="bg" aria-hidden="true" data-layout-allow-overflow>
+        <div class="orb orb-a"></div>
+        <div class="orb orb-b"></div>
+        <div class="grain"></div>
+      </div>
+
+      <div class="eyebrow clip" id="eyebrow" data-start="0" data-duration="8" data-track-index="1">
+        <span class="dot"></span><span>Craft</span>
+      </div>
+
+      <!-- Statement 1 — the observation. -->
+      <div class="slot clip" id="s1" data-start="0" data-duration="8" data-track-index="2">
+        <div class="line primary"><span class="w">Your</span> <span class="w">app</span> <span class="w">works.</span></div>
+      </div>
+
+      <!-- Statement 2 — the turn. -->
+      <div class="slot clip" id="s2" data-start="0" data-duration="8" data-track-index="3">
+        <div class="line primary"><span class="w">It</span> <span class="w">still</span> <span class="w">looks</span></div>
+        <div class="line danger"><span class="w">cheap.</span></div>
+      </div>
+
+      <!-- Statement 3 — the resolution. -->
+      <div class="slot clip" id="s3" data-start="0" data-duration="8" data-track-index="4">
+        <div class="line primary"><span class="w">Polish</span> <span class="w">isn’t</span> <span class="w">paint.</span></div>
+        <div class="line accent"><span class="w">It’s</span> <span class="w">decisions.</span></div>
+      </div>
+
+      <div class="lockup clip" id="lockup" data-start="0" data-duration="8" data-track-index="5">
+        <svg viewBox="40 30 140 155" fill="none" aria-hidden="true">
+          <path d="M61 48 L92 79 L61 110" stroke="#f7f8f8" stroke-width="15"
+                stroke-linecap="square" stroke-linejoin="miter" />
+          <path d="M159 48 L115 92 L115 137" stroke="#f7f8f8" stroke-width="15"
+                stroke-linecap="square" stroke-linejoin="miter" />
+          <rect x="99" y="155" width="34" height="17" fill="#5e6ad2" />
+        </svg>
+        <div class="name"><span class="a">Yusuf</span><span class="b">Creates</span></div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      const S1 = gsap.utils.toArray("#s1 .w");
+      const S2 = gsap.utils.toArray("#s2 .w");
+      const S3 = gsap.utils.toArray("#s3 .w");
+
+      // Opening state: everything off, so seek(0) is the true first frame.
+      gsap.set([S1, S2, S3], { autoAlpha: 0, yPercent: 110 });
+      gsap.set(["#s1", "#s2", "#s3"], { autoAlpha: 1 });
+      gsap.set("#eyebrow", { autoAlpha: 0, x: -30 });
+      gsap.set("#lockup", { autoAlpha: 0, y: 24 });
+
+      // Sustained motion: a single slow push across the whole 8s. One
+      // direction, never reversing — a camera move, not a wobble.
+      gsap.set("#root", { transformOrigin: "50% 45%" });
+      tl.to("#root", { scale: 1.05, duration: 8, ease: "none" }, 0);
+
+      tl.to("#eyebrow", { autoAlpha: 1, x: 0, duration: 0.5, ease: "power3.out" }, 0.1);
+
+      // --- Statement 1: words cascade up into place -------------------------
+      tl.to(S1, {
+        autoAlpha: 1, yPercent: 0,
+        duration: 0.62, ease: "power4.out", stagger: 0.075,
+      }, 0.35);
+
+      // Exit rises and clears while statement 2 is already arriving — the cut
+      // lands mid-motion on both sides rather than after a settle.
+      tl.to(S1, {
+        autoAlpha: 0, yPercent: -150,
+        duration: 0.42, ease: "power3.in", stagger: 0.03,
+      }, 1.98);
+
+      // --- Statement 2: the turn -------------------------------------------
+      tl.to(S2, {
+        autoAlpha: 1, yPercent: 0,
+        duration: 0.62, ease: "power4.out", stagger: 0.07,
+      }, 2.3);
+
+      // "cheap." gets a beat of its own — the word the whole hook rests on.
+      tl.fromTo("#s2 .danger .w",
+        { scale: 1 },
+        { scale: 1.08, duration: 0.22, ease: "power2.out" }, 3.0);
+      tl.to("#s2 .danger .w", { scale: 1, duration: 0.4, ease: "power3.out" }, 3.22);
+
+      tl.to(S2, {
+        autoAlpha: 0, yPercent: -150,
+        duration: 0.42, ease: "power3.in", stagger: 0.03,
+      }, 4.22);
+
+      // Stillness before the climax — the dramatic comma, ~0.35s of empty slot.
+      // --- Statement 3: the resolution --------------------------------------
+      tl.to(S3, {
+        autoAlpha: 1, yPercent: 0,
+        duration: 0.7, ease: "power4.out", stagger: 0.08,
+      }, 4.95);
+
+      tl.to("#lockup", { autoAlpha: 1, y: 0, duration: 0.6, ease: "power3.out" }, 6.4);
+
+      tl.seek(0);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

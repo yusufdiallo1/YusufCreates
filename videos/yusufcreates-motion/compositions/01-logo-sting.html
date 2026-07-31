@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/DrawSVGPlugin.min.js"></script>
+    <style>
+      /*
+        YusufCreates — logo sting, 8s, 1080x1920.
+
+        Every colour, the typeface and the mark geometry are the real brand
+        tokens: `src/app/globals.css` and `src/components/ui/Logo.tsx`. The two
+        paths below are copied verbatim rather than traced by eye, so this sting
+        and the site render the identical mark.
+      */
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 1080px; height: 1920px; overflow: hidden;
+        background: #08090a;
+      }
+      body {
+        font-family: "Inter", system-ui, -apple-system, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      #root { position: relative; width: 1080px; height: 1920px; background: #08090a; }
+
+      /* The colour field. Two blurred orbs give the frame somewhere to sit —
+         the same treatment the carousels use, so the sting belongs to them. */
+      .bg { position: absolute; inset: 0; overflow: hidden; }
+      .orb { position: absolute; border-radius: 50%; filter: blur(110px); }
+      .orb-a {
+        top: -280px; right: -220px; width: 1000px; height: 1000px;
+        background: radial-gradient(circle at 35% 35%,
+          rgba(94,106,210,0.55) 0%, rgba(94,106,210,0.20) 40%, transparent 70%);
+      }
+      .orb-b {
+        bottom: -360px; left: -260px; width: 1060px; height: 1060px;
+        background: radial-gradient(circle at 60% 40%,
+          rgba(124,92,220,0.34) 0%, rgba(60,80,190,0.13) 44%, transparent 72%);
+      }
+      .grain {
+        position: absolute; inset: 0; opacity: 0.05; mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+
+      .stage {
+        position: absolute; inset: 0;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        gap: 56px;
+        /* Optical centre for 9:16: nudged up off the true middle so the
+           lockup clears Instagram's bottom UI without stranding the top. */
+        padding-bottom: 150px;
+      }
+
+      .mark { width: 420px; height: auto; overflow: visible; }
+
+      .wordmark {
+        font-size: 116px; letter-spacing: -0.022em; line-height: 1;
+        white-space: nowrap;
+      }
+      .wordmark .yusuf  { font-weight: 400; color: #f7f8f8; }
+      .wordmark .creates{ font-weight: 600; color: #5e6ad2; }
+
+      .rule {
+        width: 300px; height: 2px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+        transform-origin: center;
+      }
+
+      .handle {
+        font-size: 40px; color: #8a8f98; letter-spacing: 0.02em;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="8"
+      data-width="1080"
+      data-height="1920"
+    >
+      <div class="bg" aria-hidden="true" data-layout-allow-overflow>
+        <div class="orb orb-a" id="orbA"></div>
+        <div class="orb orb-b" id="orbB"></div>
+        <div class="grain"></div>
+      </div>
+
+      <div class="stage clip" id="stage" data-start="0" data-duration="8" data-track-index="1">
+        <!-- Mark geometry verbatim from Logo.tsx: two strokes and the accent
+             block, with the deliberate one-stroke gap preserved. -->
+        <svg class="mark" viewBox="40 30 140 155" fill="none" aria-hidden="true">
+          <path id="chevron" d="M61 48 L92 79 L61 110"
+            stroke="#f7f8f8" stroke-width="15"
+            stroke-linecap="butt" stroke-linejoin="miter" />
+          <path id="arm" d="M159 48 L115 92 L115 137"
+            stroke="#f7f8f8" stroke-width="15"
+            stroke-linecap="butt" stroke-linejoin="miter" />
+          <rect id="accentBlock" x="99" y="155" width="34" height="17" fill="#5e6ad2" />
+        </svg>
+
+        <div class="rule" id="rule"></div>
+
+        <div class="wordmark" id="wordmark">
+          <span class="yusuf" id="w1">Yusuf</span><span class="creates" id="w2">Creates</span>
+        </div>
+
+        <div class="handle" id="handle">@yusufcreatesdev</div>
+      </div>
+    </div>
+
+    <script>
+      gsap.registerPlugin(DrawSVGPlugin);
+
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      /*
+        Causal chain, per motion-doctrine Part 2: the strokes draw, the accent
+        block DROPS and lands, and that impact is what ignites the wordmark.
+        Nothing enters on its own schedule — each move is launched by the last.
+      */
+
+      // Initial states. Every animated element starts hidden or pre-drawn so a
+      // seek to 0 shows the true opening frame rather than a flash of the
+      // finished layout.
+      gsap.set(["#chevron", "#arm"], { drawSVG: "0%" });
+      gsap.set("#accentBlock", { autoAlpha: 0, y: -70, scaleY: 0.6, transformOrigin: "center bottom" });
+      gsap.set("#rule", { autoAlpha: 0, scaleX: 0 });
+      gsap.set(["#w1", "#w2"], { autoAlpha: 0, y: 34 });
+      gsap.set("#handle", { autoAlpha: 0, y: 18 });
+      gsap.set("#stage", { scale: 0.94 });
+
+      // A slow, continuous push on the whole lockup. This is the sustained
+      // motion that keeps the frame alive between beats — a mapped camera
+      // move, not an idle wobble: it travels one direction for the full run.
+      tl.to("#stage", { scale: 1.0, duration: 8, ease: "none" }, 0);
+
+      // 1. The mark draws itself. The two strokes overlap rather than queue,
+      //    so the mark reads as one gesture.
+      tl.to("#chevron", { drawSVG: "100%", duration: 0.72, ease: "power2.inOut" }, 0.15);
+      tl.to("#arm",     { drawSVG: "100%", duration: 0.72, ease: "power2.inOut" }, 0.50);
+
+      // 2. The accent block falls into place — the cause.
+      tl.to("#accentBlock", {
+        autoAlpha: 1, y: 0, scaleY: 1,
+        duration: 0.42, ease: "power4.out",
+      }, 1.15);
+
+      // 3. Impact. The mark recoils on the same frame the block lands, and the
+      //    rule opens outward from that hit.
+      tl.to(".mark", { scale: 1.045, duration: 0.10, ease: "power2.out" }, 1.57);
+      tl.to(".mark", { scale: 1.0,   duration: 0.34, ease: "power3.out", overwrite: "auto" }, 1.67);
+      tl.to("#rule", { autoAlpha: 1, scaleX: 1, duration: 0.52, ease: "power3.out" }, 1.60);
+
+      // 4. The wordmark cascades from the same impact. Two elements, 130ms
+      //    apart — well inside the 500ms total-stagger budget.
+      tl.to("#w1", { autoAlpha: 1, y: 0, duration: 0.54, ease: "back.out(1.5)" }, 1.72);
+      tl.to("#w2", { autoAlpha: 1, y: 0, duration: 0.54, ease: "back.out(1.5)" }, 1.85);
+
+      // 5. The handle settles last and quietest.
+      tl.to("#handle", { autoAlpha: 1, y: 0, duration: 0.5, ease: "power3.out" }, 2.45);
+
+      // 6. The accent block keeps a slow glow bloom to the end — tied to the
+      //    brand colour, and still a single directional move rather than a
+      //    pulse that loops.
+      tl.fromTo("#accentBlock",
+        { filter: "drop-shadow(0 0 0px rgba(94,106,210,0))" },
+        { filter: "drop-shadow(0 0 26px rgba(94,106,210,0.85))",
+          duration: 3.2, ease: "power2.out" },
+        2.2);
+
+      tl.seek(0);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

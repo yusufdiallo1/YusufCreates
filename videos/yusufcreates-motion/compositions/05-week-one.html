@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      /*
+        "Live in week one" — process promise, 8s, 1080x1920.
+
+        A rail advances across the whole run and each line lands on a mark, so
+        the sustained motion is the progress itself rather than a hold. The
+        promise is real: every build in the pricing ladder ships a live URL in
+        week one.
+      */
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #08090a; }
+      body { font-family: "Inter", system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+
+      #root { position: relative; width: 1080px; height: 1920px; background: #08090a; }
+
+      .bg { position: absolute; inset: 0; overflow: hidden; }
+      .orb { position: absolute; border-radius: 50%; filter: blur(110px); }
+      .orb-a {
+        top: -280px; right: -220px; width: 1000px; height: 1000px;
+        background: radial-gradient(circle at 35% 35%,
+          rgba(94,106,210,0.52) 0%, rgba(94,106,210,0.19) 40%, transparent 70%);
+      }
+      .orb-b {
+        bottom: -360px; left: -260px; width: 1060px; height: 1060px;
+        background: radial-gradient(circle at 60% 40%,
+          rgba(124,92,220,0.30) 0%, rgba(60,80,190,0.12) 44%, transparent 72%);
+      }
+      .grain {
+        position: absolute; inset: 0; opacity: 0.05; mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+
+      .stage {
+        position: absolute; inset: 0;
+        padding: 0 90px 150px;
+        display: flex; flex-direction: column;
+        align-items: flex-start; justify-content: center;
+      }
+
+      .eyebrow {
+        display: inline-flex; align-items: center; gap: 14px;
+        padding: 14px 26px; border-radius: 99px; margin-bottom: 52px;
+        background: rgba(255,255,255,0.06);
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.13);
+        font-size: 26px; font-weight: 600; letter-spacing: 0.13em;
+        text-transform: uppercase; color: #f7f8f8;
+      }
+      .eyebrow .dot {
+        width: 12px; height: 12px; border-radius: 99px; background: #4cc38a;
+        box-shadow: 0 0 16px #4cc38a;
+      }
+
+      /* The rail. It advances for the full run and each step lands on a mark,
+         so the frame is always mid-progress. */
+      .rail {
+        position: relative; width: 100%; height: 8px; border-radius: 99px;
+        background: rgba(255,255,255,0.09); margin-bottom: 64px;
+      }
+      .rail .track {
+        position: absolute; inset: 0; border-radius: 99px;
+        background: linear-gradient(90deg, #5e6ad2, #8b95e8);
+        box-shadow: 0 0 26px rgba(94,106,210,0.55);
+        transform-origin: left center;
+      }
+      .rail .mark {
+        position: absolute; top: -9px; width: 26px; height: 26px;
+        border-radius: 99px; background: #14161b;
+        box-shadow: inset 0 0 0 3px rgba(255,255,255,0.16);
+      }
+      .rail .mark.on {
+        background: #5e6ad2;
+        box-shadow: 0 0 22px rgba(94,106,210,0.9), inset 0 0 0 3px rgba(255,255,255,0.3);
+      }
+      #m1 { left: 0%; }
+      #m2 { left: calc(50% - 13px); }
+      #m3 { right: 0; }
+
+      .lines { display: flex; flex-direction: column; gap: 26px; }
+      .line {
+        font-size: 106px; font-weight: 700;
+        letter-spacing: -0.032em; line-height: 1.05;
+      }
+      .primary { color: #f7f8f8; }
+      .muted   { color: #7e838c; }
+      .accent  { color: #5e6ad2; }
+      .w { display: inline-block; }
+
+      .lockup {
+        position: absolute; left: 0; right: 0; bottom: 210px;
+        display: flex; align-items: center; justify-content: center; gap: 20px;
+      }
+      .lockup svg { width: 68px; height: auto; overflow: visible; }
+      .lockup .name2 { font-size: 44px; letter-spacing: -0.022em; }
+      .lockup .name2 .a { font-weight: 400; color: #f7f8f8; }
+      .lockup .name2 .b { font-weight: 600; color: #5e6ad2; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="8"
+         data-width="1080" data-height="1920">
+      <div class="bg" aria-hidden="true" data-layout-allow-overflow>
+        <div class="orb orb-a"></div>
+        <div class="orb orb-b"></div>
+        <div class="grain"></div>
+      </div>
+
+      <div class="stage clip" id="stage" data-start="0" data-duration="8" data-track-index="1">
+        <div class="eyebrow" id="eyebrow"><span class="dot"></span><span>Process</span></div>
+
+        <div class="rail">
+          <span class="track" id="track"></span>
+          <span class="mark" id="m1"></span>
+          <span class="mark" id="m2"></span>
+          <span class="mark" id="m3"></span>
+        </div>
+
+        <div class="lines">
+          <div class="line primary" id="l1">
+            <span class="w">Live</span> <span class="w">URL</span> <span class="w">in</span>
+          </div>
+          <div class="line accent" id="l2">
+            <span class="w">week</span> <span class="w">one.</span>
+          </div>
+          <div class="line muted" id="l3" style="font-size: 62px; margin-top: 22px">
+            <span class="w">Rough</span> <span class="w">is</span> <span class="w">fine.</span>
+            <span class="w">Invisible</span> <span class="w">is</span> <span class="w">not.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="lockup clip" id="lockup" data-start="0" data-duration="8" data-track-index="2">
+        <svg viewBox="40 30 140 155" fill="none" aria-hidden="true">
+          <path d="M61 48 L92 79 L61 110" stroke="#f7f8f8" stroke-width="15"
+                stroke-linecap="square" stroke-linejoin="miter" />
+          <path d="M159 48 L115 92 L115 137" stroke="#f7f8f8" stroke-width="15"
+                stroke-linecap="square" stroke-linejoin="miter" />
+          <rect x="99" y="155" width="34" height="17" fill="#5e6ad2" />
+        </svg>
+        <div class="name2"><span class="a">Yusuf</span><span class="b">Creates</span></div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      const L1 = gsap.utils.toArray("#l1 .w");
+      const L2 = gsap.utils.toArray("#l2 .w");
+      const L3 = gsap.utils.toArray("#l3 .w");
+
+      gsap.set("#eyebrow", { autoAlpha: 0, y: -20 });
+      gsap.set("#track", { scaleX: 0 });
+      gsap.set([L1, L2, L3], { autoAlpha: 0, yPercent: 110 });
+      gsap.set("#lockup", { autoAlpha: 0, y: 24 });
+
+      gsap.set("#root", { transformOrigin: "50% 45%" });
+      tl.to("#root", { scale: 1.045, duration: 8, ease: "none" }, 0);
+
+      tl.to("#eyebrow", { autoAlpha: 1, y: 0, duration: 0.46, ease: "power3.out" }, 0.1);
+
+      // The rail advances in three stages, each landing on a mark. The stage
+      // boundaries are what ignite the lines — causal, not coincidental.
+      tl.to("#track", { scaleX: 0.5, duration: 1.0, ease: "power2.inOut" }, 0.35);
+      tl.call(() => document.getElementById("m1").classList.add("on"), null, 0.4);
+
+      tl.to(L1, {
+        autoAlpha: 1, yPercent: 0,
+        duration: 0.6, ease: "power4.out", stagger: 0.07,
+      }, 0.55);
+
+      tl.to("#track", { scaleX: 0.82, duration: 0.9, ease: "power2.inOut" }, 1.9);
+      tl.call(() => document.getElementById("m2").classList.add("on"), null, 1.95);
+
+      tl.to(L2, {
+        autoAlpha: 1, yPercent: 0,
+        duration: 0.62, ease: "power4.out", stagger: 0.08,
+      }, 2.1);
+
+      // Stillness before the last stage completes.
+      tl.to("#track", { scaleX: 1, duration: 0.7, ease: "power3.out" }, 3.9);
+      tl.call(() => document.getElementById("m3").classList.add("on"), null, 4.35);
+
+      tl.to(L3, {
+        autoAlpha: 1, yPercent: 0,
+        duration: 0.55, ease: "power3.out", stagger: 0.045,
+      }, 4.2);
+
+      tl.to("#lockup", { autoAlpha: 1, y: 0, duration: 0.55, ease: "power3.out" }, 6.4);
+
+      tl.seek(0);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

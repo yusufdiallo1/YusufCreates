@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      /*
+        "Two build slots" — scarcity beat, 8s, 1080x1920.
+
+        The figure is real: BUILD_SLOTS = 2 in convex/capacity.ts, and the site
+        derives availability from live projects rather than a toggle. That
+        honesty is the hook — scarcity a viewer can verify is worth more than
+        scarcity they're asked to believe.
+      */
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #08090a; }
+      body { font-family: "Inter", system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+
+      #root { position: relative; width: 1080px; height: 1920px; background: #08090a; }
+
+      .bg { position: absolute; inset: 0; overflow: hidden; }
+      .orb { position: absolute; border-radius: 50%; filter: blur(110px); }
+      .orb-a {
+        top: -280px; right: -220px; width: 1000px; height: 1000px;
+        background: radial-gradient(circle at 35% 35%,
+          rgba(94,106,210,0.55) 0%, rgba(94,106,210,0.20) 40%, transparent 70%);
+      }
+      .orb-b {
+        bottom: -360px; left: -260px; width: 1060px; height: 1060px;
+        background: radial-gradient(circle at 60% 40%,
+          rgba(124,92,220,0.32) 0%, rgba(60,80,190,0.12) 44%, transparent 72%);
+      }
+      .grain {
+        position: absolute; inset: 0; opacity: 0.05; mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+
+      .stage {
+        position: absolute; inset: 0;
+        padding: 0 90px 150px;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+      }
+
+      .eyebrow {
+        display: inline-flex; align-items: center; gap: 14px;
+        padding: 14px 26px; border-radius: 99px; margin-bottom: 40px;
+        background: rgba(255,255,255,0.06);
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.13);
+        font-size: 26px; font-weight: 600; letter-spacing: 0.13em;
+        text-transform: uppercase; color: #f7f8f8;
+      }
+      .eyebrow .dot {
+        width: 12px; height: 12px; border-radius: 99px; background: #5e6ad2;
+        box-shadow: 0 0 16px #5e6ad2;
+      }
+
+      .numeral {
+        height: 340px; display: flex; align-items: center; justify-content: center;
+        font-size: 330px; font-weight: 700; color: #5e6ad2;
+        letter-spacing: -0.06em; line-height: 1;
+        text-shadow: 0 0 110px rgba(94,106,210,0.5);
+      }
+
+      .caption {
+        font-size: 52px; font-weight: 700; color: #f7f8f8;
+        letter-spacing: -0.028em; margin-top: 18px;
+      }
+
+      /* Two slot markers. They fill in sequence — the sustained motion that
+         carries the middle of the piece. */
+      .slots { display: flex; gap: 22px; margin-top: 56px; width: 100%; }
+      .slot {
+        flex: 1; height: 22px; border-radius: 99px;
+        background: rgba(255,255,255,0.08);
+        overflow: hidden;
+      }
+      .slot .fill {
+        display: block; height: 100%; width: 100%; border-radius: 99px;
+        background: linear-gradient(90deg, #5e6ad2, #8b95e8);
+        box-shadow: 0 0 26px rgba(94,106,210,0.6);
+        transform-origin: left center;
+      }
+
+      .note {
+        font-size: 36px; color: #a2a8b2; line-height: 1.4;
+        text-align: center; margin-top: 44px; max-width: 820px;
+      }
+
+      .cta {
+        position: absolute; left: 90px; right: 90px; bottom: 400px;
+        text-align: center;
+        font-size: 50px; font-weight: 700; color: #5e6ad2;
+        letter-spacing: -0.028em;
+      }
+
+      .lockup {
+        position: absolute; left: 0; right: 0; bottom: 210px;
+        display: flex; align-items: center; justify-content: center; gap: 20px;
+      }
+      .lockup svg { width: 68px; height: auto; overflow: visible; }
+      .lockup .name2 { font-size: 44px; letter-spacing: -0.022em; }
+      .lockup .name2 .a { font-weight: 400; color: #f7f8f8; }
+      .lockup .name2 .b { font-weight: 600; color: #5e6ad2; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="8"
+         data-width="1080" data-height="1920">
+      <div class="bg" aria-hidden="true" data-layout-allow-overflow>
+        <div class="orb orb-a"></div>
+        <div class="orb orb-b"></div>
+        <div class="grain"></div>
+      </div>
+
+      <div class="stage clip" id="stage" data-start="0" data-duration="8" data-track-index="1">
+        <div class="eyebrow" id="eyebrow"><span class="dot"></span><span>Capacity</span></div>
+
+        <div class="numeral" id="numeral">2</div>
+        <div class="caption" id="caption">build slots at a time.</div>
+
+        <div class="slots">
+          <div class="slot"><span class="fill" id="f1"></span></div>
+          <div class="slot"><span class="fill" id="f2"></span></div>
+        </div>
+
+        <div class="note" id="note">
+          Counted from live projects — not a toggle I remember to flip.
+        </div>
+      </div>
+
+      <div class="cta clip" id="cta" data-start="0" data-duration="8" data-track-index="2">
+        Because I build them myself.
+      </div>
+
+      <div class="lockup clip" id="lockup" data-start="0" data-duration="8" data-track-index="3">
+        <svg viewBox="40 30 140 155" fill="none" aria-hidden="true">
+          <path d="M61 48 L92 79 L61 110" stroke="#f7f8f8" stroke-width="15"
+                stroke-linecap="square" stroke-linejoin="miter" />
+          <path d="M159 48 L115 92 L115 137" stroke="#f7f8f8" stroke-width="15"
+                stroke-linecap="square" stroke-linejoin="miter" />
+          <rect x="99" y="155" width="34" height="17" fill="#5e6ad2" />
+        </svg>
+        <div class="name2"><span class="a">Yusuf</span><span class="b">Creates</span></div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      gsap.set("#eyebrow", { autoAlpha: 0, y: -20 });
+      gsap.set("#numeral", { autoAlpha: 0, scale: 0.7, transformOrigin: "50% 55%" });
+      gsap.set("#caption", { autoAlpha: 0, y: 24 });
+      gsap.set(["#f1", "#f2"], { scaleX: 0 });
+      gsap.set("#note", { autoAlpha: 0, y: 22 });
+      gsap.set("#cta", { autoAlpha: 0, y: 24 });
+      gsap.set("#lockup", { autoAlpha: 0, y: 24 });
+
+      gsap.set("#root", { transformOrigin: "50% 45%" });
+      tl.to("#root", { scale: 1.05, duration: 8, ease: "none" }, 0);
+
+      tl.to("#eyebrow", { autoAlpha: 1, y: 0, duration: 0.46, ease: "power3.out" }, 0.1);
+
+      // The numeral arrives with weight — an inverse-zoom landing rather than
+      // a grow-from-nothing, so it reads as something big arriving.
+      // Arrives large and settles — an inverse-zoom landing, so it reads as
+      // something big arriving rather than growing from nothing. 1.28 rather
+      // than 1.6: at the larger scale the glyph briefly crossed into the
+      // eyebrow above it.
+      tl.fromTo("#numeral",
+        { autoAlpha: 0, scale: 1.28 },
+        { autoAlpha: 1, scale: 1, duration: 0.72, ease: "power4.out" },
+        0.4);
+
+      tl.to("#caption", { autoAlpha: 1, y: 0, duration: 0.5, ease: "power3.out" }, 1.05);
+
+      // The two slots fill in sequence. This is the middle of the piece and
+      // the only thing moving — deliberate, so nothing is idling.
+      tl.to("#f1", { scaleX: 1, duration: 0.62, ease: "power3.inOut" }, 1.55);
+      tl.to("#f2", { scaleX: 1, duration: 0.62, ease: "power3.inOut" }, 2.05);
+
+      tl.to("#note", { autoAlpha: 1, y: 0, duration: 0.55, ease: "power3.out" }, 3.1);
+
+      // Stillness, then the reason.
+      tl.to("#cta", { autoAlpha: 1, y: 0, duration: 0.58, ease: "power3.out" }, 5.15);
+      tl.to("#lockup", { autoAlpha: 1, y: 0, duration: 0.55, ease: "power3.out" }, 6.5);
+
+      tl.seek(0);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
