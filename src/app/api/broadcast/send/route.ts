@@ -46,6 +46,10 @@ export async function POST(request: Request) {
     ctaLabel?: string;
     ctaUrl?: string;
     test?: boolean;
+    /** Which list to send to. Resolved server-side from this name only. */
+    audience?: "newsletter" | "clients" | "enterprise" | "all" | "custom";
+    /** A single address, when audience is "custom". */
+    customEmail?: string;
   };
   try {
     body = await request.json();
@@ -91,17 +95,47 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: result.status === "sent", sent: 1 });
   }
 
-  // Real send. Confirmed, not unsubscribed — fetched here, never accepted
-  // from the caller.
-  const recipients = await fetchQuery(
-    api.subscribers.listSendable,
-    {},
-    { token },
-  ).catch(() => []);
+  /*
+   * Real send, to the chosen audience.
+   *
+   * The list is resolved here from an audience NAME, never taken as
+   * addresses from the caller — an endpoint that accepts a recipient list is
+   * an open relay with an auth check in front of it.
+   *
+   * A custom address is the one exception, and it is a single address that
+   * goes only to itself: useful for forwarding a broadcast to one person
+   * without adding them to a list.
+   */
+  const audience =
+    body.audience === "clients" ||
+    body.audience === "enterprise" ||
+    body.audience === "all" ||
+    body.audience === "custom"
+      ? body.audience
+      : "newsletter";
+
+  let recipients: { email: string; name?: string }[];
+
+  if (audience === "custom") {
+    const to = typeof body.customEmail === "string" ? body.customEmail.trim() : "";
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) {
+      return NextResponse.json(
+        { error: "That custom address does not look like an email." },
+        { status: 400 },
+      );
+    }
+    recipients = [{ email: to }];
+  } else {
+    recipients = await fetchQuery(
+      api.subscribers.audienceRecipients,
+      { audience },
+      { token },
+    ).catch(() => []);
+  }
 
   if (recipients.length === 0) {
     return NextResponse.json(
-      { error: "No confirmed subscribers to send to." },
+      { error: `No recipients in the ${audience} audience.` },
       { status: 400 },
     );
   }

@@ -17,9 +17,35 @@ import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
  * Debounced, because it is a network round trip per change. 400ms is long
  * enough to skip mid-word renders and short enough to feel live.
  */
+/** Who a broadcast can go to. Resolved server-side from the id alone. */
+const AUDIENCES = [
+  { id: "newsletter", label: "Newsletter", hint: "Confirmed signups" },
+  { id: "clients", label: "Clients", hint: "Everyone with a project" },
+  { id: "enterprise", label: "Enterprise", hint: "Enterprise clients only" },
+  { id: "all", label: "Everyone", hint: "Newsletter and clients" },
+  { id: "custom", label: "One address", hint: "Send to a single person" },
+] as const;
+
+type AudienceId = (typeof AUDIENCES)[number]["id"];
+
 export function BroadcastComposer() {
-  const recipients = useQuery(api.subscribers.listSendable, {});
-  const count = recipients?.length ?? 0;
+  /*
+   * The audience is chosen, not assumed.
+   *
+   * Every send used to go to confirmed newsletter subscribers with no
+   * choice — there was no way to tell existing clients something without
+   * also telling the mailing list, or the reverse.
+   */
+  const [audience, setAudience] = useState<AudienceId>("newsletter");
+  const [customEmail, setCustomEmail] = useState("");
+
+  const counts = useQuery(api.subscribers.audienceCounts, {});
+  const count =
+    audience === "custom"
+      ? customEmail.trim()
+        ? 1
+        : 0
+      : (counts?.[audience] ?? 0);
 
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -86,10 +112,67 @@ export function BroadcastComposer() {
       <div>
         <h1 className="text-2xl">Broadcast</h1>
         <p className="mt-1 text-sm text-secondary">
-          {recipients === undefined
+          {counts === undefined
             ? "Loading recipients…"
-            : `${count} confirmed ${count === 1 ? "subscriber" : "subscribers"}. Unconfirmed and unsubscribed addresses are never included.`}
+            : `Going to ${count} ${count === 1 ? "person" : "people"}. Unconfirmed and unsubscribed addresses are never included.`}
         </p>
+
+        {/* Chosen before anything is written. Which list this goes to
+            changes what is worth saying, so it belongs above the subject
+            rather than beside the send button. */}
+        <div
+          role="radiogroup"
+          aria-label="Audience"
+          className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-5"
+        >
+          {AUDIENCES.map((a) => {
+            const active = audience === a.id;
+            const n = a.id === "custom" ? null : (counts?.[a.id] ?? 0);
+            return (
+              <button
+                key={a.id}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => setAudience(a.id)}
+                className={`rounded-xl border p-3 text-left transition-colors duration-fast ${
+                  active
+                    ? "border-[color:var(--accent)] bg-surface-2"
+                    : "border-[color:var(--border-hairline)] bg-surface-1 hover:bg-surface-2"
+                }`}
+              >
+                <span className="block text-sm text-primary">
+                  {a.label}
+                  {n !== null ? (
+                    <span className="ml-1.5 text-xs text-secondary tabular-nums">
+                      {n}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="mt-0.5 block text-xs text-secondary">
+                  {a.hint}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {audience === "custom" ? (
+          <div className="mt-3">
+            <label htmlFor="bc-custom" className="text-xs text-secondary">
+              Send to
+            </label>
+            <input
+              id="bc-custom"
+              type="email"
+              autoComplete="off"
+              value={customEmail}
+              onChange={(e) => setCustomEmail(e.target.value)}
+              placeholder="someone@example.com"
+              className="hairline mt-1.5 w-full max-w-sm rounded-lg bg-surface-1 px-3.5 py-2.5 text-sm text-primary"
+            />
+          </div>
+        ) : null}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -248,9 +331,9 @@ export function BroadcastComposer() {
               <div className="mt-3 max-w-sm">
                 <SlideToConfirm
                   purpose="send-broadcast"
-                  label={`Slide to send to ${count} ${count === 1 ? "person" : "people"}`}
+                  label={`Slide to send to ${AUDIENCES.find((a) => a.id === audience)?.label ?? ""} (${count})`}
                   disabled={!canSend}
-                  ariaLabel={`Slide to send this broadcast to ${count} subscribers`}
+                  ariaLabel={`Slide to send this broadcast to ${count} recipients in the ${audience} audience`}
                   onConfirm={async () => {
                     setError(null);
                     const res = await fetch("/api/broadcast/send", {
@@ -261,6 +344,8 @@ export function BroadcastComposer() {
                         body,
                         ctaLabel: includeButton ? ctaLabel : "",
                         ctaUrl: includeButton ? ctaUrl : "",
+                        audience,
+                        customEmail,
                       }),
                     });
                     const json = await res.json().catch(() => ({}));

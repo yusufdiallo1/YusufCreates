@@ -95,7 +95,11 @@ export function Shell({
             <Row>
               <Column style={{ width: "28px", verticalAlign: "middle" }}>
                 <Img
-                  src={`${SITE_URL}/email-logo.png`}
+                  /* Dark ink. Email bodies are white, and the light mark
+                     built for the site's near-black canvas was almost
+                     invisible against one — the wordmark carried the header
+                     on its own. Same geometry, inverted. */
+                  src={`${SITE_URL}/email-logo-dark.png`}
                   width="24"
                   height="24"
                   alt=""

@@ -162,3 +162,108 @@ export const recentLog = query({
     return await ctx.db.query("emailLog").order("desc").take(args.limit ?? 100);
   },
 });
+
+/**
+ * Recipients for a broadcast, by audience.
+ *
+ * The composer used to have no choice at all — every send went to confirmed
+ * newsletter subscribers, so there was no way to tell existing clients about
+ * something without also telling the mailing list, or the reverse.
+ *
+ * Confirmed-and-not-unsubscribed is enforced for the newsletter audience
+ * regardless of what is asked for. Clients are people I already have a
+ * working relationship with, so they are addressable without a double opt-in,
+ * but they are still excluded once they unsubscribe.
+ */
+export const audienceRecipients = query({
+  args: {
+    audience: v.union(
+      v.literal("newsletter"),
+      v.literal("clients"),
+      v.literal("enterprise"),
+      v.literal("all"),
+    ),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const newsletter = async () => {
+      const rows = await ctx.db.query("subscribers").collect();
+      return rows
+        .filter((r) => r.confirmed && r.unsubscribedAt === undefined)
+        .map((r) => ({ email: r.email, name: undefined as string | undefined }));
+    };
+
+    const clients = async () => {
+      const rows = await ctx.db.query("clients").collect();
+      return rows.map((c) => ({ email: c.email, name: c.name }));
+    };
+
+    /** Clients whose lead came in through the enterprise path. */
+    const enterprise = async () => {
+      const leads = await ctx.db.query("leads").collect();
+      const emails = new Set(
+        leads
+          .filter((l) => l.tier === "enterprise" || l.projectType === "enterprise")
+          .map((l) => l.email.toLowerCase()),
+      );
+      const rows = await ctx.db.query("clients").collect();
+      return rows
+        .filter((c) => emails.has(c.email.toLowerCase()))
+        .map((c) => ({ email: c.email, name: c.name }));
+    };
+
+    let list: { email: string; name?: string }[];
+    if (args.audience === "newsletter") list = await newsletter();
+    else if (args.audience === "clients") list = await clients();
+    else if (args.audience === "enterprise") list = await enterprise();
+    else list = [...(await newsletter()), ...(await clients())];
+
+    // One row per address. "All" overlaps by definition — someone on the
+    // mailing list who later became a client is one person, not two sends.
+    const seen = new Set<string>();
+    return list.filter((r) => {
+      const key = r.email.toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  },
+});
+
+/** Recipient counts per audience, for the composer's picker. */
+export const audienceCounts = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+
+    const subs = await ctx.db.query("subscribers").collect();
+    const newsletter = subs.filter(
+      (r) => r.confirmed && r.unsubscribedAt === undefined,
+    );
+    const clients = await ctx.db.query("clients").collect();
+
+    const leads = await ctx.db.query("leads").collect();
+    const entEmails = new Set(
+      leads
+        .filter((l) => l.tier === "enterprise" || l.projectType === "enterprise")
+        .map((l) => l.email.toLowerCase()),
+    );
+    const enterprise = clients.filter((c) =>
+      entEmails.has(c.email.toLowerCase()),
+    );
+
+    const all = new Set(
+      [...newsletter.map((r) => r.email), ...clients.map((c) => c.email)].map(
+        (e) => e.toLowerCase(),
+      ),
+    );
+
+    return {
+      newsletter: newsletter.length,
+      clients: clients.length,
+      enterprise: enterprise.length,
+      all: all.size,
+    };
+  },
+});
