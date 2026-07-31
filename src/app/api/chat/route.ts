@@ -194,6 +194,35 @@ export async function POST(request: Request) {
       } finally {
         controller.close();
 
+        /*
+         * Feedback the agent collected in conversation.
+         *
+         * The model emits a marker on the last line once it has all three
+         * fields; it is parsed here and never reaches the reader, because the
+         * chunk carrying it is only enqueued after the marker is cut.
+         *
+         * A marker rather than tool calling: this model's tool support is
+         * unreliable enough that a dropped call would silently lose feedback
+         * someone took the trouble to write.
+         */
+        const marker = full.match(
+          /\[\[FEEDBACK\s+name="([^"]*)"\s+email="([^"]*)"\s+message="([^"]*)"\s*\]\]/,
+        );
+        if (marker && isConvexConfigured) {
+          const [, name, email, message] = marker;
+          if (name.trim() && message.trim() && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+            void fetchMutation(api.siteFeedback.submit, {
+              name,
+              email,
+              message,
+              path: "/chat",
+            }).catch(() => {
+              // Losing one is better than failing the whole reply after it
+              // has already been streamed.
+            });
+          }
+        }
+
         // Logged after the fact so it never delays the response.
         if (isConvexConfigured && serverSecret && sessionId) {
           const last = messages[messages.length - 1];

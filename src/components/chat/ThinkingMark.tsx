@@ -21,10 +21,19 @@ import { motion, useReducedMotion } from "motion/react";
 const CHEVRON = "M61 48 L92 79 L61 110";
 const ARM = "M159 48 L115 92 L115 137";
 
+/*
+ * Slower and steadier than it was.
+ *
+ * The old loop ran 2.4s with the two strokes sliding apart horizontally,
+ * which read as the mark coming loose. A thinking state should look like
+ * something being assembled, not something falling over — so the strokes now
+ * draw and settle in place, and the cycle is long enough that a reply
+ * arriving mid-loop does not cut it off mid-lurch.
+ */
 const LOOP = {
-  duration: 2.4,
+  duration: 3.2,
   repeat: Infinity,
-  ease: "easeInOut",
+  ease: [0.16, 1, 0.3, 1],
 } as const;
 
 export function ThinkingMark({ className }: { className?: string }) {
@@ -61,31 +70,31 @@ export function ThinkingMark({ className }: { className?: string }) {
       role="status"
       aria-label="Thinking"
     >
-      {/* Left stroke: pulls out and back, rotating about the mark's centre. */}
+      {/* The strokes DRAW rather than move. pathLength animates the stroke
+          along its own path, so the mark writes itself in and fades out —
+          the same gesture as the typing it is waiting for. */}
       <motion.path
         d={CHEVRON}
         {...stroke}
         style={{ originX: "110px", originY: "110px" }}
         animate={{
-          x: [0, -14, 4, 0],
-          rotate: [0, -8, 3, 0],
-          opacity: [1, 0.45, 0.9, 1],
+          pathLength: [0.15, 1, 1, 0.15],
+          opacity: [0.3, 1, 1, 0.3],
         }}
         transition={LOOP}
       />
 
-      {/* Right arm: the opposite phase, so they separate rather than drift
-          together as one shape. */}
+      {/* Second stroke, a quarter-second behind. */}
       <motion.path
         d={ARM}
         {...stroke}
         style={{ originX: "110px", originY: "110px" }}
         animate={{
-          x: [0, 14, -4, 0],
-          rotate: [0, 8, -3, 0],
-          opacity: [1, 0.45, 0.9, 1],
+          pathLength: [0.15, 1, 1, 0.15],
+          opacity: [0.3, 1, 1, 0.3],
         }}
-        transition={{ ...LOOP, delay: 0.12 }}
+        // Trails the chevron, so the mark assembles rather than appearing.
+        transition={{ ...LOOP, delay: 0.25 }}
       />
 
       {/* The block keeps time underneath — it is the one part that stays put,
@@ -96,9 +105,9 @@ export function ThinkingMark({ className }: { className?: string }) {
         width={34}
         height={17}
         fill="currentColor"
-        animate={{ opacity: [1, 0.25, 1], scaleX: [1, 0.7, 1] }}
+        animate={{ opacity: [0.2, 1, 1, 0.2], scaleX: [0.4, 1, 1, 0.4] }}
         style={{ originX: "116px", originY: "163px" }}
-        transition={{ ...LOOP, delay: 0.24 }}
+        transition={{ ...LOOP, delay: 0.5 }}
       />
     </svg>
   );

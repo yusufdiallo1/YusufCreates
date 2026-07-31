@@ -5,6 +5,7 @@ import { TextReveal } from "@/components/motion/TextReveal";
 import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { Parallax } from "@/components/motion/Parallax";
 import { ContactCTA } from "@/components/marketing/ContactCTA";
+import { ServiceGlyph } from "@/components/marketing/ServiceGlyph";
 import { SITE } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -17,6 +18,7 @@ export const metadata: Metadata = {
 const SERVICES = [
   {
     name: "Marketing sites",
+    glyph: "site" as const,
     body: "The site your business is judged by. Fast, accessible, easy for you to edit, and built so adding a page later does not mean paying someone to rebuild it.",
     points: [
       "Landing pages and multi-page sites",
@@ -27,6 +29,7 @@ const SERVICES = [
   },
   {
     name: "Web apps and SaaS",
+    glyph: "app" as const,
     body: "Software people log into. Authentication, a real database, payments, dashboards — the parts that turn a site into a product.",
     points: [
       "Auth and role-based access",
@@ -37,6 +40,7 @@ const SERVICES = [
   },
   {
     name: "Bilingual English and Arabic",
+    glyph: "bilingual" as const,
     body: "Right-to-left done properly: mirrored layout, logical properties, Arabic typography that is set rather than defaulted, and locale-correct numerals and dates.",
     points: [
       "Full RTL mirroring, not a flipped stylesheet",
@@ -47,6 +51,7 @@ const SERVICES = [
   },
   {
     name: "Rescue and rebuild",
+    glyph: "rescue" as const,
     body: "You have something that half works and nobody will touch. I take it over, make it maintainable, and hand it back in your name.",
     points: [
       "Audit of what exists",
@@ -64,7 +69,7 @@ export default function ServicesPage() {
           real question by the third service. */}
       <ScrollProgress />
 
-      <div className="mx-auto max-w-3xl px-6 pt-32 pb-16">
+      <div className="mx-auto max-w-4xl px-6 pt-32 pb-16">
         <TextReveal as="h1" by="word" className="block text-4xl">
           Services
         </TextReveal>
@@ -75,32 +80,43 @@ export default function ServicesPage() {
         </Reveal>
       </div>
 
-      <div className="mx-auto max-w-3xl px-6 pb-24">
-        <ul className="divide-y divide-[color:var(--border-hairline)]">
+      <div className="mx-auto max-w-4xl px-6 pb-24">
+        <ul className="space-y-16">
           {SERVICES.map((service, index) => (
             <li key={service.name}>
               {/* A slight drift per row as it passes. Small on purpose —
-                  these are text blocks, and anything larger reads as the
-                  page fighting the scroll rather than responding to it. */}
+                  anything larger reads as the page fighting the scroll
+                  rather than responding to it. */}
               <Parallax distance={index % 2 === 0 ? 16 : 28}>
                 <Reveal delay={index * 0.06}>
-                <div className="py-10">
-                  <h2 className="text-2xl">{service.name}</h2>
-                  <p className="mt-3 text-secondary">{service.body}</p>
-                  <ul className="mt-5 space-y-1.5">
+                  {/* The mark sits beside the heading on desktop and above
+                      it on a phone, where a 96px column would leave the text
+                      too narrow to read. */}
+                  <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-7">
+                    <ServiceGlyph
+                      kind={service.glyph}
+                      className="size-14 shrink-0 text-accent sm:size-16"
+                    />
+                    <div className="min-w-0">
+                      <h2 className="text-2xl">{service.name}</h2>
+                      <p className="mt-3 text-secondary">{service.body}</p>
+                    </div>
+                  </div>
+
+                  {/* The points were a bulleted list under a paragraph, which
+                      reads as more of the same prose. As cards they are
+                      scannable — you can take the four in without reading
+                      any of them as a sentence. */}
+                  <ul className="mt-6 grid gap-3 sm:grid-cols-2">
                     {service.points.map((point) => (
                       <li
                         key={point}
-                        className="flex gap-3 text-sm text-secondary"
+                        className="hairline rounded-xl bg-surface-1 px-4 py-3.5 text-sm text-secondary"
                       >
-                        <span aria-hidden="true" className="text-accent">
-                          —
-                        </span>
                         {point}
                       </li>
                     ))}
                   </ul>
-                </div>
                 </Reveal>
               </Parallax>
             </li>

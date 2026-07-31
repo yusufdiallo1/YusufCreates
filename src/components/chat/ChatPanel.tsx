@@ -29,6 +29,18 @@ interface Turn {
   content: string;
 }
 
+/*
+ * How the reply is paced onto the screen.
+ *
+ * MIN_MS is a floor on the whole exchange, not a fixed delay before it: the
+ * text is being written the entire time, so the wait is spent reading rather
+ * than watching a spinner.
+ */
+const MIN_MS = 7000;
+
+/** ~45 chars/sec — a shade quicker than a fast typist, still readable. */
+const CHARS_PER_MS = 0.045;
+
 export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
   const reduceMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
@@ -129,14 +141,96 @@ export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
+
+      /*
+       * The network fills `acc`; a separate paced loop below drains it to the
+       * screen. They are deliberately not the same thing.
+       *
+       * Groq returns a full paragraph in well under a second, which arrives
+       * as a wall of text — it reads as canned, and there is no way to start
+       * reading the answer until all of it is there. Metering the release at
+       * roughly reading speed means the first sentence is legible while the
+       * rest is still coming, and the reply lands as something being written.
+       */
       let acc = "";
+      let done = false;
+      let failed: unknown = null;
+
+      const pump = (async () => {
+        try {
+          for (;;) {
+            const chunk = await reader.read();
+            if (chunk.done) break;
+            acc += decoder.decode(chunk.value, { stream: true });
+          }
+        } catch (err) {
+          // Recorded rather than thrown: this runs detached, and the paced
+          // loop below would otherwise wait forever on a buffer that has
+          // stopped growing.
+          failed = err;
+        } finally {
+          done = true;
+        }
+      })();
+
+      let shown = 0;
+      const started = performance.now();
 
       for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        acc += decoder.decode(value, { stream: true });
-        setTurns([...next, { role: "assistant", content: acc }]);
+        /*
+         * The feedback marker is an instruction to the server, not something
+         * anyone should read. Cut from the visible text — including a partial
+         * one, so the opening brackets never flash on screen while the rest
+         * of it is still arriving.
+         */
+        const visible = acc
+          .replace(/\[\[FEEDBACK[\s\S]*?\]\]/g, "")
+          .replace(/\[\[FEEDBACK[\s\S]*$/, "")
+          .trimEnd();
+
+        if (failed) throw failed;
+        if (done && shown >= visible.length) break;
+
+        /*
+         * Held at MIN_MS even when the whole answer is already buffered.
+         *
+         * An answer that appears instantly reads as a lookup, not as thought
+         * — so the pace stretches to fill the floor when the reply is short,
+         * and never drags past it when the reply is long. The SLOWER of the
+         * two rates governs, which is why this is a min and not a max: a max
+         * would let either branch race ahead and the floor would never hold.
+         */
+        const elapsed = performance.now() - started;
+        const target = Math.min(
+          // Reading speed — the cap on how fast text may appear.
+          CHARS_PER_MS * elapsed,
+          // The floor, as a rate: the whole reply spread over MIN_MS. For a
+          // short answer this is the slower of the two and therefore governs;
+          // for a long one reading speed governs and this never bites.
+          (visible.length * elapsed) / MIN_MS,
+        );
+        shown = Math.min(visible.length, Math.max(shown, Math.ceil(target)));
+
+        setTurns([...next, { role: "assistant", content: visible.slice(0, shown) }]);
+
+        // One frame. Typing faster than the screen refreshes is not typing.
+        await new Promise((r) => requestAnimationFrame(() => r(null)));
       }
+
+      // Settled before returning, so a late rejection cannot surface as an
+      // unhandled one after this handler has already finished.
+      await pump;
+
+      setTurns([
+        ...next,
+        {
+          role: "assistant",
+          content: acc
+            .replace(/\[\[FEEDBACK[\s\S]*?\]\]/g, "")
+            .replace(/\[\[FEEDBACK[\s\S]*$/, "")
+            .trimEnd(),
+        },
+      ]);
     } catch {
       setTurns(next);
       setError("That didn't get through. Try again in a moment.");
