@@ -32,6 +32,10 @@ export function PromoBanner() {
       return [];
     }
   });
+  const copy = useQuery(
+    api.settings.publicCopy,
+    isConvexConfigured ? {} : "skip",
+  );
   const [remaining, setRemaining] = useState<string | null>(null);
   /** Retired after its moment, or as soon as the reader moves past it. */
   const [hidden, setHidden] = useState(false);
@@ -45,7 +49,7 @@ export function PromoBanner() {
    * covers the case where they simply left it on screen.
    */
   useEffect(() => {
-    if (!promo?.bannerText) return;
+    if (!promo?.bannerText && !copy?.noticeText) return;
 
     const timer = setTimeout(() => setHidden(true), 15_000);
     const onScroll = () => {
@@ -57,7 +61,7 @@ export function PromoBanner() {
       clearTimeout(timer);
       window.removeEventListener("scroll", onScroll);
     };
-  }, [promo?.bannerText]);
+  }, [promo?.bannerText, copy?.noticeText]);
 
   // Countdown ticks once a minute, not once a second. A ticking seconds
   // counter on a discount reads as a pressure tactic — the kind of thing that
@@ -84,8 +88,18 @@ export function PromoBanner() {
     return () => clearInterval(id);
   }, [promo?.showCountdown, promo?.endsAt]);
 
-  if (!promo || !promo.bannerText) return null;
-  if (dismissed.includes(promo.id)) return null;
+  /*
+   * A promo banner, or a plain announcement.
+   *
+   * Both occupy the same bar because two stacked bars is one too many. A
+   * promo wins when both are set: it carries a discount, which is the more
+   * urgent of the two.
+   */
+  const text = promo?.bannerText ?? copy?.noticeText ?? null;
+  const id = promo?.id ?? "notice";
+
+  if (!text) return null;
+  if (dismissed.includes(id)) return null;
   if (hidden) return null;
 
   return (
@@ -105,7 +119,7 @@ export function PromoBanner() {
         className="fixed inset-x-0 top-0 z-[60] overflow-hidden bg-[color:var(--accent-solid)] text-white"
       >
         <div className="mx-auto flex max-w-5xl items-center justify-center gap-3 px-6 py-2.5 text-sm">
-          <span>{promo.bannerText}</span>
+          <span>{text}</span>
           {remaining ? (
             <span className="opacity-80 tabular-nums">ends in {remaining}</span>
           ) : null}
@@ -113,7 +127,7 @@ export function PromoBanner() {
             type="button"
             aria-label="Dismiss this announcement"
             onClick={() => {
-              const next = [...dismissed, promo.id];
+              const next = [...dismissed, id];
               setDismissed(next);
               try {
                 localStorage.setItem(KEY, JSON.stringify(next));

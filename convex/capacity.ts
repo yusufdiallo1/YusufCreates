@@ -13,8 +13,30 @@ import type { QueryCtx } from "./_generated/server";
  * taking work you cannot start.
  */
 
+/**
+ * Capacity, as fallbacks.
+ *
+ * The live figures are settings rows (`slots.build`, `slots.care`) so they
+ * can change without a deploy — turning work down for a month is a decision
+ * made on a Tuesday, not one worth shipping code for. These apply when the
+ * setting is unset or malformed.
+ */
 export const BUILD_SLOTS = 2;
 export const CARE_SLOTS = 2;
+
+/** Reads a positive integer setting, falling back when absent or nonsense. */
+async function slotSetting(
+  ctx: { db: { query: (t: "settings") => any } },
+  key: string,
+  fallback: number,
+): Promise<number> {
+  const row = await ctx.db
+    .query("settings")
+    .withIndex("by_key", (q: any) => q.eq("key", key))
+    .unique();
+  const n = Number(row?.value);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : fallback;
+}
 
 /**
  * How many months ahead a visitor can book.
@@ -82,6 +104,10 @@ async function held(ctx: QueryCtx) {
 export const slots = query({
   args: {},
   handler: async (ctx) => {
+    // Live capacity, or the constants above when unset.
+    const buildSlots = await slotSetting(ctx, "slots.build", BUILD_SLOTS);
+    const careSlots = await slotSetting(ctx, "slots.care", CARE_SLOTS);
+
     const now = new Date();
     const current = monthStart(now);
 
@@ -107,28 +133,28 @@ export const slots = query({
 
       months.push({
         month,
-        buildOpen: Math.max(0, BUILD_SLOTS - buildTaken),
-        careOpen: Math.max(0, CARE_SLOTS - careTaken),
+        buildOpen: Math.max(0, buildSlots - buildTaken),
+        careOpen: Math.max(0, careSlots - careTaken),
       });
     }
 
     return {
       months,
-      buildSlots: BUILD_SLOTS,
-      careSlots: CARE_SLOTS,
+      buildSlots,
+      careSlots,
       // Drives the "available now" indicator across the site, so the badge
       // and the booking form can never disagree.
       openNow: {
         build: Math.max(
           0,
-          BUILD_SLOTS -
+          buildSlots -
             builds -
             waiting.filter((r) => r.kind === "build" && r.slotMonth === current)
               .length,
         ),
         care: Math.max(
           0,
-          CARE_SLOTS -
+          careSlots -
             care -
             waiting.filter((r) => r.kind === "care" && r.slotMonth === current)
               .length,

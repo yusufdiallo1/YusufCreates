@@ -1,6 +1,8 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
+import { useQuery } from "convex/react";
+import { api, isConvexConfigured } from "@/lib/convex-api";
 
 /**
  * Post-submission state. Deliberately a full panel rather than a toast: the
@@ -16,7 +18,9 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 const NEXT_STEPS = [
   {
     n: "01",
-    title: "I read it within 24 hours",
+    // The window is substituted at render from settings, so the promise
+    // shown here is the one currently being made.
+    title: "I read it within {reply}",
     body: "Every enquiry gets a real reply from me, not an autoresponder.",
   },
   {
@@ -37,6 +41,11 @@ export function SubmitSuccess({
   summary: { label: string; value: string }[];
 }) {
   const reduceMotion = useReducedMotion();
+  const copy = useQuery(
+    api.settings.publicCopy,
+    isConvexConfigured ? {} : "skip",
+  );
+  const replyWindow = copy?.replyWindow ?? "24 hours";
 
   return (
     <div>
@@ -98,7 +107,7 @@ export function SubmitSuccess({
               {step.n}
             </span>
             <div>
-              <h2 className="text-base text-primary">{step.title}</h2>
+              <h2 className="text-base text-primary">{step.title.replace("{reply}", replyWindow)}</h2>
               <p className="mt-1 text-sm text-secondary">{step.body}</p>
             </div>
           </motion.li>

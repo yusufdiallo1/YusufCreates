@@ -60,6 +60,34 @@ export const publicRates = query({
   },
 });
 
+/**
+ * Site-wide copy the public pages read at runtime.
+ *
+ * Public because every value here is printed on the page anyway. Narrow for
+ * the same reason getAll is not used: it returns every setting, and these
+ * pages need four of them.
+ */
+export const publicCopy = query({
+  args: {},
+  handler: async (ctx) => {
+    const read = async (key: string) => {
+      const row = await ctx.db
+        .query("settings")
+        .withIndex("by_key", (q) => q.eq("key", key))
+        .unique();
+      const value = typeof row?.value === "string" ? row.value.trim() : "";
+      return value || null;
+    };
+
+    return {
+      replyWindow: await read("reply.window"),
+      hoursWindow: await read("hours.window"),
+      hoursTimezone: await read("hours.timezone"),
+      noticeText: await read("notice.text"),
+    };
+  },
+});
+
 export const set = mutation({
   args: { key: v.string(), value: v.any() },
   handler: async (ctx, args) => {
