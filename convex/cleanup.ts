@@ -104,6 +104,15 @@ export const removeTestData = internalMutation({
       }
     }
 
+    const audits = await ctx.db.query("audits").collect();
+    let removedAudits = 0;
+    for (const a of audits) {
+      if (a.email === "logo-check@example.com" || a.email === "verify@example.com") {
+        await ctx.db.delete(a._id);
+        removedAudits++;
+      }
+    }
+
     const feedback = await ctx.db.query("siteFeedback").collect();
     let removedFeedback = 0;
     for (const f of feedback) {
@@ -113,7 +122,7 @@ export const removeTestData = internalMutation({
       }
     }
 
-    return { removedPromos, removedFeedback, removedComments };
+    return { removedPromos, removedFeedback, removedComments, removedAudits };
   },
 });
 

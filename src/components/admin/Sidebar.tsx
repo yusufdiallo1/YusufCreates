@@ -154,6 +154,14 @@ export function Sidebar() {
 
       <div className="space-y-1 px-1 py-3 before:mb-3 before:block before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/8 before:to-transparent">
         <Link
+          href={`${ADMIN_PATH}/audits`}
+          aria-current={isActive(`${ADMIN_PATH}/audits`) ? "page" : undefined}
+          onClick={() => setMobileOpen(false)}
+          className="admin-nav-link"
+        >
+          Site audits
+        </Link>
+        <Link
           href={`${ADMIN_PATH}/feedback`}
           aria-current={isActive(`${ADMIN_PATH}/feedback`) ? "page" : undefined}
           onClick={() => setMobileOpen(false)}

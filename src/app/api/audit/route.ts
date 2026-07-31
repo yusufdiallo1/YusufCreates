@@ -159,10 +159,39 @@ async function readSiteIdentity(url: string): Promise<{
       meta(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)/i) ??
       meta(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)/i);
 
+    /*
+     * Icon first, og:image second.
+     *
+     * og:image is a share card — usually 1200x630 with a headline baked into
+     * it — which looks wrong in a 48px square. A favicon or apple-touch-icon
+     * is the brand mark, which is what belongs beside their name.
+     *
+     * Both attribute orders are tried. Half the web writes rel before href
+     * and half writes href first, and matching only one silently found no
+     * icon on the other half.
+     */
+    const linkHref = (relPattern: string) =>
+      meta(
+        new RegExp(
+          `<link[^>]+rel=["'][^"']*${relPattern}[^"']*["'][^>]+href=["']([^"']+)`,
+          "i",
+        ),
+      ) ??
+      meta(
+        new RegExp(
+          `<link[^>]+href=["']([^"']+)["'][^>]+rel=["'][^"']*${relPattern}`,
+          "i",
+        ),
+      );
+
     const rawLogo =
+      linkHref("apple-touch-icon") ??
+      linkHref("icon") ??
       meta(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i) ??
-      meta(/<link[^>]+rel=["'][^"']*apple-touch-icon[^"']*["'][^>]+href=["']([^"']+)/i) ??
-      meta(/<link[^>]+rel=["'][^"']*icon[^"']*["'][^>]+href=["']([^"']+)/i);
+      // Served from the root by convention even when nothing declares it.
+      // Verified below before it is stored, so a 404 does not become a
+      // broken image in the report.
+      "/favicon.ico";
 
     // Resolved against the page, since these are routinely relative.
     let siteLogo: string | undefined;
@@ -170,7 +199,14 @@ async function readSiteIdentity(url: string): Promise<{
       try {
         const abs = new URL(rawLogo, res.url || url);
         if (abs.protocol === "https:" || abs.protocol === "http:") {
-          siteLogo = abs.toString();
+          // Checked, because the /favicon.ico fallback above is a guess and a
+          // 404 would render as a broken image next to someone's name.
+          const head = await fetch(abs, {
+            method: "HEAD",
+            signal: AbortSignal.timeout(6_000),
+          }).catch(() => null);
+
+          if (head?.ok) siteLogo = abs.toString();
         }
       } catch {
         // A malformed href is simply no logo.
