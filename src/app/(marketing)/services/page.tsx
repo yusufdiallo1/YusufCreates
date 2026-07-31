@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Reveal } from "@/components/motion/Reveal";
 import { TextReveal } from "@/components/motion/TextReveal";
+import { ScrollProgress } from "@/components/motion/ScrollProgress";
+import { Parallax } from "@/components/motion/Parallax";
 import { ContactCTA } from "@/components/marketing/ContactCTA";
 import { SITE } from "@/lib/constants";
 
@@ -58,6 +60,10 @@ const SERVICES = [
 export default function ServicesPage() {
   return (
     <>
+      {/* How far through you are. The list is long enough that this is a
+          real question by the third service. */}
+      <ScrollProgress />
+
       <div className="mx-auto max-w-3xl px-6 pt-32 pb-16">
         <TextReveal as="h1" by="word" className="block text-4xl">
           Services
@@ -73,7 +79,11 @@ export default function ServicesPage() {
         <ul className="divide-y divide-[color:var(--border-hairline)]">
           {SERVICES.map((service, index) => (
             <li key={service.name}>
-              <Reveal delay={index * 0.06}>
+              {/* A slight drift per row as it passes. Small on purpose —
+                  these are text blocks, and anything larger reads as the
+                  page fighting the scroll rather than responding to it. */}
+              <Parallax distance={index % 2 === 0 ? 16 : 28}>
+                <Reveal delay={index * 0.06}>
                 <div className="py-10">
                   <h2 className="text-2xl">{service.name}</h2>
                   <p className="mt-3 text-secondary">{service.body}</p>
@@ -91,7 +101,8 @@ export default function ServicesPage() {
                     ))}
                   </ul>
                 </div>
-              </Reveal>
+                </Reveal>
+              </Parallax>
             </li>
           ))}
         </ul>
