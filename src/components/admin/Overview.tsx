@@ -119,7 +119,7 @@ export function Overview() {
           Pipeline by type
         </h2>
         <p className="mt-1 text-xs text-secondary">
-          Estimated from the midpoint of each budget band. Open leads only.
+          From the published price of each plan. Open leads only.
         </p>
 
         {pipeline.length === 0 ? (

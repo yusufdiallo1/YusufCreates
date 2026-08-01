@@ -145,6 +145,49 @@ export async function POST(request: Request) {
        */
       case "payment_intent.succeeded": {
         const pi = event.data.object as Stripe.PaymentIntent;
+
+        /*
+         * Build deposits settle here, before the invoice path.
+         *
+         * This is what actually starts the two-hour clock — the mutation
+         * stamps depositPaidAt and moves the build to `building` in one
+         * step, so the countdown the client watches begins at the instant
+         * the money cleared rather than whenever I next look at the admin.
+         *
+         * Checked first because a build deposit carries no convexInvoiceId
+         * and the guard below would otherwise drop it on the floor.
+         */
+        if (pi.metadata?.kind === "build_deposit") {
+          const buildToken = pi.metadata?.buildToken;
+          if (buildToken) {
+            await fetchMutation(api.express.markDepositPaid, {
+              secret: serverSecret,
+              token: buildToken,
+              stripeSessionId: pi.id,
+            });
+          }
+          break;
+        }
+
+        /*
+         * The balance, which is what releases the finished site.
+         *
+         * Settled here rather than in the browser callback for the same
+         * reason as the deposit: someone who closes the tab the instant the
+         * card clears must still end up with their site unlocked. byToken
+         * withholds deliveredUrl until this mutation has run.
+         */
+        if (pi.metadata?.kind === "build_balance") {
+          const buildToken = pi.metadata?.buildToken;
+          if (buildToken) {
+            await fetchMutation(api.express.markBalancePaid, {
+              secret: serverSecret,
+              token: buildToken,
+            });
+          }
+          break;
+        }
+
         const convexInvoiceId = pi.metadata?.convexInvoiceId;
 
         // A PaymentIntent raised outside the portal has no id of ours to

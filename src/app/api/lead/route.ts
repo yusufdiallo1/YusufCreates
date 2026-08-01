@@ -66,7 +66,6 @@ interface Payload {
   supportScope?: string;
   promoCode?: string;
   tier?: string;
-  budget?: string;
   timeline?: string;
   message?: string;
   source?: string;
@@ -124,7 +123,6 @@ export async function POST(request: Request) {
   // Layer 4 — recorded, not enforced.
   const suspicion = suspicionFromSignals(payload.slideSignals);
   const { score, band } = scoreLead({
-    budget: payload.budget,
     timeline: payload.timeline,
     projectType: payload.projectType,
     tier: payload.tier,
@@ -189,7 +187,7 @@ export async function POST(request: Request) {
       // case still lines up with the promo when the invoice is raised.
       promoCode: trim(payload.promoCode)?.toUpperCase(),
       tier: payload.tier || undefined,
-      budget: payload.budget || undefined,
+      plan: payload.plan || undefined,
       timeline: payload.timeline || undefined,
       message:
         suspicion === "review"
@@ -200,6 +198,49 @@ export async function POST(request: Request) {
       slideSignals: payload.slideSignals,
       score,
     });
+
+    /*
+     * The enquiry also becomes a request in the inbox.
+     *
+     * Both records, deliberately. The lead is the person who asked and keeps
+     * its score and history; the request is the job, and is the thing I
+     * accept or decline. Writing only the lead is what left form submissions
+     * with no accept, no decline and no email.
+     *
+     * Never fatal. The lead is already saved by this point, and losing an
+     * enquiry because the second write failed would be far worse than an
+     * inbox row I have to create by hand.
+     */
+    const logSecret = process.env.EMAIL_LOG_SECRET;
+    if (leadId && logSecret) {
+      const brief = [
+        trim(payload.projectPurpose),
+        trim(payload.message),
+        trim(payload.audience) ? `Audience: ${trim(payload.audience)}` : undefined,
+        trim(payload.existingUrl) ? `Existing: ${trim(payload.existingUrl)}` : undefined,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+
+      if (brief) {
+        try {
+          await fetchMutation(api.express.createFromLead, {
+            secret: logSecret,
+            leadId,
+            name: payload.name?.trim() ?? "",
+            email,
+            company: trim(payload.company),
+            brief,
+            plan: payload.plan || "one-page",
+            // The band is text ("4 to 6"); its first number is the page count
+            // the request is priced and briefed against.
+            pages: pageCount ? Number(pageCount.match(/\d+/)?.[0]) || 1 : 1,
+          });
+        } catch (err) {
+          console.error("[lead] could not create request row", err);
+        }
+      }
+    }
   } catch {
     return NextResponse.json({ error: "Could not save that." }, { status: 502 });
   }
@@ -288,7 +329,6 @@ function buildSummary(p: Payload): { label: string; value: string }[] {
     ["Current state", p.currentState],
     ["Existing site", p.existingUrl],
     ["Pages", p.pageCount],
-    ["Budget", p.budget],
     ["Timeline", p.timeline],
     ["Support scope", p.supportScope],
     ["Discount code", p.promoCode],

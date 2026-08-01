@@ -30,7 +30,7 @@ import { PhoneField } from "@/components/ui/PhoneField";
  * Four-step lead form, branching by plan.
  *
  * Step 1 picks the plan, and that choice decides which questions step 3 asks.
- * Enterprise takes a different path entirely — no budget dropdown, because at
+ * Enterprise takes a different path entirely, because at
  * that size the number comes out of a scoping call, and putting a band on the
  * record before anyone has scoped anything just anchors the conversation
  * wrongly. It asks about procurement, sign-off and NDA instead, which is what
@@ -305,8 +305,8 @@ export function StartForm() {
               <legend className="text-lg">About the project</legend>
               {activePlan.skipsPricing ? (
                 <p className="mt-2 text-sm text-secondary">
-                  No budget question here — at this size the number comes out of
-                  a scoping call, not a dropdown.
+                  The number here comes out of a scoping call rather than the
+                  price list.
                 </p>
               ) : null}
 
@@ -701,7 +701,6 @@ function buildSummary(values: Values, planLabel?: string) {
     ["contactPreference", "Contact by"],
     ["company", "Company"],
     ["role", "Role"],
-    ["budget", "Budget"],
     ["timeline", "Timeline"],
     ["targetLaunch", "Target launch"],
   ];

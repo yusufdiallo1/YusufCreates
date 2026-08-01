@@ -61,16 +61,30 @@ export const overview = query({
         waitingHours: Math.floor((now - l._creationTime) / 3_600_000),
       }));
 
-    // Pipeline value by tier, from the mid-point of each budget band. A band
-    // cannot be summed directly, and the midpoint is a defensible estimate;
-    // the top band uses its floor rather than inventing a ceiling.
-    const BAND_MIDPOINT: Record<string, number> = {
-      "Under $1,000": 500,
-      "$1,000 – $3,000": 2000,
-      "$3,000 – $6,000": 4500,
-      "$6,000 – $13,000": 9500,
-      "$13,000+": 13000,
-      "Not sure yet": 0,
+    /*
+     * Pipeline value from the PUBLISHED price of the plan they chose, in USD.
+     *
+     * Previously the midpoint of a self-reported budget band. The plan is the
+     * better number: it is what the work actually costs rather than what
+     * someone guessed they might spend, so the total is a real figure instead
+     * of an average of estimates.
+     *
+     * Enterprise and revive are deliberately 0 — both are scoped before they
+     * are quoted, and inventing a figure here would put a number on the
+     * dashboard that no one has agreed to. They still show in the count.
+     *
+     * Care is one month. Annualising unsigned recurring revenue would inflate
+     * the pipeline by 12x on the strength of an enquiry.
+     */
+    const PLAN_VALUE: Record<string, number> = {
+      native: 3200,
+      "web-app": 2500,
+      app: 2500,
+      "multi-page": 750,
+      "one-page": 400,
+      support: 180,
+      enterprise: 0,
+      revive: 0,
     };
 
     const byTier = new Map<string, { count: number; value: number }>();
@@ -78,7 +92,7 @@ export const overview = query({
       const key = l.projectType ?? l.tier ?? "Unspecified";
       const entry = byTier.get(key) ?? { count: 0, value: 0 };
       entry.count += 1;
-      entry.value += BAND_MIDPOINT[l.budget ?? ""] ?? 0;
+      entry.value += PLAN_VALUE[l.plan ?? ""] ?? PLAN_VALUE[l.tier ?? ""] ?? 0;
       byTier.set(key, entry);
     }
 

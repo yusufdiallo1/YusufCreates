@@ -248,6 +248,11 @@ function AddClientDialog({
     <Dialog label="Add client" onClose={onClose}>
       <h2 className="text-lg text-primary">Add client</h2>
       <p className="mt-1 text-xs text-secondary">
+        For someone who came to you directly. Anyone who sent a request through
+        the site becomes a client automatically when you approve it — you do not
+        need to add them here.
+      </p>
+      <p className="mt-2 text-xs text-secondary">
         They sign in with this address — nobody not on this list can create an
         account. Their project is created at the same time so the portal has
         something to show.

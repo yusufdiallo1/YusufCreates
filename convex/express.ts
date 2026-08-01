@@ -1,5 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
 import { requireAdmin } from "./lib/auth";
 
 /**
@@ -11,9 +13,13 @@ import { requireAdmin } from "./lib/auth";
  *
  * Two decisions that shape the whole file:
  *
- * 1. The clock starts when I ACCEPT, not when they pay. An order landing at
- *    3am must not already be late by breakfast, and accepting is the point
- *    where I can decline a brief that is not really two pages.
+ * 1. Nobody pays before I have approved the brief. An order lands as
+ *    pending_approval; I read it and either approve — which mints nothing new,
+ *    they already have their token, but does send them the portal link and
+ *    unlock payment — or decline it. Taking money for work I have not agreed
+ *    to do is the one thing this flow must not allow.
+ * 1b. The clock starts on PAYMENT, not on approval. An approved order sitting
+ *    unopened in an inbox must not burn the two hours.
  * 2. Whether the balance is owed is decided ONCE, at delivery, and written
  *    down. Deriving it later from timestamps means the answer could change if
  *    the window constant ever moves — and this decides who keeps money.
@@ -66,7 +72,7 @@ export const create = mutation({
       email,
       brief,
       pages,
-      status: "awaiting_payment",
+      status: "pending_approval",
       depositAmount: EXPRESS_DEPOSIT,
       balanceAmount: EXPRESS_TOTAL - EXPRESS_DEPOSIT,
       currency: (args.currency ?? "usd").toLowerCase(),
@@ -88,6 +94,23 @@ export const byToken = query({
       .unique();
     if (!row) return null;
 
+    /*
+     * The finished site is released when the balance is settled.
+     *
+     * Withheld HERE rather than hidden in the component: a URL sent to the
+     * browser is a URL anyone can read out of the network tab, so "hidden in
+     * the UI" is not withheld at all. The preview stays visible throughout —
+     * they should see what they are paying to unlock.
+     *
+     * Waived counts as settled. If I missed the deadline the balance is gone,
+     * and holding the work back over money they no longer owe would turn the
+     * guarantee into a hostage.
+     */
+    const settled =
+      Boolean(row.balancePaidAt) ||
+      Boolean(row.balanceWaived) ||
+      row.balanceAmount <= 0;
+
     // The brief is theirs, but nothing internal goes out with it.
     return {
       _id: row._id,
@@ -104,7 +127,16 @@ export const byToken = query({
       acceptedAt: row.acceptedAt ?? null,
       dueAt: row.dueAt ?? null,
       deliveredAt: row.deliveredAt ?? null,
-      deliveredUrl: row.deliveredUrl ?? null,
+      /** Null until the balance is settled. See `settled` above. */
+      deliveredUrl: settled ? (row.deliveredUrl ?? null) : null,
+      /** So the portal can say "ready, pay to unlock" without leaking it. */
+      deliveredLocked: Boolean(row.deliveredUrl) && !settled,
+      plan: row.plan ?? "express",
+      approvedAt: row.approvedAt ?? null,
+      declinedAt: row.declinedAt ?? null,
+      declineNote: row.declineNote ?? null,
+      deliveryDate: row.deliveryDate ?? null,
+      previewUrl: row.previewUrl ?? null,
     };
   },
 });
@@ -126,39 +158,280 @@ export const markDepositPaid = mutation({
       .unique();
     if (!row || row.depositPaidAt) return;
 
+    // Paying is what starts the clock. They only reached a pay button because
+    // I had already approved the brief, so there is nothing left to decide.
     await ctx.db.patch(row._id, {
       depositPaidAt: Date.now(),
       stripeSessionId: args.stripeSessionId,
-      // Paid, but the clock has not started. That is my move.
-      status: "queued",
     });
+    await startClock(ctx, row);
   },
 });
 
 /**
- * Starts the clock.
+ * Approves the request: opens payment AND builds everything downstream.
  *
- * dueAt is stored rather than computed on read: the countdown they watch and
- * the deadline I am judged against have to be the same instant, and a derived
- * value would shift if WINDOW_MS ever changed mid-build.
+ * This is the one decision that needs a human, so it is the one place that
+ * does the work. Sliding to approve creates the client, creates their
+ * project, links the lead, and leaves the request payable — none of which I
+ * should have to do by hand, because every detail needed is already on the
+ * row they submitted.
+ *
+ * It does NOT start the clock. An approved request they have not opened yet
+ * must not already be running down; paying is what starts it.
+ *
+ * `deliveryDate` is for non-express plans, where the date is agreed rather
+ * than computed from a two-hour window.
  */
-export const accept = mutation({
-  args: { id: v.id("expressBuilds") },
+export const approve = mutation({
+  args: {
+    id: v.id("expressBuilds"),
+    deliveryDate: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const row = await ctx.db.get(args.id);
     if (!row) throw new Error("No such build.");
-    if (!row.depositPaidAt) throw new Error("The deposit has not been paid.");
-    if (row.acceptedAt) return;
+    // Idempotent: a double-slide must not mint a second client or project.
+    if (row.approvedAt) return;
 
     const now = Date.now();
-    await ctx.db.patch(args.id, {
-      acceptedAt: now,
-      dueAt: now + WINDOW_MS,
-      status: "building",
+    const email = row.email.trim().toLowerCase();
+
+    /*
+     * Match an existing client by email before creating one.
+     *
+     * A returning client sending a second request is the normal case, not the
+     * exception, and giving them a duplicate row would split their projects
+     * across two portals — each showing half their work.
+     */
+    const existingClient = await ctx.db
+      .query("clients")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .unique();
+
+    /*
+     * Their enquiry, if they sent one.
+     *
+     * Matched on email rather than carried through the form, because a
+     * request can arrive by a route the lead form never touched. Newest
+     * first: someone who enquired twice means the recent one.
+     */
+    const lead =
+      row.leadId != null
+        ? await ctx.db.get(row.leadId)
+        : (
+            await ctx.db
+              .query("leads")
+              .withIndex("by_email", (q) => q.eq("email", email))
+              .order("desc")
+              .take(1)
+          )[0];
+
+    const company = row.company ?? lead?.company;
+
+    let clientId: Id<"clients">;
+    if (existingClient) {
+      clientId = existingClient._id;
+      // Fill gaps rather than overwrite: a company typed into the admin by
+      // hand should not be blanked by a request that omitted one.
+      await ctx.db.patch(clientId, {
+        company: existingClient.company ?? company,
+        leadId: existingClient.leadId ?? lead?._id,
+      });
+    } else {
+      clientId = await ctx.db.insert("clients", {
+        email,
+        name: row.name,
+        company,
+        leadId: lead?._id,
+        createdAt: now,
+      });
+    }
+
+    /*
+     * The project, named from the brief.
+     *
+     * `planning` rather than `active`: approving means I have agreed to do it,
+     * not that I have started. It moves to active when the deposit clears and
+     * the clock starts, which is the same instant for both records.
+     */
+    const projectId = await ctx.db.insert("clientProjects", {
+      clientId,
+      name: projectNameFrom(row.brief, row.name),
+      description: row.brief,
+      status: "planning",
+      targetLaunch: args.deliveryDate,
+      createdAt: now,
     });
+
+    await ctx.db.patch(args.id, {
+      approvedAt: now,
+      deliveryDate: args.deliveryDate,
+      status: "awaiting_payment",
+      clientId,
+      projectId,
+      leadId: lead?._id,
+    });
+
+    // The enquiry is now a job. Marking it here rather than expecting me to
+    // remember means the leads list stops showing work already underway.
+    if (lead && lead.status !== "won") {
+      await ctx.db.patch(lead._id, { status: "won" });
+    }
+
+    return { clientId, projectId };
   },
 });
+
+/**
+ * A project name from the brief's first line.
+ *
+ * The request form asks for a brief, not a project name — asking for both
+ * would be asking the same question twice. The first sentence is almost
+ * always what the thing is ("Two page site for a coffee roastery"), which
+ * makes a better label than anything I would type. Falls back to their name
+ * so the project is never nameless.
+ */
+function projectNameFrom(brief: string, name: string): string {
+  const firstLine = brief.trim().split(/[\n.]/)[0]?.trim() ?? "";
+  if (firstLine.length >= 3 && firstLine.length <= 80) return firstLine;
+  if (firstLine.length > 80) return `${firstLine.slice(0, 77).trimEnd()}…`;
+  return `${name}'s project`;
+}
+
+/**
+ * Everything a decision email needs, including the address.
+ *
+ * Separate from byToken, which deliberately withholds the email so a leaked
+ * token cannot be used to read it back. This one is admin-gated and called
+ * from the approve and decline routes on the server.
+ */
+export const forDecisionEmail = query({
+  args: { id: v.id("expressBuilds") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const row = await ctx.db.get(args.id);
+    if (!row) return null;
+
+    return {
+      name: row.name,
+      email: row.email,
+      token: row.token,
+      currency: row.currency,
+      depositAmount: row.depositAmount,
+      balanceAmount: row.balanceAmount,
+      plan: row.plan ?? "express",
+      deliveryDate: row.deliveryDate ?? null,
+      declineNote: row.declineNote ?? null,
+      portalEmailSentAt: row.portalEmailSentAt ?? null,
+      decisionEmailSentAt: row.decisionEmailSentAt ?? null,
+    };
+  },
+});
+
+/**
+ * Records that the portal link went out.
+ *
+ * Stamped by the route after Resend accepts it, not by `approve` — approving
+ * and successfully emailing are two different things, and marking it sent
+ * when it was not is how a client ends up waiting on an email nobody will
+ * ever resend.
+ */
+export const markPortalEmailSent = mutation({
+  args: { id: v.id("expressBuilds") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    await ctx.db.patch(args.id, { portalEmailSentAt: Date.now() });
+  },
+});
+
+/** Same, for the decline email. */
+export const markDecisionEmailSent = mutation({
+  args: { id: v.id("expressBuilds") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    await ctx.db.patch(args.id, { decisionEmailSentAt: Date.now() });
+  },
+});
+
+/** Turns a brief down. They keep the portal link; it just says no. */
+export const decline = mutation({
+  args: { id: v.id("expressBuilds"), note: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const row = await ctx.db.get(args.id);
+    if (!row) throw new Error("No such build.");
+
+    const note = args.note?.trim().slice(0, 1000);
+    await ctx.db.patch(args.id, {
+      declinedAt: Date.now(),
+      status: "declined",
+      // Stored as well as emailed, so the portal shows the same reason the
+      // email gave. Someone who deletes the email should not lose the answer.
+      declineNote: note || undefined,
+    });
+
+    /*
+     * Close the enquiry too.
+     *
+     * No client and no project are created — declining is the path where
+     * nothing downstream should exist. But the lead has to stop showing as
+     * open, or the leads list keeps asking me to chase something I have
+     * already said no to.
+     */
+    const email = row.email.trim().toLowerCase();
+    const lead =
+      row.leadId != null
+        ? await ctx.db.get(row.leadId)
+        : (
+            await ctx.db
+              .query("leads")
+              .withIndex("by_email", (q) => q.eq("email", email))
+              .order("desc")
+              .take(1)
+          )[0];
+
+    if (lead && lead.status !== "lost") {
+      await ctx.db.patch(lead._id, { status: "lost" });
+      await ctx.db.patch(args.id, { leadId: lead._id });
+    }
+  },
+});
+
+/**
+ * Starts the clock. Called from the payment path, not by hand.
+ *
+ * dueAt is stored rather than computed on read: the countdown they watch and
+ * the deadline I am judged against have to be the same instant, and a derived
+ * value would shift if WINDOW_MS ever changed mid-build.
+ *
+ * Express only. Other plans count down to the agreed deliveryDate, which is
+ * already set at approval and does not move when money arrives.
+ */
+async function startClock(ctx: MutationCtx, row: Doc<"expressBuilds">) {
+  const now = Date.now();
+  const isExpress = (row.plan ?? "express") === "express";
+  await ctx.db.patch(row._id, {
+    acceptedAt: now,
+    ...(isExpress ? { dueAt: now + WINDOW_MS } : {}),
+    status: "building",
+  });
+
+  /*
+   * The project moves with the request.
+   *
+   * Approving created it as `planning`; money arriving is what makes it real
+   * work. Leaving it behind would give the client a portal saying "building"
+   * next to a project saying "planning" — the same job in two states.
+   */
+  if (row.projectId) {
+    await ctx.db.patch(row.projectId, {
+      status: "active",
+      startedAt: now,
+    });
+  }
+}
 
 /**
  * Delivers it, and settles who owes what.
@@ -172,10 +445,20 @@ export const deliver = mutation({
     await requireAdmin(ctx);
     const row = await ctx.db.get(args.id);
     if (!row) throw new Error("No such build.");
-    if (!row.dueAt) throw new Error("This build was never accepted.");
+
+    /*
+     * The deadline this is judged against.
+     *
+     * Express has a computed dueAt; every other plan has the delivery date
+     * agreed at approval. A plan with neither has no deadline to miss, so it
+     * cannot be late — which is different from being on time, and the reason
+     * this is a null check rather than a default of "now".
+     */
+    const deadline = row.dueAt ?? row.deliveryDate ?? null;
+    if (!row.acceptedAt) throw new Error("This build was never started.");
 
     const now = Date.now();
-    const late = now > row.dueAt;
+    const late = deadline !== null && now > deadline;
 
     await ctx.db.patch(args.id, {
       deliveredAt: now,
@@ -184,7 +467,16 @@ export const deliver = mutation({
       balanceWaived: late,
     });
 
-    return { late, minutesLate: late ? Math.round((now - row.dueAt) / 60_000) : 0 };
+    // The project is finished too. Without this the client's portal lists a
+    // delivered site under a project still marked active.
+    if (row.projectId) {
+      await ctx.db.patch(row.projectId, { status: "complete" });
+    }
+
+    return {
+      late,
+      minutesLate: late && deadline ? Math.round((now - deadline) / 60_000) : 0,
+    };
   },
 });
 
@@ -235,9 +527,10 @@ export const markDepositPaidManually = mutation({
       depositPaidAt: Date.now(),
       manualPayment: true,
       manualNote: args.note?.trim().slice(0, 200),
-      // Paid, but the clock has not started. Accepting is still my move.
-      status: "queued",
     });
+    // Same rule as a card payment: money in starts the clock. A transfer
+    // behaving differently from a card is a difference nobody would predict.
+    await startClock(ctx, row);
   },
 });
 
@@ -248,9 +541,28 @@ export const listAll = query({
     await requireAdmin(ctx);
     const rows = await ctx.db.query("expressBuilds").order("desc").take(100);
 
-    // Waiting on me first: queued needs accepting, building is running down.
+    /*
+     * Waiting on me first.
+     *
+     * pending_approval outranks everything because it is the only state where
+     * nothing happens until I act — a brief sitting unread is a client
+     * waiting with no clock and no way to pay. building comes next since it
+     * is running down, then awaiting_payment, which is their move rather than
+     * mine.
+     *
+     * `queued` is ranked alongside building rather than dropped: no new row
+     * reaches it now that payment starts the clock directly, but rows created
+     * before that change can still be sitting in it, and an unranked status
+     * would sort them in with the finished work where I would never see them.
+     */
     const rank = (s: string) =>
-      s === "queued" ? 0 : s === "building" ? 1 : s === "awaiting_payment" ? 2 : 3;
+      s === "pending_approval"
+        ? 0
+        : s === "queued" || s === "building"
+          ? 1
+          : s === "awaiting_payment"
+            ? 2
+            : 3;
 
     return rows.sort(
       (a, b) => rank(a.status) - rank(b.status) || b.createdAt - a.createdAt,
@@ -266,10 +578,309 @@ export const cancel = mutation({
   },
 });
 
+/**
+ * Deletes a request and everything it created.
+ *
+ * Cascading, because approving a request mints records elsewhere — a client,
+ * a project, its milestones and messages, the chat thread. Deleting only the
+ * request left all of those behind as rows nothing points at, and the client
+ * still holding a portal link that resolves to "Nothing here".
+ *
+ * The client row is only removed if this request is the ONLY thing they have.
+ * Someone on their third project must not lose the other two because I tidied
+ * up a duplicate enquiry.
+ */
 export const remove = mutation({
   args: { id: v.id("expressBuilds") },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
+    const row = await ctx.db.get(args.id);
+    if (!row) return;
+
+    // The chat thread for this request.
+    const messages = await ctx.db
+      .query("buildMessages")
+      .withIndex("by_build", (q) => q.eq("buildId", args.id))
+      .collect();
+    for (const m of messages) await ctx.db.delete(m._id);
+
+    if (row.projectId) {
+      // Rows hanging off the project, then the project itself.
+      for (const table of ["milestones", "deliverables", "portalMessages"] as const) {
+        const rows = await ctx.db
+          .query(table)
+          .withIndex("by_project", (q) => q.eq("projectId", row.projectId!))
+          .collect();
+        for (const r of rows) await ctx.db.delete(r._id);
+      }
+      await ctx.db.delete(row.projectId);
+    }
+
+    /*
+     * The client, only when nothing else of theirs survives.
+     *
+     * Checked after the project is gone, so a client whose sole project was
+     * this one is removed and a client with others is left intact.
+     */
+    if (row.clientId) {
+      const remaining = await ctx.db
+        .query("clientProjects")
+        .withIndex("by_client", (q) => q.eq("clientId", row.clientId!))
+        .collect();
+      if (remaining.length === 0) {
+        await ctx.db.delete(row.clientId);
+      }
+    }
+
     await ctx.db.delete(args.id);
+  },
+});
+
+/* ---------------------------------------------------------------- chat --- */
+
+/**
+ * The thread for a build, by portal token.
+ *
+ * Token-scoped rather than admin-gated: this is the client's own view, and
+ * they have no account. Anyone holding the token is the client by definition
+ * — the token IS the credential, which is why it is 24 random characters and
+ * never appears in a URL we publish.
+ */
+export const messages = query({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const build = await ctx.db
+      .query("expressBuilds")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .unique();
+    if (!build) return [];
+
+    return await ctx.db
+      .query("buildMessages")
+      .withIndex("by_build", (q) => q.eq("buildId", build._id))
+      .collect();
+  },
+});
+
+/** The client writes. Rate-limited by length rather than by count. */
+export const sendMessage = mutation({
+  args: { token: v.string(), body: v.string() },
+  handler: async (ctx, args) => {
+    const body = args.body.trim().slice(0, 2000);
+    if (!body) return;
+
+    const build = await ctx.db
+      .query("expressBuilds")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .unique();
+    if (!build) throw new Error("No such build.");
+
+    await ctx.db.insert("buildMessages", {
+      buildId: build._id,
+      fromClient: true,
+      body,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+/** My side. Admin-gated, keyed by id rather than token. */
+export const replyMessage = mutation({
+  args: { id: v.id("expressBuilds"), body: v.string() },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const body = args.body.trim().slice(0, 2000);
+    if (!body) return;
+
+    await ctx.db.insert("buildMessages", {
+      buildId: args.id,
+      fromClient: false,
+      body,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+/** Admin view of one thread. */
+export const threadFor = query({
+  args: { id: v.id("expressBuilds") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    return await ctx.db
+      .query("buildMessages")
+      .withIndex("by_build", (q) => q.eq("buildId", args.id))
+      .collect();
+  },
+});
+
+/**
+ * Marks the other side's messages read.
+ *
+ * `fromClient` picks the direction: the client clears MY replies, I clear
+ * THEIRS. Nobody marks their own messages read, which is why the caller does
+ * not get to choose the flag — it falls out of which entry point they used.
+ *
+ * Already-read rows are skipped rather than re-stamped, so the timestamp is
+ * when it was first seen rather than when the tab was last open.
+ */
+async function markRead(
+  ctx: MutationCtx,
+  buildId: Id<"expressBuilds">,
+  fromClient: boolean,
+) {
+  const unread = await ctx.db
+    .query("buildMessages")
+    .withIndex("by_build", (q) => q.eq("buildId", buildId))
+    .collect();
+
+  const now = Date.now();
+  for (const m of unread) {
+    if (m.fromClient === fromClient && !m.readAt) {
+      await ctx.db.patch(m._id, { readAt: now });
+    }
+  }
+}
+
+/** The client has looked at the thread, so my replies are no longer unread. */
+export const markMessagesRead = mutation({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const build = await ctx.db
+      .query("expressBuilds")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .unique();
+    if (!build) return;
+    await markRead(ctx, build._id, false);
+  },
+});
+
+/** I have looked at the thread, so their messages are no longer unread. */
+export const markThreadRead = mutation({
+  args: { id: v.id("expressBuilds") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    await markRead(ctx, args.id, true);
+  },
+});
+
+/**
+ * Posts the work-in-progress link.
+ *
+ * Separate from `deliver`, which ends the job and settles the balance. This
+ * is for "here is what I have so far" — the client can watch it take shape
+ * without that counting as delivery.
+ */
+export const setPreviewUrl = mutation({
+  args: { id: v.id("expressBuilds"), url: v.string() },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    await ctx.db.patch(args.id, {
+      previewUrl: args.url.trim().slice(0, 500) || undefined,
+    });
+  },
+});
+
+/* ------------------------------------------------------------- intake --- */
+
+/**
+ * Prices, in minor units, matching src/lib/pricing.ts.
+ *
+ * Duplicated here rather than imported because Convex functions cannot reach
+ * into src/. The risk is drift, so it is one table with one job: if a figure
+ * moves in pricing.ts it moves here, and the deposit is derived rather than
+ * stored twice.
+ *
+ * Enterprise and revive are deliberately absent. Both are scoped before they
+ * are quoted, so a request from either arrives with no figure attached and I
+ * set one when I approve it — putting a guess on the record would mean
+ * showing a client a price nobody agreed to.
+ */
+const PLAN_TOTAL_MINOR: Record<string, number> = {
+  "one-page": 40_000,
+  "multi-page": 75_000,
+  "web-app": 250_000,
+  native: 320_000,
+  support: 18_000,
+  express: EXPRESS_TOTAL,
+};
+
+/**
+ * Turns a submitted enquiry into a request in the inbox.
+ *
+ * Called by the lead route straight after the lead is saved, so every
+ * enquiry lands somewhere I can accept or decline it. Before this, a form
+ * submission went only to the leads list — which had no accept, no decline
+ * and no email — and the request inbox only ever saw express orders.
+ *
+ * The lead row is still written and still scored. This does not replace it:
+ * a lead is a person who asked, a request is the job they asked for, and
+ * declining the job should not delete the fact that they enquired.
+ */
+export const createFromLead = mutation({
+  args: {
+    secret: v.string(),
+    leadId: v.id("leads"),
+    name: v.string(),
+    email: v.string(),
+    company: v.optional(v.string()),
+    brief: v.string(),
+    plan: v.string(),
+    pages: v.optional(v.number()),
+    currency: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const expected = process.env.EMAIL_LOG_SECRET;
+    if (!expected || args.secret !== expected) throw new Error("Not authorised.");
+
+    const email = args.email.trim().toLowerCase().slice(0, 254);
+    const brief = args.brief.trim().slice(0, 4000);
+    if (!brief) return null;
+
+    /*
+     * One open request per person.
+     *
+     * Someone who fills the form twice — a correction, a second thought — is
+     * not two jobs, and two rows would mean two portals and two decisions for
+     * one conversation. An already-decided request is left alone, so a client
+     * coming back after a decline does get a fresh one.
+     */
+    const existing = await ctx.db
+      .query("expressBuilds")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .collect();
+    const open = existing.find(
+      (r) => r.status === "pending_approval" || r.status === "awaiting_payment",
+    );
+    if (open) {
+      await ctx.db.patch(open._id, { brief, leadId: args.leadId });
+      return { id: open._id, token: open.token, reused: true };
+    }
+
+    const total = PLAN_TOTAL_MINOR[args.plan] ?? 0;
+    // Half up front, the same split express uses. A zero total (enterprise,
+    // revive) yields a zero deposit, which is correct: there is nothing to
+    // pay until the scope call produces a figure.
+    const deposit = Math.round(total / 2);
+
+    const token = makeToken();
+    const id = await ctx.db.insert("expressBuilds", {
+      name: args.name.trim().slice(0, 120),
+      email,
+      company: args.company?.trim().slice(0, 160),
+      brief,
+      // Pages only means something for the page-based plans; elsewhere it is
+      // a column this table happens to have.
+      pages: Math.min(9, Math.max(1, Math.round(args.pages ?? 1))),
+      plan: args.plan,
+      status: "pending_approval",
+      depositAmount: deposit,
+      balanceAmount: total - deposit,
+      currency: (args.currency ?? "usd").toLowerCase(),
+      token,
+      leadId: args.leadId,
+      createdAt: Date.now(),
+    });
+
+    return { id, token, reused: false };
   },
 });

@@ -2,19 +2,32 @@
  * Lead scoring. Pure functions so the same logic can run on the server and be
  * unit-reasoned about without a database.
  *
- * score = budget weight x urgency weight x fit weight, normalised to 0-100.
+ * score = value weight x urgency weight x fit weight, normalised to 0-100.
  * Enterprise submissions are always hot regardless of the other inputs.
+ *
+ * The value weight comes from the PLAN, not from a self-reported budget band.
+ * Every plan has a published price, so the plan someone picks is a decision
+ * about money rather than an estimate of one — a better signal, and one that
+ * cannot be answered "not sure yet".
  */
 
 export type Band = "hot" | "warm" | "cold";
 
-const BUDGET_WEIGHT: Record<string, number> = {
-  "Under $1,000": 0.3,
-  "$1,000 – $3,000": 0.5,
-  "$3,000 – $6,000": 0.75,
-  "$6,000 – $13,000": 0.9,
-  "$13,000+": 1,
-  "Not sure yet": 0.45,
+/**
+ * Keyed by plan id, scaled to the published price of each.
+ *
+ * Support sits mid-table rather than low: a care plan is small monthly but
+ * recurring, and scoring it by first-invoice size alone would rank the most
+ * durable revenue on the site as the coldest lead.
+ */
+const VALUE_WEIGHT: Record<string, number> = {
+  native: 1, // $3,200
+  app: 0.95, // $2,500
+  "web-app": 0.95,
+  "multi-page": 0.7, // $750–950
+  revive: 0.65, // scoped from the audit
+  support: 0.6, // $180/mo, recurring
+  "one-page": 0.45, // $400
 };
 
 const URGENCY_WEIGHT: Record<string, number> = {
@@ -45,22 +58,21 @@ const FIT_WEIGHT: Record<string, number> = {
 };
 
 export interface ScoreInput {
-  budget?: string;
   timeline?: string;
   projectType?: string;
   tier?: string;
   company?: string;
   message?: string;
-  /** Set on the enterprise path, which never collects a budget band. */
+  /** Plan id — the value signal, since every plan has a published price. */
   plan?: string;
   projectPurpose?: string;
 }
 
 export function scoreLead(input: ScoreInput): { score: number; band: Band } {
   // Enterprise is hot by definition — the qualification happens in the call.
-  // The enterprise flow deliberately collects no budget, so scoring it through
-  // the multiplication below would floor it at the "missing budget" default and
-  // rank the largest enquiries lowest.
+  // It has no published price to weight against, so scoring it through the
+  // multiplication below would floor it at the default and rank the largest
+  // enquiries lowest.
   if (
     input.plan === "enterprise" ||
     input.tier === "enterprise" ||
@@ -69,11 +81,14 @@ export function scoreLead(input: ScoreInput): { score: number; band: Band } {
     return { score: 100, band: "hot" };
   }
 
-  const budget = BUDGET_WEIGHT[input.budget ?? ""] ?? 0.4;
+  // Falls back to projectType so leads captured before the plan chooser
+  // existed still weight on something real rather than all landing on 0.6.
+  const value =
+    VALUE_WEIGHT[input.plan ?? ""] ?? VALUE_WEIGHT[input.projectType ?? ""] ?? 0.6;
   const urgency = URGENCY_WEIGHT[input.timeline ?? ""] ?? 0.5;
   const fit = FIT_WEIGHT[input.projectType ?? ""] ?? 0.6;
 
-  let score = Math.round(budget * urgency * fit * 100);
+  let score = Math.round(value * urgency * fit * 100);
 
   // Small additive signals: a named company and a considered message both
   // correlate with someone who has actually thought about the work.
@@ -85,13 +100,16 @@ export function scoreLead(input: ScoreInput): { score: number; band: Band } {
 
   score = Math.max(0, Math.min(100, score));
 
-  // "Not sure yet" on budget is the honest answer from someone who has never
-  // commissioned this work before, and individuals give it constantly. Left
-  // to the raw multiplication they land in cold and get deprioritised, which
-  // is the wrong read — so an otherwise-real enquiry floors at warm.
-  const undecidedBudget = input.budget === "Not sure yet" || !input.budget;
+  /*
+   * The cheapest plans are still real work.
+   *
+   * A one-page site on a relaxed timeline multiplies down into cold, which is
+   * the wrong read: they picked a plan and a price, which is more commitment
+   * than most enquiries carry. Anyone who is not explicitly browsing floors
+   * at warm.
+   */
   const notJustBrowsing = input.timeline !== "Just exploring";
-  if (undecidedBudget && notJustBrowsing && score < 32) score = 32;
+  if (notJustBrowsing && score < 32) score = 32;
 
   const band: Band = score >= 60 ? "hot" : score >= 32 ? "warm" : "cold";
   return { score, band };

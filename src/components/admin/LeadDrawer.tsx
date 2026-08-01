@@ -92,6 +92,7 @@ export function LeadDrawer({
         ["Current state", lead.currentState],
         ["Existing site", lead.existingUrl],
         ["Pages", lead.pageCount],
+        // Historical only — the question is no longer asked.
         ["Budget", lead.budget],
         ["Timeline", lead.timeline],
         ["Support scope", lead.supportScope],

@@ -3,9 +3,10 @@
  *
  * Each plan asks different questions, because the information that decides
  * whether the work is real differs by plan. Asking a one-page site about
- * procurement wastes their time; asking an enterprise buyer to pick a budget
- * band from a dropdown gets a shrug, since at that size the number comes out
- * of a scoping call rather than a form.
+ * procurement wastes their time.
+ *
+ * Nobody is asked what they want to spend — every plan has a published price,
+ * so the plan they pick IS the number. See the note above TIMELINES.
  *
  * The flow definition lives here rather than in the component so the form,
  * the scorer and the notification email all read from one source. Steps are
@@ -27,7 +28,6 @@ export type FieldId =
   | "audience"
   | "currentState"
   | "existingUrl"
-  | "budget"
   | "timeline"
   | "pageCount"
   | "onePagePurpose"
@@ -50,9 +50,10 @@ export interface Plan {
   /** Wording of the final step's prompt, tuned per plan. */
   messagePrompt: string;
   /**
-   * Enterprise skips the pricing calculator entirely — a band dropdown at that
-   * size is noise, and quoting from one is how you get a wrong number on the
-   * record before anyone has scoped anything.
+   * Whether this plan skips the pricing calculator. True where the figure
+   * comes out of a scoping call rather than the price list — quoting one of
+   * these from a form is how you get a wrong number on the record before
+   * anyone has scoped anything.
    */
   skipsPricing: boolean;
 }
@@ -70,7 +71,6 @@ export const PLANS: Plan[] = [
       "projectPurpose",
       "audience",
       "currentState",
-      "budget",
       "timeline",
     ],
     messagePrompt:
@@ -87,7 +87,6 @@ export const PLANS: Plan[] = [
       "pageCount",
       "currentState",
       "existingUrl",
-      "budget",
       "timeline",
     ],
     messagePrompt:
@@ -103,7 +102,6 @@ export const PLANS: Plan[] = [
       "audience",
       "currentState",
       "existingUrl",
-      "budget",
       "timeline",
     ],
     messagePrompt:
@@ -120,7 +118,6 @@ export const PLANS: Plan[] = [
       "platforms",
       "currentState",
       "existingUrl",
-      "budget",
       "timeline",
     ],
     messagePrompt:
@@ -131,7 +128,6 @@ export const PLANS: Plan[] = [
     id: "enterprise",
     label: "Enterprise project",
     hint: "Procurement, security review, multiple stakeholders.",
-    // No budget field. See skipsPricing.
     fields: [
       "company",
       "role",
@@ -155,16 +151,16 @@ export const PLANS: Plan[] = [
     fields: ["existingUrl", "currentState", "projectPurpose", "timeline"],
     messagePrompt:
       "What is going wrong with it, and is there anything you already know needs doing?",
-    // Priced from the audit rather than a band: what a rescue costs depends
-    // entirely on what is actually broken, and guessing a budget before
-    // looking is how a fixed price becomes a wrong one.
+    // Priced from the audit: what a rescue costs depends entirely on what is
+    // actually broken, and quoting before looking is how a fixed price
+    // becomes a wrong one.
     skipsPricing: true,
   },
   {
     id: "support",
     label: "Ongoing support",
     hint: "Care plan for something already live.",
-    fields: ["supportScope", "existingUrl", "currentState", "budget", "timeline"],
+    fields: ["supportScope", "existingUrl", "currentState", "timeline"],
     messagePrompt:
       "What breaks, what needs changing regularly, and who looks after it today?",
     skipsPricing: false,
@@ -211,14 +207,18 @@ export interface FieldDef {
   placeholder?: string;
 }
 
-export const BUDGETS = [
-  "Under $1,000",
-  "$1,000 – $3,000",
-  "$3,000 – $6,000",
-  "$6,000 – $13,000",
-  "$13,000+",
-  "Not sure yet",
-];
+/*
+ * No budget question.
+ *
+ * Every plan here has a published price, so asking someone to pick a band is
+ * asking them to guess at a number the pricing page already told them. It
+ * reads as a qualifying question — as though the answer changes what they are
+ * quoted — when it does not. The plan they choose is the budget signal, and
+ * it is a better one because it is a decision rather than an estimate.
+ *
+ * The two plans without a fixed price (enterprise, revive) never asked for a
+ * band anyway: both are scoped before anything is quoted. See skipsPricing.
+ */
 
 export const TIMELINES = [
   "As soon as possible",
@@ -258,13 +258,6 @@ export const FIELDS: Record<FieldId, FieldDef> = {
     label: "Current site or app (optional)",
     kind: "text",
     placeholder: "https://",
-  },
-  budget: {
-    id: "budget",
-    label: "Budget",
-    kind: "select",
-    options: BUDGETS,
-    help: "A range is fine. It tells me what is realistic, not what you will pay.",
   },
   timeline: {
     id: "timeline",

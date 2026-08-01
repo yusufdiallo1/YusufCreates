@@ -163,6 +163,27 @@ export function Shell({
                 href="https://www.instagram.com/yusufcreatesdev/"
                 style={{ color: brand.secondary }}
               >
+                {/* Glyph then handle, both inside the link so either one is
+                    clickable. PNG for the same reason as the header mark —
+                    Gmail and Outlook refuse SVG — and rendered at 2x so it
+                    stays sharp on a retina screen.
+
+                    `alt` is empty rather than "Instagram": the handle sits
+                    right beside it, and a screen reader announcing
+                    "Instagram @yusufcreatesdev" reads the same thing twice.
+                    A blocked image therefore leaves the handle alone rather
+                    than a broken-icon placeholder. */}
+                <Img
+                  src={`${SITE_URL}/email-instagram.png`}
+                  width="13"
+                  height="13"
+                  alt=""
+                  style={{
+                    display: "inline-block",
+                    verticalAlign: "-2px",
+                    marginRight: "5px",
+                  }}
+                />
                 @yusufcreatesdev
               </Link>
               {unsubscribeUrl ? (

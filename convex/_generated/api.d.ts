@@ -12,6 +12,7 @@ import type * as admin from "../admin.js";
 import type * as analytics from "../analytics.js";
 import type * as audits from "../audits.js";
 import type * as auth from "../auth.js";
+import type * as automation from "../automation.js";
 import type * as broadcasts from "../broadcasts.js";
 import type * as capacity from "../capacity.js";
 import type * as chat from "../chat.js";
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   analytics: typeof analytics;
   audits: typeof audits;
   auth: typeof auth;
+  automation: typeof automation;
   broadcasts: typeof broadcasts;
   capacity: typeof capacity;
   chat: typeof chat;

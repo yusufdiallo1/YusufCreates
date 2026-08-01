@@ -21,7 +21,7 @@ export const submit = mutation({
     currentState: v.optional(v.string()),
     existingUrl: v.optional(v.string()),
     tier: v.optional(v.string()),
-    budget: v.optional(v.string()),
+    plan: v.optional(v.string()),
     timeline: v.optional(v.string()),
     /** A band ("4 to 6"), not a number — see the schema comment. */
     pageCount: v.optional(v.union(v.string(), v.number())),
@@ -68,7 +68,7 @@ export const submit = mutation({
 
 /** Cheap heuristic score. Behavioural signals weigh against automation. */
 function scoreLead(args: {
-  budget?: string;
+  plan?: string;
   company?: string;
   message?: string;
   slideSignals?: {
@@ -79,7 +79,9 @@ function scoreLead(args: {
 }): number {
   let score = 0;
   if (args.company) score += 15;
-  if (args.budget) score += 25;
+  // A chosen plan is a chosen price — the strongest single signal here now
+  // that no budget band is collected.
+  if (args.plan) score += 25;
   if (args.message && args.message.length > 80) score += 20;
 
   const s = args.slideSignals;

@@ -54,6 +54,15 @@ export default defineSchema({
     company: v.optional(v.string()),
     role: v.optional(v.string()),
     projectType: v.optional(v.string()),
+    /**
+     * Plan id from the chooser (see src/lib/inquiry.ts).
+     *
+     * The value signal, now that no budget band is collected: every plan has a
+     * published price, so the plan someone picks is what the work costs rather
+     * than what they guessed they might spend. Optional because leads captured
+     * before the chooser existed have only the free-text projectType.
+     */
+    plan: v.optional(v.string()),
     /** Free text: what the project is actually for. */
     projectPurpose: v.optional(v.string()),
     /** Who it serves — the audience behind the purpose. */
@@ -62,6 +71,14 @@ export default defineSchema({
     currentState: v.optional(v.string()),
     existingUrl: v.optional(v.string()),
     tier: v.optional(v.string()),
+    /**
+     * DEAD — no longer collected. The form asked for a budget band, which was
+     * asking people to guess at a number the pricing page had already told
+     * them. `plan` replaced it as the value signal.
+     *
+     * The column stays so leads captured while the question existed still
+     * validate and still display; nothing writes it any more.
+     */
     budget: v.optional(v.string()),
     timeline: v.optional(v.string()),
     /*
@@ -115,7 +132,10 @@ export default defineSchema({
     // "by_created" index would be byte-identical to by_status, so recency
     // listing uses the table's default order instead.
     .index("by_status", ["status"])
-    .index("by_tier", ["tier"]),
+    .index("by_tier", ["tier"])
+    // Approving a request looks its sender up here, so the client record
+    // inherits the enquiry rather than being a retyped copy of it.
+    .index("by_email", ["email"]),
 
   projects: defineTable({
     title: v.string(),
@@ -227,32 +247,142 @@ export default defineSchema({
     .index("by_stripe", ["stripeId"]),
 
   /**
-   * Express builds — up to two pages, delivered within two hours.
+   * Every incoming request, whatever the plan.
    *
-   * The clock is the product, so the timing rules live here rather than in a
-   * component: it starts when I ACCEPT, not when they pay. An order landing
-   * at 3am must not already be late by breakfast, and accepting is also the
-   * point where I can decline a brief that is not actually two pages.
+   * Named expressBuilds because express came first; it is now the single
+   * inbox. One table rather than two because a request is a request — the
+   * decision I make on it (read the brief, accept or decline) is identical
+   * whether it is a two-hour express job or a six-week app, and splitting
+   * them meant two lists to check and two places to forget.
    *
-   * They pay 50% to start. If I deliver inside the window they owe the rest;
-   * if I miss it they keep it — which is the whole promise, and the reason
-   * acceptedAt and deliveredAt are both stored rather than derived.
+   * `plan` is what differs: express runs a two-hour clock, everything else
+   * counts down to a delivery date agreed at approval.
+   *
+   * The order money and work move in:
+   *
+   *   pending_approval → I read it → approve or decline
+   *   approve → client + project + portal created, link emailed, payment opens
+   *   payment → clock starts, status building
+   *   deliver → balance settled, or waived if I was late
+   *
+   * The clock starts on PAYMENT, not on approval: an approved request sitting
+   * unopened in an inbox must not burn the window. They pay 50% to start; if
+   * I deliver inside the window they owe the rest, if I miss it they keep it.
+   * That promise is why acceptedAt and deliveredAt are stored rather than
+   * derived — a rule that decides who keeps money must not be recomputable.
    */
   expressBuilds: defineTable({
     name: v.string(),
     email: v.string(),
+    /** Their organisation, when the form collected one. */
+    company: v.optional(v.string()),
     /** What they want. Free text — two pages does not need a form. */
     brief: v.string(),
     pages: v.number(),
 
+    /*
+     * Links to the records this request became.
+     *
+     * Written on approval, never by hand. Before these existed, accepting a
+     * request meant retyping the client's name, email and company into a
+     * separate dialog — the same details they had already submitted — which
+     * is both wasted work and a chance to typo the address their portal link
+     * gets sent to.
+     */
+    leadId: v.optional(v.id("leads")),
+    clientId: v.optional(v.id("clients")),
+    projectId: v.optional(v.id("clientProjects")),
+
     status: v.union(
+      /** New. Waiting on me to read it — the only state that needs a human. */
+      v.literal("pending_approval"),
+      /** Approved by me; they have the link and can now pay. */
       v.literal("awaiting_payment"),
-      /** Paid, waiting for me to start the clock. */
+      /** Paid. For express the clock is already running. */
       v.literal("queued"),
       v.literal("building"),
       v.literal("delivered"),
       v.literal("cancelled"),
+      /** I read the brief and turned it down. */
+      v.literal("declined"),
+      /** Approved but never paid for. Aged out by cron, not by me. */
+      v.literal("expired"),
     ),
+
+    /**
+     * Which plan this is. Express runs a two-hour countdown; everything else
+     * counts down to a delivery date agreed up front. Optional because rows
+     * created before the portal was generalised are all express.
+     */
+    plan: v.optional(v.string()),
+
+    /**
+     * The agreed delivery date for non-express plans.
+     *
+     * Separate from dueAt, which is derived from the express window. This one
+     * I set by hand when approving, because "we agreed Friday" is not
+     * something a formula can produce.
+     */
+    deliveryDate: v.optional(v.number()),
+
+    approvedAt: v.optional(v.number()),
+    declinedAt: v.optional(v.number()),
+    /**
+     * Why I turned it down, in my words. Optional because sometimes there is
+     * nothing useful to add beyond "not this one" — but when there is, it
+     * goes in the decline email AND stays on the portal, so deleting the
+     * email does not lose the reason.
+     */
+    declineNote: v.optional(v.string()),
+    /** Set when the portal link actually went out, so it is not sent twice. */
+    portalEmailSentAt: v.optional(v.number()),
+    /**
+     * Set when the decline email went out. Separate from portalEmailSentAt
+     * because they are different emails on mutually exclusive paths, and one
+     * stamp for both would let a declined build look like it had already been
+     * sent a portal link.
+     */
+    decisionEmailSentAt: v.optional(v.number()),
+
+    /*
+     * Stamps for the scheduled jobs.
+     *
+     * Each one is the record that a job has already acted on this row. Crons
+     * run on a timer with no memory, so without these a five-minute sweep
+     * emails the same client every five minutes forever. The stamp is written
+     * in the SAME mutation as the effect it guards, so a job that dies partway
+     * cannot leave the effect applied and the stamp unset.
+     */
+    /** Deposit-chase reminder is due. */
+    reminderSentAt: v.optional(v.number()),
+    /** Aged out unpaid. */
+    expiredAt: v.optional(v.number()),
+    /** The overdue sweep has waived the balance. */
+    overdueHandledAt: v.optional(v.number()),
+    /** The balance invoice has been claimed by the sweep. */
+    invoiceIssuedAt: v.optional(v.number()),
+    /**
+     * The invoice row itself, once raised.
+     *
+     * Separate from the stamp above because they answer different questions:
+     * the stamp says a sweep has taken responsibility for this row, the id
+     * says an invoice actually exists. Without the split, a Stripe call that
+     * failed would look identical to one that worked.
+     */
+    invoiceId: v.optional(v.id("invoices")),
+
+    /*
+     * Deciding an email is due and actually sending it are two steps, so they
+     * are two stamps. The sweep above sets the first inside a transaction it
+     * can guarantee; the send happens later, over the network, and can fail.
+     * One stamp for both would mark a client as told when Resend was down.
+     */
+    overdueEmailSentAt: v.optional(v.number()),
+    reminderEmailSentAt: v.optional(v.number()),
+    expiredEmailSentAt: v.optional(v.number()),
+
+    /** Where the work-in-progress can be seen. Posted by me, live for them. */
+    previewUrl: v.optional(v.string()),
 
     /** Half up front, in minor units. The balance is only owed if I am on time. */
     depositAmount: v.number(),
@@ -288,6 +418,25 @@ export default defineSchema({
     .index("by_token", ["token"])
     .index("by_status", ["status", "createdAt"])
     .index("by_email", ["email"]),
+
+  /**
+   * Chat inside a build's portal.
+   *
+   * Deliberately NOT the existing portalMessages table, which hangs off
+   * clientProjects and therefore off a `clients` row and a signed-in user.
+   * A build portal is reached by token alone — there is no account, and
+   * requiring someone to register before asking "can the logo be bigger?" is
+   * how a quick question turns into an email instead.
+   */
+  buildMessages: defineTable({
+    buildId: v.id("expressBuilds"),
+    /** Who wrote it. The client has no identity here beyond their token. */
+    fromClient: v.boolean(),
+    body: v.string(),
+    createdAt: v.number(),
+    /** Set when the other side has seen it, for the unread count. */
+    readAt: v.optional(v.number()),
+  }).index("by_build", ["buildId", "createdAt"]),
 
   events: defineTable({
     type: v.string(),
@@ -726,6 +875,16 @@ export default defineSchema({
     email: v.string(),
     name: v.string(),
     company: v.optional(v.string()),
+    /**
+     * The enquiry they came from, when there was one.
+     *
+     * Optional because a client can arrive off-site — a referral, a
+     * conversation — and be added by hand. But when they did fill the form,
+     * this is what stops the two records being strangers: the lead keeps its
+     * brief, score and history, and the client row points back at it instead
+     * of being a retyped copy.
+     */
+    leadId: v.optional(v.id("leads")),
     /**
      * Legacy: portfolio ids assigned before clientProjects existed. Optional
      * so existing rows validate; nothing writes it any more. Access is
