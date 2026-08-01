@@ -288,8 +288,13 @@ export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
 
               dvh, never vh: on mobile Safari vh is the LARGEST viewport
               height, so a vh-sized panel extends under the browser chrome.
+
+              h-dvh alongside inset-0 because the root viewport is set to
+              resizes-content — dvh tracks the shrinking visual viewport as
+              the keyboard opens, so the composer stays above the keys
+              instead of behind them.
             */
-            className="glass-depth glass-near fixed inset-0 z-50 flex w-full flex-col !rounded-none !p-0 sm:inset-auto sm:right-5 sm:bottom-5 sm:h-[min(32rem,80dvh)] sm:w-[min(24rem,calc(100vw-2.5rem))] sm:!rounded-[28px] lg:right-8 lg:bottom-8"
+            className="glass-depth glass-near fixed inset-0 z-50 flex h-dvh w-full flex-col !rounded-none !p-0 sm:inset-auto sm:right-5 sm:bottom-5 sm:h-[min(32rem,80dvh)] sm:w-[min(24rem,calc(100vw-2.5rem))] sm:!rounded-[28px] lg:right-8 lg:bottom-8"
           >
             <div className="flex items-center justify-between px-5 py-4">
               <p className="text-sm text-primary">Ask about the work</p>
@@ -392,7 +397,10 @@ export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
                 e.preventDefault();
                 void send(draft);
               }}
-              className="flex items-center gap-2 px-4 py-3"
+              /* Tighter on a phone, where the keyboard already takes half
+                 the screen — and padded for the home indicator so the input
+                 does not sit under it. */
+              className="flex items-center gap-2 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-3 sm:pb-3"
             >
               <label htmlFor="chat-input" className="sr-only">
                 Your question
@@ -404,12 +412,14 @@ export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder="Ask something…"
                 disabled={busy}
-                className="hairline min-w-0 flex-1 rounded-full bg-surface-1 px-4 py-2.5 text-sm text-primary placeholder:text-secondary disabled:opacity-60"
+                /* 16px on mobile: anything smaller makes iOS Safari zoom the
+                   whole page on focus, which is its own bug to then undo. */
+                className="hairline min-w-0 flex-1 rounded-full bg-surface-1 px-3.5 py-2 text-base text-primary placeholder:text-secondary disabled:opacity-60 sm:px-4 sm:py-2.5 sm:text-sm"
               />
               <button
                 type="submit"
                 disabled={busy || draft.trim() === ""}
-                className="shrink-0 rounded-full bg-primary px-4 py-2.5 text-xs font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+                className="shrink-0 rounded-full bg-primary px-3.5 py-2 text-xs font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40 sm:px-4 sm:py-2.5"
               >
                 {busy ? (
                   <ThinkingMark className="size-4" />

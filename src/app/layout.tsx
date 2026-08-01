@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import "./globals.css";
 import { ConvexClientProvider } from "./ConvexClientProvider";
@@ -58,6 +58,20 @@ export const metadata: Metadata = {
   },
 };
 
+/*
+ * `resizes-content` is the reason the chat panel survives the keyboard.
+ *
+ * By default the on-screen keyboard OVERLAYS the viewport: the layout keeps
+ * its full height and the browser simply scrolls, so a bottom-anchored input
+ * ends up underneath the keys. With this, the visual viewport shrinks and
+ * anything sized in dvh resizes with it, which is what a chat input needs.
+ */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  interactiveWidget: "resizes-content",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -74,7 +88,13 @@ export default function RootLayout({
       data-theme="dark"
       className={`${inter.variable} min-h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">
+      {/* min-h-dvh, not min-h-full. `min-height: 100%` resolves against the
+          parent's HEIGHT, and <html> only has a min-height — so the
+          percentage had nothing to resolve against, collapsed, and short
+          pages left the footer floating mid-screen with dead space beneath
+          it. dvh measures the viewport directly, and unlike `h-full` it still
+          lets the box grow past the fold, so touch scrolling is unaffected. */}
+      <body className="flex min-h-dvh flex-col">
         <a href="#main" className="skip-link">
           Skip to content
         </a>
