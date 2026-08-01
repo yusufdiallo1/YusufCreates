@@ -88,17 +88,24 @@ export const addComment = mutation({
   args: {
     postId: v.id("posts"),
     name: v.string(),
-    email: v.string(),
+    /*
+     * Optional. Asking for an email to leave a comment on a blog post is a
+     * wall in front of a low-stakes action — most people simply do not
+     * bother, and the address was never used for anything. Still accepted so
+     * a reply is possible when someone volunteers one.
+     */
+    email: v.optional(v.string()),
     body: v.string(),
   },
   handler: async (ctx, args) => {
     const name = args.name.trim().slice(0, MAX_NAME);
-    const email = args.email.trim().toLowerCase().slice(0, MAX_EMAIL);
+    const email = args.email?.trim().toLowerCase().slice(0, MAX_EMAIL);
     const body = args.body.trim().slice(0, MAX_BODY);
 
     if (!name || !body) throw new Error("A name and a comment are required.");
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-      throw new Error("A valid email address is required.");
+    // Only validated when one was actually given.
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      throw new Error("That email address does not look right.");
     }
 
     await ctx.db.insert("postComments", {

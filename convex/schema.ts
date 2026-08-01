@@ -378,7 +378,8 @@ export default defineSchema({
   postComments: defineTable({
     postId: v.id("posts"),
     name: v.string(),
-    email: v.string(),
+    /** Optional — a comment does not require one. Kept when volunteered. */
+    email: v.optional(v.string()),
     body: v.string(),
     approved: v.boolean(),
     createdAt: v.number(),

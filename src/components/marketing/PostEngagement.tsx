@@ -7,7 +7,7 @@ import { api, isConvexConfigured } from "@/lib/convex-api";
 import { visitorId } from "@/lib/referral";
 import { MiniSlide } from "@/components/ui/MiniSlide";
 import { FieldError } from "@/components/ui/FieldError";
-import { validateEmail, validateRequired } from "@/lib/validate";
+import { validateRequired } from "@/lib/validate";
 import type { Id } from "@convex/_generated/dataModel";
 
 /**
@@ -42,7 +42,13 @@ export function PostEngagement({ postId }: { postId: string }) {
 
   return (
     <section aria-label="Reactions and comments" className="mt-16">
-      <div className="hairline-t pt-8">
+      {/* Counts sit above the fold of this section and are always shown,
+          including at zero. Hiding a zero count means the number only appears
+          once you have interacted, so there is no way to tell the difference
+          between "nobody has" and "this does not count anything". Both read
+          live — Convex queries are reactive, so another visitor's like lands
+          here without a refresh. */}
+      <div className="hairline-t flex items-center gap-3 pt-8">
         <button
           type="button"
           onClick={() =>
@@ -69,8 +75,14 @@ export function PostEngagement({ postId }: { postId: string }) {
           >
             <path d="M12 20.5s-7.5-4.7-7.5-9.6a4.2 4.2 0 0 1 7.5-2.6 4.2 4.2 0 0 1 7.5 2.6c0 4.9-7.5 9.6-7.5 9.6Z" />
           </motion.svg>
-          {likes > 0 ? likes : ""} {liked ? "Liked" : "Like"}
+          <span className="tabular-nums">{likes}</span>
+          {liked ? "Liked" : "Like"}
         </button>
+
+        <span className="text-sm text-secondary">
+          <span className="tabular-nums">{comments.length}</span>{" "}
+          {comments.length === 1 ? "comment" : "comments"}
+        </span>
       </div>
 
       <div className="mt-10">
@@ -118,16 +130,14 @@ function CommentForm({ postId }: { postId: string }) {
   const add = useMutation(api.engagement.addComment);
 
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
   const [body, setBody] = useState("");
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
 
   const nameError = validateRequired(name, "your name");
-  const emailError = validateEmail(email);
   const bodyError = validateRequired(body, "a comment");
-  const valid = !nameError && !emailError && !bodyError;
+  const valid = !nameError && !bodyError;
 
   if (sent) {
     return (
@@ -141,36 +151,21 @@ function CommentForm({ postId }: { postId: string }) {
     <div className="hairline-t mt-8 space-y-4 pt-6">
       <p className="text-sm text-primary">Leave a comment</p>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="c-name" className="text-xs text-secondary">
-            Name
-          </label>
-          <input
-            id="c-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={() => setTouched((t) => ({ ...t, name: true }))}
-            className="hairline mt-1.5 w-full rounded-lg bg-surface-1 px-3.5 py-2.5 text-base text-primary sm:text-sm"
-          />
-          {touched.name ? <FieldError>{nameError}</FieldError> : null}
-        </div>
-
-        <div>
-          <label htmlFor="c-email" className="text-xs text-secondary">
-            Email
-          </label>
-          <input
-            id="c-email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onBlur={() => setTouched((t) => ({ ...t, email: true }))}
-            className="hairline mt-1.5 w-full rounded-lg bg-surface-1 px-3.5 py-2.5 text-base text-primary sm:text-sm"
-          />
-          {touched.email ? <FieldError>{emailError}</FieldError> : null}
-        </div>
+      {/* Name and the comment itself. Asking for an email to say one line
+          about a blog post is a wall in front of a low-stakes action, and the
+          address was never used for anything. */}
+      <div>
+        <label htmlFor="c-name" className="text-xs text-secondary">
+          Name
+        </label>
+        <input
+          id="c-name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={() => setTouched((t) => ({ ...t, name: true }))}
+          className="hairline mt-1.5 w-full rounded-lg bg-surface-1 px-3.5 py-2.5 text-base text-primary sm:text-sm"
+        />
+        {touched.name ? <FieldError>{nameError}</FieldError> : null}
       </div>
 
       <div>
@@ -189,8 +184,7 @@ function CommentForm({ postId }: { postId: string }) {
       </div>
 
       <p className="text-xs text-secondary">
-        Your email is never published — it is so I can reply. Comments appear
-        once I have read them.
+        Comments appear once I have read them.
       </p>
 
       <MiniSlide
@@ -202,7 +196,7 @@ function CommentForm({ postId }: { postId: string }) {
         onConfirm={async () => {
           setError(null);
           try {
-            await add({ postId: postId as Id<"posts">, name, email, body });
+            await add({ postId: postId as Id<"posts">, name, body });
             setSent(true);
           } catch {
             setError("That didn't send. Try again in a moment.");
