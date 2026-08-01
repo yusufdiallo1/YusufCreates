@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      /*
+        Deposit — "Why I take a deposit." 20s, 1080x1920.
+
+        Four phases: the question, the split, the reason, the branded outro.
+        Seams ride the house current (LEFT) except the last, which spends the
+        reserved inverse-zoom vector.
+
+        Figures are real and traceable:
+          40% deposit / 60% on completion   src/components/admin/InvoicesBoard.tsx
+                                            src/components/marketing/PricingFaq.tsx
+          EXPRESS_PRICE_USD   = 69          src/lib/pricing.ts
+          EXPRESS_DEPOSIT_USD = 35          src/lib/pricing.ts
+          EXPRESS_WINDOW_HOURS = 2          src/lib/pricing.ts
+      */
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #08090a; }
+      body { font-family: "Inter", system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+
+      /* Opaque stage ground — a mid-window cut opens a summed-opacity < 1
+         window that flashes white without this. */
+      #root { position: relative; width: 1080px; height: 1920px; background: #08090a; }
+
+      .bg { position: absolute; inset: 0; overflow: hidden; }
+      .orb { position: absolute; border-radius: 50%; filter: blur(110px); }
+      .orb-a {
+        top: -280px; right: -220px; width: 1000px; height: 1000px;
+        background: radial-gradient(circle at 35% 35%,
+          rgba(94,106,210,0.50) 0%, rgba(94,106,210,0.18) 40%, transparent 70%);
+      }
+      .orb-b {
+        bottom: -360px; left: -260px; width: 1060px; height: 1060px;
+        background: radial-gradient(circle at 60% 40%,
+          rgba(124,92,220,0.30) 0%, rgba(60,80,190,0.12) 44%, transparent 72%);
+      }
+      .grain {
+        position: absolute; inset: 0; opacity: 0.05; mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+      }
+
+      /* Every scene occupies the same slot, so one replacing the next reads as
+         a single thought developing rather than a list scrolling past. */
+      .slot {
+        position: absolute; left: 0; right: 0;
+        top: 50%; transform: translateY(-50%);
+        padding: 0 90px 120px;
+      }
+      /* Inner wrapper carries the scene motion — the .clip above it is
+         framework-owned and must not be tweened. */
+      .inner { display: flex; flex-direction: column; gap: 20px; }
+      .eb-i { display: inline-flex; align-items: center; gap: 14px; }
+      .outro-i {
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        width: 100%; height: 100%;
+      }
+      .line {
+        font-size: 112px; font-weight: 700;
+        letter-spacing: -0.032em; line-height: 1.05;
+      }
+      .sub {
+        font-size: 40px; font-weight: 400; color: #a2a8b2;
+        letter-spacing: -0.01em; line-height: 1.35; margin-top: 14px;
+      }
+      .w { display: inline-block; }
+
+      .primary { color: #f7f8f8; }
+      .muted   { color: #7e838c; }
+      .danger  { color: #e5484d; }
+      .accent  { color: #5e6ad2; }
+      .green   { color: #4cc38a; }
+
+      .eyebrow {
+        position: absolute; left: 90px; top: 300px;
+        display: inline-flex; align-items: center;
+        padding: 14px 26px; border-radius: 99px;
+        background: rgba(255,255,255,0.06);
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.13);
+        font-size: 26px; font-weight: 600; letter-spacing: 0.13em;
+        text-transform: uppercase; color: #f7f8f8;
+      }
+      .eyebrow .dot {
+        width: 12px; height: 12px; border-radius: 99px; background: #5e6ad2;
+        box-shadow: 0 0 16px #5e6ad2;
+      }
+
+      /* Scene B heading — the terms, stated plainly above the split. */
+      .terms {
+        font-size: 84px; font-weight: 700; color: #f7f8f8;
+        letter-spacing: -0.03em; line-height: 1.06;
+      }
+
+      /* Split-payment bar — the 40/60 made visible. */
+      .split { display: flex; gap: 16px; margin-top: 40px; }
+      .half {
+        flex: 1; padding: 30px 32px; border-radius: 20px;
+        background: rgba(255,255,255,0.05);
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+      }
+      .half .k { font-size: 30px; color: #7e838c; letter-spacing: 0.02em; }
+      .half .v { font-size: 62px; font-weight: 700; color: #f7f8f8; margin-top: 8px; }
+      .half.on { background: rgba(94,106,210,0.16); box-shadow: inset 0 0 0 1px rgba(94,106,210,0.45); }
+      .half.on .v { color: #5e6ad2; }
+
+      /* Express is a different tier with different terms — labelled as such so
+         nobody reads it as the standard build split. */
+      .note {
+        margin-top: 34px; font-size: 30px; line-height: 1.4;
+        color: #7e838c; letter-spacing: -0.005em;
+      }
+      .note b { color: #a2a8b2; font-weight: 600; }
+
+      /* ---- Outro ---------------------------------------------------------
+         The branded close. Mark draws, accent block lands as the cause, the
+         wordmark cascades from that impact, then the URL arrives. */
+      .outro { position: absolute; inset: 0; }
+      .outro svg { width: 250px; height: auto; overflow: visible; }
+      .outro .name {
+        font-size: 92px; letter-spacing: -0.028em; margin-top: 44px;
+        white-space: nowrap;
+      }
+      .outro .name .a { font-weight: 400; color: #f7f8f8; }
+      .outro .name .b { font-weight: 600; color: #5e6ad2; }
+
+      .url-wrap { position: relative; margin-top: 40px; padding-bottom: 18px; }
+      .url {
+        font-size: 46px; font-weight: 500; color: #a2a8b2;
+        letter-spacing: 0.01em;
+      }
+      /* Underline wipes L→R under the URL — the last motion in the film. */
+      .url-rule {
+        position: absolute; left: 0; right: 0; bottom: 0; height: 4px;
+        border-radius: 99px; background: #5e6ad2;
+        box-shadow: 0 0 20px rgba(94,106,210,0.6);
+        transform-origin: 0% 50%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="20"
+         data-width="1080" data-height="1920">
+      <div class="bg" aria-hidden="true" data-layout-allow-overflow>
+        <div class="orb orb-a"></div>
+        <div class="orb orb-b"></div>
+        <div class="grain"></div>
+      </div>
+
+      <!-- Every clip carries an inner non-clip wrapper (`*-i`). The framework
+           owns .clip visibility; all motion and hard kills go on the inner. -->
+      <div class="eyebrow clip" id="eyebrow" data-start="0" data-duration="15.8" data-track-index="1">
+        <span class="eb-i" id="eyebrow-i"><span class="dot"></span><span>How it works</span></span>
+      </div>
+
+      <!-- Scene A — the question. -->
+      <div class="slot clip" id="sA" data-start="0" data-duration="6.4" data-track-index="2">
+        <div class="inner" id="sA-i">
+          <div class="line primary"><span class="w">Why</span> <span class="w">I</span> <span class="w">take</span></div>
+          <div class="line accent"><span class="w">a</span> <span class="w">deposit.</span></div>
+        </div>
+      </div>
+
+      <!-- Scene B — the split, and the express tier called out separately. -->
+      <div class="slot clip" id="sB" data-start="6" data-duration="6.4" data-track-index="3">
+        <div class="inner" id="sB-i">
+          <div class="terms" id="terms">The split.</div>
+          <div class="sub">It books the slot and starts the clock.</div>
+          <div class="split">
+            <div class="half" id="h1"><div class="k">To start</div><div class="v">40%</div></div>
+            <div class="half on" id="h2"><div class="k">On completion</div><div class="v">60%</div></div>
+          </div>
+          <div class="note" id="note">
+            <b>Express tier only:</b> half up front — $35 of $69 — and the rest
+            only if it is live inside the two-hour window.
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene C — the reason the split exists. -->
+      <div class="slot clip" id="sC" data-start="12" data-duration="4.1" data-track-index="4">
+        <div class="inner" id="sC-i">
+          <div class="line primary"><span class="w">It's</span> <span class="w">a</span> <span class="w">commitment</span></div>
+          <div class="line green"><span class="w">on</span> <span class="w">both</span> <span class="w">sides.</span></div>
+        </div>
+      </div>
+
+      <!-- Outro — branded close with the URL. -->
+      <div class="outro clip" id="outro" data-start="15.8" data-duration="4.2" data-track-index="5">
+        <div class="outro-i" id="outro-i">
+          <svg viewBox="40 30 140 155" fill="none" aria-hidden="true">
+            <path id="mk1" d="M61 48 L92 79 L61 110" stroke="#f7f8f8" stroke-width="15"
+                  stroke-linecap="square" stroke-linejoin="miter" />
+            <path id="mk2" d="M159 48 L115 92 L115 137" stroke="#f7f8f8" stroke-width="15"
+                  stroke-linecap="square" stroke-linejoin="miter" />
+            <rect id="mk3" x="99" y="155" width="34" height="17" fill="#5e6ad2" />
+          </svg>
+          <div class="name">
+            <span class="a" id="n1">Yusuf</span><span class="b" id="n2">Creates</span>
+          </div>
+          <div class="url-wrap">
+            <div class="url" id="url">yusufcreates.com</div>
+            <div class="url-rule" id="rule"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      const A = gsap.utils.toArray("#sA .w");
+      const C = gsap.utils.toArray("#sC .w");
+
+      /* Opening state — everything off, so seek(0) is the true first frame.
+         Only inner wrappers and children are touched; .clip stays framework-owned. */
+      gsap.set([A, C], { autoAlpha: 0, yPercent: 110 });
+      gsap.set(["#sA-i", "#sB-i", "#sC-i"], { autoAlpha: 1, x: 0 });
+      gsap.set("#eyebrow-i", { autoAlpha: 0, x: -30 });
+      gsap.set(["#terms", "#sB .sub"], { autoAlpha: 0, y: 40 });
+      gsap.set(["#h1", "#h2"], { autoAlpha: 0, y: 30 });
+      gsap.set("#note", { autoAlpha: 0, y: 24 });
+
+      /* Outro initial state. The mark draws via dashoffset; the wordmark and
+         URL arrive after the accent block lands. */
+      gsap.set("#outro-i", { autoAlpha: 0 });
+      gsap.set(["#mk1", "#mk2"], { strokeDasharray: 130, strokeDashoffset: 130 });
+      gsap.set("#mk3", { autoAlpha: 0, y: -40, scale: 0.6, transformOrigin: "50% 50%" });
+      gsap.set(["#n1", "#n2"], { autoAlpha: 0, yPercent: 70 });
+      gsap.set("#url", { autoAlpha: 0, y: 22 });
+      gsap.set("#rule", { scaleX: 0 });
+
+      /* Sustained motion: one slow push across the content phases. One
+         direction, never reversing — a camera move, not a wobble. */
+      tl.fromTo("#root", { scale: 1 }, { scale: 1.05, duration: 15.8, ease: "none" }, 0);
+
+      /* -- Scene A --------------------------------------------------------- */
+      tl.to("#eyebrow-i", { autoAlpha: 1, x: 0, duration: 0.5, ease: "power3.out" }, 0.15);
+      tl.to(A, { autoAlpha: 1, yPercent: 0, duration: 0.62, ease: "power4.out", stagger: 0.055 }, 0.45);
+
+      /* Seam A→B: cut the curve, LEFT. Exit power4.in, entry power4.out,
+         same distance and duration — two halves of one power4.inOut. */
+      tl.to("#sA-i", { x: -230, duration: 0.32, ease: "power4.in" }, 5.78);
+      tl.to("#sA-i", { autoAlpha: 0, duration: 0.22, ease: "none" }, 5.78);
+      /* Hard kill at the clip boundary — a non-linear seek landing past the
+         fade would otherwise leave stale visibility state. */
+      tl.set("#sA-i", { autoAlpha: 0 }, 6.0);
+      tl.fromTo("#sB-i", { x: 230, autoAlpha: 0.35 },
+        { x: 0, autoAlpha: 1, duration: 0.38, ease: "power4.out" }, 6.0);
+
+      /* -- Scene B: sequenced UI life — the split assembles piece by piece. */
+      tl.to("#terms", { autoAlpha: 1, y: 0, duration: 0.5, ease: "power3.out" }, 6.1);
+      tl.to("#sB .sub", { autoAlpha: 1, y: 0, duration: 0.5, ease: "power3.out" }, 6.7);
+      /* The two halves land in payment order: to start, then on completion. */
+      tl.to("#h1", { autoAlpha: 1, y: 0, duration: 0.45, ease: "power3.out" }, 7.5);
+      tl.to("#h2", { autoAlpha: 1, y: 0, duration: 0.45, ease: "power3.out" }, 7.9);
+      /* Stillness before the express caveat — it is a separate claim, so it
+         gets its own beat rather than riding the split's cascade. */
+      tl.to("#note", { autoAlpha: 1, y: 0, duration: 0.5, ease: "power3.out" }, 9.2);
+
+      /* Seam B→C: cut the curve, LEFT — the current, unchanged. */
+      tl.to("#sB-i", { x: -230, duration: 0.32, ease: "power4.in" }, 11.78);
+      tl.to("#sB-i", { autoAlpha: 0, duration: 0.22, ease: "none" }, 11.78);
+      tl.set("#sB-i", { autoAlpha: 0 }, 12.0);
+      tl.fromTo("#sC-i", { x: 230, autoAlpha: 0.35 },
+        { x: 0, autoAlpha: 1, duration: 0.38, ease: "power4.out" }, 12.0);
+
+      tl.to(C.slice(0, 3), { autoAlpha: 1, yPercent: 0, duration: 0.5, ease: "power4.out", stagger: 0.05 }, 12.2);
+      /* Stillness before climax — 0.55s comma before the payoff line. */
+      tl.to(C.slice(3), { autoAlpha: 1, yPercent: 0, duration: 0.6, ease: "power4.out", stagger: 0.05 }, 13.35);
+
+      /* Seam C→Outro: RESERVED VECTOR — inverse zoom. Something bigger lands.
+         Both sides SHRINK, so d(scale)/dt matches sign across the cut. */
+      tl.to("#sC-i", { scale: 0.8, filter: "blur(10px)", duration: 0.2, ease: "power3.in" }, 15.6);
+      tl.to("#sC-i", { autoAlpha: 0, duration: 0.2, ease: "none" }, 15.6);
+      tl.set("#sC-i", { autoAlpha: 0 }, 15.8);
+      tl.to("#eyebrow-i", { autoAlpha: 0, duration: 0.2, ease: "none" }, 15.6);
+      tl.set("#eyebrow-i", { autoAlpha: 0 }, 15.8);
+      /* Incoming arrives OVERSIZED and retracts — never grow-from-small. */
+      tl.fromTo("#outro-i", { scale: 1.25, autoAlpha: 0.15, filter: "blur(10px)" },
+        { scale: 1, autoAlpha: 1, filter: "blur(0px)", duration: 0.5, ease: "expo.out" }, 15.8);
+
+      /* -- Outro: staged reveals, each caused by the last ------------------- */
+      tl.to("#mk1", { strokeDashoffset: 0, duration: 0.5, ease: "power2.inOut" }, 15.95);
+      tl.to("#mk2", { strokeDashoffset: 0, duration: 0.5, ease: "power2.inOut" }, 16.40);
+      /* The accent block landing is the CAUSE. */
+      tl.to("#mk3", { autoAlpha: 1, y: 0, scale: 1, duration: 0.34, ease: "back.out(1.5)" }, 16.85);
+      /* Impact recoil fires on the SAME frame the block lands. One chained
+         tween, not two overlapping ones — up then settle. */
+      tl.to("#outro svg", { keyframes: [
+        { y: -14, duration: 0.12, ease: "power2.out" },
+        { y: 0, duration: 0.3, ease: "power3.out" },
+      ] }, 17.19);
+      /* The wordmark cascades from that impact — caused, not scheduled. */
+      tl.to(["#n1", "#n2"], { autoAlpha: 1, yPercent: 0, duration: 0.42, ease: "power4.out", stagger: 0.07 }, 17.19);
+
+      /* Stillness — 0.5s comma before the URL, the film's last statement. */
+      tl.to("#url", { autoAlpha: 1, y: 0, duration: 0.45, ease: "power3.out" }, 18.3);
+      tl.to("#rule", { scaleX: 1, duration: 0.55, ease: "power3.inOut" }, 18.45);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

@@ -4,13 +4,16 @@ Five 8s branded motion graphics at **1080×1920 (9:16)** for Reels and Stories,
 rendered from HTML with HyperFrames.
 
 ```bash
-# Render one (from this directory)
+cd "YusufCreates Social Media/Videos"
 cp compositions/<name>.html index.html
 npx hyperframes render . --skill=motion-graphics -q high -o ./renders/<name>.mp4
 ```
 
+Unlike the carousel renderers, this one runs **from inside its own folder** —
+the project carries its own `package.json` and pinned CLI.
+
 `index.html` is a scratch slot — the real sources are in `compositions/`. Copy
-the one you want into place, then render.
+the one you want into place, then render. Finished files land in `renders/`.
 
 ## The five
 
