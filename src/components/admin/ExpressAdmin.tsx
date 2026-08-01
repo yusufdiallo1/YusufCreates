@@ -46,6 +46,7 @@ export function ExpressAdmin() {
   const deliver = useMutation(api.express.deliver);
   const cancel = useMutation(api.express.cancel);
   const remove = useMutation(api.express.remove);
+  const markPaid = useMutation(api.express.markDepositPaidManually);
 
   const [urls, setUrls] = useState<Record<string, string>>({});
   const anyRunning = rows?.some((r) => r.status === "building") ?? false;
@@ -98,6 +99,7 @@ export function ExpressAdmin() {
                       {row.balanceWaived
                         ? "balance waived"
                         : `${money(row.balanceAmount, row.currency)} due`}
+                      {row.manualPayment ? " · marked paid by hand" : ""}
                     </p>
                   </div>
 
@@ -136,6 +138,24 @@ export function ExpressAdmin() {
                 </p>
 
                 <div className="mt-4 flex flex-wrap items-center gap-3">
+                  {/* An unpaid order has no action otherwise, so a transfer,
+                      a dropped webhook or a test run leaves it stuck here
+                      forever. Slide rather than click: it records money as
+                      received. */}
+                  {row.status === "awaiting_payment" ? (
+                    <div className="w-[14rem]">
+                      <MiniSlide
+                        label="Slide to mark deposit paid"
+                        pendingLabel="Marking"
+                        doneLabel="Marked paid"
+                        ariaLabel={`Mark the deposit paid by hand for ${row.name}`}
+                        onConfirm={async () => {
+                          await markPaid({ id: row._id });
+                        }}
+                      />
+                    </div>
+                  ) : null}
+
                   {row.status === "queued" ? (
                     <div className="w-[13rem]">
                       <MiniSlide

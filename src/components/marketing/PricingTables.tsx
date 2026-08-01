@@ -16,7 +16,6 @@ import {
   CURRENCIES,
   CURRENCY_SYMBOL,
   ENTERPRISE_FEATURES,
-  EXPRESS_DEPOSIT_USD,
   EXPRESS_FEATURES,
   EXPRESS_PRICE_USD,
   EXPRESS_WINDOW_HOURS,
@@ -32,6 +31,7 @@ import {
   discountedPrice,
   formatCarePrice,
   growthPriceUsd,
+  splitPrice,
   tierPrice,
   type ActivePromo,
   type Currency,
@@ -85,6 +85,7 @@ export function PricingTables() {
   const router = useRouter();
   const [currency, setCurrency] = useCurrency();
   const [pages, setPages] = useState<number>(GROWTH.minPages);
+
   const [period, setPeriod] = useState<BillingPeriod>("monthly");
 
   /*
@@ -113,6 +114,10 @@ export function PricingTables() {
     () => ({ GBP: live?.GBP ?? undefined, EUR: live?.EUR ?? undefined }),
     [live],
   );
+
+  // One source for the express figures, so deposit + balance always equals
+  // the total shown beside them.
+  const expressSplit = splitPrice(EXPRESS_PRICE_USD, currency, 0.5, rates);
 
   const floating = !PEGGED.includes(currency);
   const growthUsd = growthPriceUsd(pages);
@@ -205,18 +210,18 @@ export function PricingTables() {
             </div>
 
             <div className="shrink-0 sm:text-right">
+              {/* Both figures come from one split, so the deposit is always
+                  exactly half of the total shown above it. Converting each
+                  separately let them round apart — EUR read €65 total with a
+                  €30 deposit, which does not add up in the reader's head or
+                  in the invoice. */}
               <p className="text-3xl tabular-nums">
                 <Sym code={currency} />
-                {convert(EXPRESS_PRICE_USD, currency, rates).toLocaleString(
-                  "en-US",
-                )}
+                {expressSplit.total.toLocaleString("en-US")}
               </p>
               <p className="mt-1 text-xs text-secondary">
                 <Sym code={currency} />
-                {convert(EXPRESS_DEPOSIT_USD, currency, rates).toLocaleString(
-                  "en-US",
-                )}{" "}
-                to start
+                {expressSplit.deposit.toLocaleString("en-US")} to start
               </p>
 
               <Link

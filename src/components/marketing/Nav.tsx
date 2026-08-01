@@ -189,32 +189,46 @@ export function Nav() {
         </motion.nav>
       </header>
 
-      {/* Full-screen overlay on mobile.
+      {/* Mobile menu: a blurred scrim you can tap, and the panel over it.
 
-          Deliberately NOT backdrop-blurred. A full-viewport backdrop-filter
-          forces the compositor to re-snapshot and blur everything behind it on
-          every frame, which is the single most expensive effect available and
-          the reason this felt slow to open on a phone. An opaque canvas fill
-          reads the same and costs nothing.
+          The blur is on the SCRIM, which is a plain fixed layer with nothing
+          animating on it, rather than on the moving panel. A backdrop-filter
+          on an element that is also being transformed re-snapshots and
+          re-blurs on every frame — the expensive case, and why this was
+          previously written without any blur at all. Static, it is composited
+          once and costs effectively nothing while the panel slides.
 
-          AnimatePresence gives it an exit, so dismissing does not just vanish;
-          only opacity and transform animate, both compositor-only. */}
+          The scrim is also what makes tapping outside dismiss the menu. */}
       <AnimatePresence>
         {open ? (
+          <>
+            {/* Tap anywhere off the panel to dismiss. aria-hidden because the
+                Escape handler and the close button already give keyboard and
+                screen-reader users a way out — this is a pointer affordance. */}
+            <motion.div
+              key="scrim"
+              aria-hidden="true"
+              onClick={() => setOpen(false)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: reduceMotion ? 0.12 : 0.45 }}
+              className="fixed inset-0 z-40 bg-[color:var(--canvas)]/55 backdrop-blur-xl md:hidden"
+            />
           <motion.div
             id="mobile-nav"
-            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -10 }}
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -14 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -10 }}
-            /* Opening reads as a movement, not a cut. Closing stays quicker
-               than opening — waiting on a panel you have already dismissed
-               feels like lag, where the same duration on the way in reads as
-               considered. */
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -14 }}
+            /* Slower than it was on both ends. It opened in 0.42s and shut
+               abruptly, which read as a cut rather than a movement; the exit
+               now matches the entrance closely enough that dismissing feels
+               like the same gesture reversed. */
             transition={{
-              duration: reduceMotion ? 0.12 : 0.42,
+              duration: reduceMotion ? 0.12 : 0.62,
               ease: [0.16, 1, 0.3, 1],
             }}
-            className="fixed inset-0 z-40 flex flex-col bg-canvas px-6 pt-28 pb-10 md:hidden"
+            className="fixed inset-0 z-40 flex flex-col bg-[color:var(--canvas)]/80 px-6 pt-28 pb-10 backdrop-blur-2xl md:hidden"
           >
             <ul className="flex flex-col gap-2">
               {NAV_ITEMS.map((item, index) => (
@@ -227,8 +241,8 @@ export function Nav() {
                      thing reads as one movement rather than a list catching
                      up with its own container. */
                   transition={{
-                    duration: reduceMotion ? 0.12 : 0.4,
-                    delay: reduceMotion ? 0 : 0.08 + index * 0.055,
+                    duration: reduceMotion ? 0.12 : 0.5,
+                    delay: reduceMotion ? 0 : 0.1 + index * 0.07,
                     ease: [0.16, 1, 0.3, 1],
                   }}
                 >
@@ -249,6 +263,7 @@ export function Nav() {
               Start a project
             </Link>
           </motion.div>
+          </>
         ) : null}
       </AnimatePresence>
     </>

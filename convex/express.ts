@@ -206,6 +206,42 @@ export const markBalancePaid = mutation({
 
 /* --------------------------------------------------------------- admin --- */
 
+/**
+ * Marks the deposit paid by hand, with no Stripe involved.
+ *
+ * Two reasons this exists rather than being a test-only shim:
+ *
+ * 1. Testing. The whole flow — accept, clock, deliver, late-waiver — is
+ *    unreachable until a row leaves awaiting_payment, and paying $35 to
+ *    check a countdown is a bad trade.
+ * 2. It happens for real. Someone pays by transfer, or in person, or the
+ *    webhook drops one. Without this the order is stuck forever and the
+ *    only fix is editing the database directly.
+ *
+ * Admin-gated, and it records HOW it was marked. `manual: true` means the
+ * money was not seen by Stripe, which matters when reconciling later — an
+ * unmarked manual payment is indistinguishable from one that actually
+ * cleared.
+ */
+export const markDepositPaidManually = mutation({
+  args: { id: v.id("expressBuilds"), note: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const row = await ctx.db.get(args.id);
+    if (!row) throw new Error("No such build.");
+    if (row.depositPaidAt) return;
+
+    await ctx.db.patch(args.id, {
+      depositPaidAt: Date.now(),
+      manualPayment: true,
+      manualNote: args.note?.trim().slice(0, 200),
+      // Paid, but the clock has not started. Accepting is still my move.
+      status: "queued",
+    });
+  },
+});
+
+
 export const listAll = query({
   args: {},
   handler: async (ctx) => {

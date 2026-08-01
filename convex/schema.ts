@@ -273,6 +273,14 @@ export default defineSchema({
     deliveredUrl: v.optional(v.string()),
 
     stripeSessionId: v.optional(v.string()),
+    /**
+     * Marked paid by hand rather than by Stripe — a transfer, cash, a
+     * dropped webhook, or a test run. Recorded because an unmarked manual
+     * payment is indistinguishable from one that actually cleared, and that
+     * difference matters when reconciling.
+     */
+    manualPayment: v.optional(v.boolean()),
+    manualNote: v.optional(v.string()),
     /** Their own key for the portal, so no account is needed. */
     token: v.string(),
     createdAt: v.number(),

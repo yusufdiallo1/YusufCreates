@@ -153,20 +153,22 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
   /*
    * Load sequence timing.
    *
-   * The delays are scaled down from the original storyboard because the hero
-   * sub-line is the LCP element on mobile, and LCP cannot fire until it is
-   * opaque. At the original 0.55s delay plus a 0.7s fade it reported ~2.65s on
-   * a 4x-throttled phone — the animation was the metric, not the loading.
+   * The headline and sub-line START VISIBLE and only move — opacity is never
+   * animated on them. The hero sub-line is the LCP element on mobile and LCP
+   * cannot fire until it is opaque, so fading it in makes the animation the
+   * metric rather than the loading. Reported ~2.65s on a throttled phone
+   * before; the text was legible long after the page had actually arrived.
    *
-   * Everything still lands in the same order; it simply arrives sooner.
+   * A short upward settle is kept because it costs nothing on the measure —
+   * transform is composited and does not gate LCP the way opacity does.
    */
   const step = (delay: number) =>
     reduceMotion || !play
       ? { initial: false as const, animate: { opacity: 1, y: 0 } }
       : {
-          initial: { opacity: 0, y: 16 },
+          initial: { opacity: 1, y: 10 },
           animate: { opacity: 1, y: 0 },
-          transition: { duration: 0.45, delay: delay * 0.5, ease: EASE },
+          transition: { duration: 0.34, delay: delay * 0.22, ease: EASE },
         };
 
   const shown = projects.filter((p) => p.coverUrl).slice(0, 3);
@@ -426,7 +428,7 @@ function Slab({
       animate={{ opacity: 1, y: 0, scale: config.scale }}
       transition={{
         duration: 0.9,
-        delay: play && !reduceMotion ? 0.6 + index * 0.11 : 0,
+        delay: play && !reduceMotion ? 0.16 + index * 0.06 : 0,
         ease: EASE,
       }}
     >

@@ -199,13 +199,15 @@ export function growthPriceUsd(pages: number): number {
 /**
  * Convert a USD amount to the target currency.
  *
- * Rounded to the nearest 25 for SAR and AED, which are pegged and quoted in
- * larger units — a 3.75x multiplier makes 400 into 1,500, and 1,487 would
- * look like arithmetic rather than a price.
+ * USD is the base. Every other figure is derived from it, and the derived
+ * figure must stay faithful to the dollar price — a tidier-looking number is
+ * not worth charging someone the wrong amount.
  *
- * GBP and EUR round to 5. Their rates are close to parity, so rounding to 25
- * would move the figure by up to 3% — enough to be a different price rather
- * than a tidier one.
+ * Rounding is PROPORTIONAL, not a fixed step. A flat "nearest 25" is a
+ * rounding error of 0.1% on a $5,500 price and 8% on a $34.50 one, so small
+ * prices came out visibly wrong while large ones looked fine: the express
+ * deposit converted to £25 against a true £27.26. The step now scales with
+ * the magnitude of the amount, which keeps every tier inside ~1%.
  *
  * A `rates` override is accepted so a caller holding live settings can pass
  * them in; without it the fallbacks apply.
@@ -217,8 +219,36 @@ export function convert(
 ): number {
   if (currency === "USD") return usd;
   const raw = usd * (rates[currency] ?? RATES[currency]);
-  const step = currency === "GBP" || currency === "EUR" ? 5 : 25;
+
+  /*
+   * The step is chosen from the size of the result, so a price is tidied by
+   * an amount proportional to itself rather than by a constant. Under 100,
+   * round to 1 — at that size any step at all is a percentage point or more.
+   */
+  const step = raw < 100 ? 1 : raw < 1000 ? 5 : 25;
   return Math.round(raw / step) * step;
+}
+
+/**
+ * Split a converted total into a deposit and a balance.
+ *
+ * Derived from the CONVERTED total, never by converting each half
+ * separately. Converting halves independently lets each one round its own
+ * way: EUR showed an express build at €65 with a €30 deposit, so the two
+ * halves summed to €60 and every order quietly undercharged by €5.
+ *
+ * The deposit takes the rounding; the balance is whatever is left. That way
+ * deposit + balance is always exactly the price on the card.
+ */
+export function splitPrice(
+  usd: number,
+  currency: Currency,
+  fraction = 0.5,
+  rates?: Partial<Record<Currency, number>>,
+): { total: number; deposit: number; balance: number } {
+  const total = convert(usd, currency, rates);
+  const deposit = Math.round(total * fraction);
+  return { total, deposit, balance: total - deposit };
 }
 
 /** Format an amount for display, with thousands separators and no decimals. */
