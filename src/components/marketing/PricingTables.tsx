@@ -68,11 +68,13 @@ import {
  */
 function Sym({ code }: { code: string }) {
   if (hasCurrencyMark(code)) {
+    // No size passed: the mark is sized in em, so it tracks whatever text it
+    // sits in — the same component works beside a headline price and a line
+    // of body copy without being tuned for either.
     return (
       <CurrencyMark
         code={code}
-        size={22}
-        className="mr-1 inline-block align-[-0.12em] text-secondary"
+        className="mr-0.5 inline-block text-secondary"
       />
     );
   }

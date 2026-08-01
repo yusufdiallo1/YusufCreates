@@ -12,29 +12,53 @@
  */
 
 type MarkProps = {
+  /**
+   * Height as a multiple of the current font size. Defaults to cap height,
+   * which is where a real currency glyph sits — a symbol drawn to the full
+   * em box stands taller than the digits beside it and reads as oversized.
+   */
   size?: number;
   className?: string;
 };
 
+/**
+ * Sized in em, not pixels.
+ *
+ * A fixed pixel size is wrong everywhere except the one place it was picked
+ * for: the same mark appears beside a 48px headline price and 12px body
+ * copy, and at 16px it swamps the second and is lost against the first.
+ * In em it tracks whatever text it sits in, for free.
+ */
 function base(size: number) {
   return {
-    width: size,
-    height: size,
+    width: `${size}em`,
+    height: `${size}em`,
     viewBox: "0 0 24 24",
     fill: "none",
     stroke: "currentColor",
-    strokeWidth: 2,
+    /*
+     * Scaled with the mark so the weight matches the surrounding digits.
+     * A constant stroke on a smaller glyph reads as bolder than the text
+     * it belongs to.
+     */
+    strokeWidth: 2.2,
     strokeLinecap: "square" as const,
     "aria-hidden": true as const,
     focusable: "false" as const,
+    // Sits on the text baseline rather than the line box, so it lines up
+    // with the digits instead of floating above them.
+    style: { verticalAlign: "-0.08em" },
   };
 }
+
+/** Cap height, near enough — the default for both marks. */
+const CAP = 0.72;
 
 /**
  * UAE dirham. A capital D with two horizontal strokes through the bowl,
  * echoing the two bars of the official mark.
  */
-export function DirhamMark({ size = 16, className }: MarkProps) {
+export function DirhamMark({ size = CAP, className }: MarkProps) {
   return (
     <svg {...base(size)} className={className}>
       <path d="M7 4h5a7 7 0 0 1 0 14H7V4" />
@@ -48,7 +72,7 @@ export function DirhamMark({ size = 16, className }: MarkProps) {
  * Saudi riyal. Two uprights joined by a horizontal, with two strokes running
  * beneath — the shape of the 2025 mark reduced to a 24 grid.
  */
-export function RiyalMark({ size = 16, className }: MarkProps) {
+export function RiyalMark({ size = CAP, className }: MarkProps) {
   return (
     <svg {...base(size)} className={className}>
       <path d="M8 3v11a4 4 0 0 1-4 4" />
@@ -69,7 +93,7 @@ export function RiyalMark({ size = 16, className }: MarkProps) {
  */
 export function CurrencyMark({
   code,
-  size = 16,
+  size = CAP,
   className,
 }: { code: string } & MarkProps) {
   if (code === "AED") return <DirhamMark size={size} className={className} />;
