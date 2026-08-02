@@ -5,7 +5,7 @@ import { SITE } from "@/lib/constants";
 export const metadata: Metadata = {
   title: "Express build — live in two hours",
   description:
-    "Up to two pages, live within two hours of me starting. Half up front; if I miss the window you keep the rest.",
+    "Up to two pages, live within two hours of me starting. 40% up front; if I miss the window you keep the rest.",
   alternates: { canonical: `${SITE.url}/express` },
 };
 

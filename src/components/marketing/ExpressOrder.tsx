@@ -65,7 +65,7 @@ export function ExpressOrder() {
       </TextReveal>
 
       <Typewriter as="p" speed={22} className="mt-5 text-secondary">
-        {`Up to two pages, built and deployed while you wait. $${EXPRESS_PRICE_USD} total — and if I miss the window, you keep half of it and still get the site.`}
+        {`Up to two pages, built and deployed while you wait. $${EXPRESS_PRICE_USD} total — and if I miss the window, you owe nothing more and still get the site.`}
       </Typewriter>
 
       {/* Stated before the form. A guarantee read after committing is a

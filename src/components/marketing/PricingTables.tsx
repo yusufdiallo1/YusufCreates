@@ -190,7 +190,7 @@ export function PricingTables() {
               </div>
 
               <p className="mt-1.5 text-sm text-secondary">
-                Up to two pages, live today. Half up front — if I miss the two
+                Up to two pages, live today. 40% up front — if I miss the two
                 hours, you keep the rest.
               </p>
 

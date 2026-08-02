@@ -424,21 +424,25 @@ export const CARE_PRICE_USD = BASE_USD.care;
  * Express — up to two pages, live within two hours.
  *
  * Priced under seventy dollars deliberately: it is a decision someone makes
- * in one sitting, not one they get quotes for. Half up front and half on
+ * in one sitting, not one they get quotes for. 40% up front and the rest on
  * delivery, and if the two hours are missed the balance is written off. That
  * guarantee is the product — without it this is just a cheap page.
  *
- * The clock starts when the build is accepted, not when they pay. An order
- * placed overnight must not already be late by morning.
+ * The clock does not start when they pay. Payment moves the request to a
+ * review state and notifies Yusuf; he checks what actually arrived and starts
+ * the two hours deliberately. A card clearing overnight, or against a brief
+ * still missing its copy, must not burn a window nobody can work in.
+ *
+ * 40% up front, 60% on delivery — the same split as every other plan.
  */
 export const EXPRESS_PRICE_USD = 69;
-export const EXPRESS_DEPOSIT_USD = 35;
+export const EXPRESS_DEPOSIT_USD = Math.round(EXPRESS_PRICE_USD * 0.4 * 100) / 100;
 export const EXPRESS_WINDOW_HOURS = 2;
 
 export const EXPRESS_FEATURES = [
   "Up to two pages, whatever you need on them",
   "Live within two hours or you keep the balance",
-  "Half up front, half only if I am on time",
+  "40% up front, the rest only if I am on time",
   "A live countdown you can watch",
   "Mobile and desktop, both done properly",
   "Yours outright — hosting and domain in your name",

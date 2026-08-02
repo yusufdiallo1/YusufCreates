@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     const intent = await stripe.paymentIntents.create({
       amount: build.balanceAmount,
       currency: build.currency,
-      payment_method_types: ["card", "link"],
+      automatic_payment_methods: { enabled: true },
       metadata: { buildToken: token, kind: "build_balance" },
     });
     return NextResponse.json({ clientSecret: intent.client_secret });
@@ -93,9 +93,17 @@ export async function POST(request: Request) {
   const intent = await stripe.paymentIntents.create({
     amount: build.depositAmount,
     currency: build.currency,
-    // Card and Link only. Wallets are an Enterprise convenience and this is
-    // the cheapest thing on the site.
-    payment_method_types: ["card", "link"],
+    /*
+     * Automatic methods rather than a fixed list.
+     *
+     * Apple Pay and Google Pay have no value of their own in
+     * `payment_method_types` — they are card-backed and ride on "card", but
+     * only when Stripe is allowed to decide what to offer. Pinning the list
+     * suppressed them, so a phone that could have paid with one tap was
+     * shown a card form instead. On the cheapest, fastest thing on the site
+     * that is the wrong trade.
+     */
+    automatic_payment_methods: { enabled: true },
     metadata: {
       // The webhook matches on this to mark the deposit paid and start the
       // clock. Without it a successful payment has nothing to attach to.

@@ -188,8 +188,12 @@ export function BuildPayment({
           appearance: {
             theme: "night",
             variables: {
-              colorPrimary: "#e8a33d",
-              colorBackground: "#1a1714",
+              // The site's own tokens, restated as hex. Stripe renders in
+              // an iframe where var() resolves to nothing, so these must be
+              // literal — and they had drifted to an amber-on-brown palette
+              // that belongs to no part of this site.
+              colorPrimary: "#5e6ad2",
+              colorBackground: "#0f1011",
               colorText: "#f7f8f8",
               colorDanger: "#f2555a",
               fontFamily: "Inter, system-ui, sans-serif",

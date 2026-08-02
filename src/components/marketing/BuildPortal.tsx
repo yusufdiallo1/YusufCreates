@@ -258,7 +258,7 @@ export function BuildPortal({ token }: { token: string }) {
 
         <div className="min-w-0 flex-1">
           {section === "overview" ? (
-            <Overview build={build} isExpress={isExpress} />
+            <Overview build={build} isExpress={isExpress} token={token} />
           ) : null}
           {section === "chat" ? <Chat token={token} /> : null}
           {section === "payment" ? (
@@ -318,7 +318,15 @@ type Build = NonNullable<
   ReturnType<typeof useQuery<typeof api.express.byToken>>
 >;
 
-function Overview({ build, isExpress }: { build: Build; isExpress: boolean }) {
+function Overview({
+  build,
+  isExpress,
+  token,
+}: {
+  build: Build;
+  isExpress: boolean;
+  token: string;
+}) {
   const reduceMotion = useReducedMotion();
   // Express counts to the stored dueAt; every other plan to the agreed date.
   const target = isExpress ? build.dueAt : build.deliveryDate;
@@ -419,6 +427,12 @@ function Overview({ build, isExpress }: { build: Build; isExpress: boolean }) {
         </motion.div>
       ) : null}
 
+      {/* Asked here, while the portal is still open and the work has just
+          landed — the only moment someone will write about it. Never a
+          condition of delivery: it appears after the site is handed over, not
+          in front of it. */}
+      {build.status === "delivered" ? <TestimonialInvite token={token} /> : null}
+
       {build.status === "delivered" ? (
         <Card
           title={
@@ -462,6 +476,58 @@ function Overview({ build, isExpress }: { build: Build; isExpress: boolean }) {
           ) : null}
         </Card>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Offers the testimonial, once.
+ *
+ * The token is minted on demand rather than at delivery, so a client who
+ * never opens their portal never has a dangling invitation sitting in the
+ * database waiting to be guessed.
+ */
+function TestimonialInvite({ token }: { token: string }) {
+  const invite = useMutation(api.express.inviteTestimonial);
+  const [link, setLink] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  if (link) {
+    return (
+      <div className="hairline rounded-xl bg-surface-1 p-6">
+        <p className="text-primary">Thank you</p>
+        <p className="mt-2 text-sm text-secondary">
+          The form is open in a new tab. Nothing else is needed from you.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="hairline rounded-xl bg-surface-1 p-6">
+      <p className="text-primary">Would you say a few words?</p>
+      <p className="mt-2 text-sm text-secondary">
+        Only if you want to — it changes nothing either way. A couple of honest
+        sentences helps the next person decide.
+      </p>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => {
+          setBusy(true);
+          void invite({ token })
+            .then((res) => {
+              if (!res?.token) return;
+              const url = `/testimonial/${res.token}`;
+              setLink(url);
+              window.open(url, "_blank", "noopener");
+            })
+            .finally(() => setBusy(false));
+        }}
+        className="mt-5 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+      >
+        {busy ? "Opening…" : "Leave a testimonial"}
+      </button>
     </div>
   );
 }
@@ -541,7 +607,22 @@ function Chat({ token }: { token: string }) {
   }, [token, unreadCount, markRead]);
 
   return (
-    <div className="hairline flex h-[26rem] flex-col rounded-xl bg-surface-1">
+    /*
+     * Height is capped by the viewport, not fixed.
+     *
+     * A fixed 26rem cannot shrink, so when the on-screen keyboard opened it
+     * pushed the input off the bottom of the screen — you were typing into a
+     * field you could not see. The layout already sets
+     * `interactiveWidget: "resizes-content"`, which makes dvh track the space
+     * the keyboard leaves behind; this just has to be sized in it.
+     *
+     * min-h keeps it usable on a short landscape screen, where 60dvh alone
+     * would collapse the log to a couple of lines.
+     */
+    <div
+      className="hairline flex flex-col rounded-xl bg-surface-1"
+      style={{ height: "min(26rem, 60dvh)", minHeight: "16rem" }}
+    >
       <div ref={logRef} className="flex-1 space-y-3 overflow-y-auto p-5">
         {list.length === 0 ? (
           <p className="text-sm text-secondary">
