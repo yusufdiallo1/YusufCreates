@@ -37,6 +37,10 @@ export type FieldId =
   | "targetLaunch"
   | "decisionMakers"
   | "supportScope"
+  | "supportUrl"
+  | "supportIssues"
+  | "supportStack"
+  | "supportAccess"
   | "company"
   | "role";
 
@@ -160,7 +164,26 @@ export const PLANS: Plan[] = [
     id: "support",
     label: "Ongoing support",
     hint: "Care plan for something already live.",
-    fields: ["supportScope", "existingUrl", "currentState", "timeline"],
+    /*
+     * The longest set of questions on the site, deliberately.
+     *
+     * A care plan is a fixed monthly price against unknown work, which is the
+     * one shape where under-asking costs me directly: quoting £180/mo to look
+     * after a bespoke stack with a broken build and no repo access is how a
+     * plan becomes a loss. Every field here changes whether I can take it on.
+     *
+     * supportUrl is REQUIRED where existingUrl is optional elsewhere. There
+     * is no such thing as a care plan for a site nobody can look at.
+     */
+    fields: [
+      "supportUrl",
+      "supportScope",
+      "supportIssues",
+      "supportStack",
+      "supportAccess",
+      "currentState",
+      "timeline",
+    ],
     messagePrompt:
       "What breaks, what needs changing regularly, and who looks after it today?",
     skipsPricing: false,
@@ -328,6 +351,21 @@ export const FIELDS: Record<FieldId, FieldDef> = {
     kind: "text",
     placeholder: "Head of marketing, plus a security review.",
   },
+  /**
+   * Required, unlike existingUrl elsewhere.
+   *
+   * A care plan is a fixed monthly price against work nobody has seen yet.
+   * Quoting one without looking at the site is guessing, so this is the one
+   * question the flow will not proceed without.
+   */
+  supportUrl: {
+    id: "supportUrl",
+    label: "The site or app you need looked after",
+    kind: "text",
+    required: true,
+    help: "I look at it before quoting — a care plan is priced on what is actually there.",
+    placeholder: "https://",
+  },
   supportScope: {
     id: "supportScope",
     label: "What do you need looking after?",
@@ -338,6 +376,42 @@ export const FIELDS: Record<FieldId, FieldDef> = {
       "New features each month",
       "Someone on call when it breaks",
     ],
+  },
+  supportIssues: {
+    id: "supportIssues",
+    label: "What is going wrong right now?",
+    kind: "textarea",
+    required: true,
+    help: "Be specific. Known bugs, things that break often, anything already annoying you.",
+    placeholder:
+      "Contact form stopped emailing in March. Blog images load slowly on phones.",
+  },
+  supportStack: {
+    id: "supportStack",
+    label: "What is it built with?",
+    kind: "text",
+    help: "WordPress, Shopify, Webflow, custom — a guess is fine if you are not sure.",
+    placeholder: "WordPress with a bought theme, hosted on Bluehost",
+  },
+  /**
+   * Access is a go/no-go, not a nicety.
+   *
+   * "Nobody knows the logins" is a discovery job before it is a care plan,
+   * and finding that out after quoting a monthly figure is finding it out too
+   * late. Asked as a select so the answer is comparable across enquiries.
+   */
+  supportAccess: {
+    id: "supportAccess",
+    label: "Can you give me access?",
+    kind: "select",
+    required: true,
+    options: [
+      "Yes — I have all the logins",
+      "Partly — I have some, not all",
+      "No — someone else holds them",
+      "I do not know",
+    ],
+    help: "I cannot look after something I cannot get into. Honest answers save us both time.",
   },
   company: {
     id: "company",

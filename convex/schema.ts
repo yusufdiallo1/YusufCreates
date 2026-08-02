@@ -103,8 +103,15 @@ export default defineSchema({
     targetLaunch: v.optional(v.string()),
     decisionMakers: v.optional(v.string()),
 
-    /* Support path only. */
+    /* Support path only. A care plan is a fixed monthly price against
+       unknown work, so these decide whether it can be taken on at all. */
     supportScope: v.optional(v.string()),
+    /** Required in the form: no care plan for a site nobody can look at. */
+    supportUrl: v.optional(v.string()),
+    supportIssues: v.optional(v.string()),
+    supportStack: v.optional(v.string()),
+    /** Whether they can actually hand over the logins. A go/no-go. */
+    supportAccess: v.optional(v.string()),
 
     /**
      * A discount code they arrived with, as typed.

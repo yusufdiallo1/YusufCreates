@@ -64,6 +64,10 @@ interface Payload {
   targetLaunch?: string;
   decisionMakers?: string;
   supportScope?: string;
+  supportUrl?: string;
+  supportIssues?: string;
+  supportStack?: string;
+  supportAccess?: string;
   promoCode?: string;
   tier?: string;
   timeline?: string;
@@ -183,6 +187,10 @@ export async function POST(request: Request) {
       targetLaunch: trim(payload.targetLaunch),
       decisionMakers: trim(payload.decisionMakers),
       supportScope: trim(payload.supportScope),
+      supportUrl: trim(payload.supportUrl),
+      supportIssues: trim(payload.supportIssues),
+      supportStack: trim(payload.supportStack),
+      supportAccess: trim(payload.supportAccess),
       // Uppercased to match how codes are issued, so a lead typed in lower
       // case still lines up with the promo when the invoice is raised.
       promoCode: trim(payload.promoCode)?.toUpperCase(),
@@ -331,6 +339,10 @@ function buildSummary(p: Payload): { label: string; value: string }[] {
     ["Pages", p.pageCount],
     ["Timeline", p.timeline],
     ["Support scope", p.supportScope],
+    ["Site to look after", p.supportUrl],
+    ["Current issues", p.supportIssues],
+    ["Built with", p.supportStack],
+    ["Access", p.supportAccess],
     ["Discount code", p.promoCode],
     ["Procurement", p.procurementProcess],
     ["NDA required", p.ndaRequired === "yes" ? "Yes" : undefined],
