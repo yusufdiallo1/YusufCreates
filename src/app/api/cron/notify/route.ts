@@ -22,6 +22,19 @@ import { RequestExpired } from "@emails/RequestExpired";
  * requests still expire — the client just is not told. That is the right way
  * round. The money decision must not depend on an email delivering.
  *
+ * ⚠ SCHEDULE: daily (`0 6 * * *` in vercel.json), NOT every fifteen minutes.
+ * Vercel's Hobby plan rejects any cron that runs more than once a day, and it
+ * rejects it at DEPLOY time — a fifteen-minute expression fails the whole
+ * deployment, not just the job. Do not put it back without checking the plan.
+ *
+ * What that costs: a queued email can wait up to a day. What it does not cost
+ * is correctness — the sweeps in convex/automation.ts still run every 5, 15
+ * and 60 minutes on Convex's own cron, which has no such limit, so waivers,
+ * expiries and invoices all still happen on time. Only the telling is late.
+ *
+ * Worth revisiting if express volume grows: either upgrade the plan, or move
+ * the sending into a Convex action so the whole loop runs on one scheduler.
+ *
  * Gated by EMAIL_LOG_SECRET, the same shared secret the Stripe webhook uses
  * to call privileged mutations. Without it anyone could trigger a send.
  */
