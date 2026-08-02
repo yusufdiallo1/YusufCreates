@@ -78,7 +78,21 @@ export function BuildPayment({
   const payable = stage !== null;
 
   useEffect(() => {
-    if (!payable) return;
+    /*
+     * Drop the intent when there is nothing left to pay.
+     *
+     * This used to just `return`, leaving the previous clientSecret in
+     * state. The portal query is reactive, so when the webhook marks the
+     * deposit paid this effect re-runs with payable false and bailed —
+     * keeping a mounted card form wired to an intent Stripe has already
+     * consumed. The client, still on the page, could submit it and be shown
+     * a Stripe error moments after their payment actually succeeded.
+     */
+    if (!payable) {
+      setClientSecret(null);
+      setError(null);
+      return;
+    }
     let live = true;
 
     fetch("/api/stripe/build-deposit", {

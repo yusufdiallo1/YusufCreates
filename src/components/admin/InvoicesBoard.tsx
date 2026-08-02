@@ -212,12 +212,27 @@ function StatusCell({
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ id: invoice._id }),
             });
+            const body = await res.json().catch(() => ({}));
             if (!res.ok) {
-              const body = await res.json().catch(() => ({}));
               setIssueError(body.error ?? "Could not issue that.");
               setIssuing(false);
               // Throwing rolls the thumb back — nothing was issued.
               throw new Error("issue failed");
+            }
+            /*
+             * Issued, but the email may not have gone.
+             *
+             * The invoice exists at this point, so the slider is allowed to
+             * complete — rolling it back would claim nothing happened. But
+             * the route cannot be run again for this invoice, so if the send
+             * failed I have to know now, while I still have the client in
+             * mind, rather than a fortnight later when nobody has paid.
+             */
+            if (body.emailed === false) {
+              setIssueError(
+                body.warning ??
+                  "Issued, but the email did not send. Send the link by hand.",
+              );
             }
             setIssuing(false);
           }}

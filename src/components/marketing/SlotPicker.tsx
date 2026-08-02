@@ -151,21 +151,38 @@ export function SlotPicker({
             const full = open === 0;
             const selected = month === slot.month;
 
+            /*
+             * A full month is still selectable — this is the WAITLIST.
+             *
+             * It used to be `disabled={full}`, which made the page
+             * contradict itself exactly when it mattered: with everything
+             * booked the copy below says "join anyway and you'll be first to
+             * hear", and every button that could express that was
+             * unclickable. Being full is the reason someone is on this page,
+             * not a reason to turn them away.
+             *
+             * Still visually dimmed, so "taken" reads at a glance; the label
+             * says so too, for anyone not looking at the colour.
+             */
             return (
               <button
                 key={slot.month}
                 type="button"
-                disabled={full}
                 aria-pressed={selected}
                 aria-label={`${MONTH_FMT.format(new Date(slot.month))} — ${
-                  full ? "fully booked" : `${open} of ${total} places open`
+                  full
+                    ? "fully booked, join the waitlist"
+                    : `${open} of ${total} places open`
                 }`}
                 onClick={() => setMonth(slot.month)}
                 className={`hairline rounded-xl p-4 text-left transition-all duration-fast ${
                   selected
                     ? "bg-surface-2 ring-1 ring-[color:var(--accent)]"
                     : full
-                      ? "cursor-not-allowed opacity-45"
+                      // Dimmed to read as taken, but it still responds to a
+                      // hover: it is a real choice now, and a not-allowed
+                      // cursor on a working button is its own small lie.
+                      ? "opacity-45 hover:bg-surface-2 hover:opacity-70"
                       : "bg-surface-1 hover:bg-surface-2"
                 }`}
               >
@@ -215,6 +232,20 @@ export function SlotPicker({
           <p className="mt-4 text-sm text-secondary">
             Everything in the next few months is taken. Join anyway and
             you&apos;ll be first to hear when something frees up.
+          </p>
+        ) : null}
+
+        {/*
+          A month is required, and nothing used to say so.
+
+          `valid` has always included `month !== null`, but only the name and
+          email fields render an error when touched — so submitting without
+          picking a month hit the `if (!valid) return` and did nothing at
+          all. No message, no movement: indistinguishable from a dead button.
+        */}
+        {touched && month === null ? (
+          <p role="alert" className="mt-4 text-sm text-[color:var(--text-notice)]">
+            Pick a month to hold.
           </p>
         ) : null}
       </fieldset>

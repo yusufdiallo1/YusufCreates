@@ -164,9 +164,32 @@ export async function POST(request: Request) {
       result,
     });
 
+    /*
+     * Report whether the email actually went.
+     *
+     * sendEmail never throws — it returns {status:"failed"} — and this used
+     * to return ok:true regardless, so a send that failed looked exactly
+     * like one that worked. The invoice is already stamped with its
+     * stripeInvoiceId by this point, so the "Already issued" guard rejects
+     * every retry: the client was never told they owe anything, and the one
+     * route that could tell them refuses to run again.
+     *
+     * The invoice IS raised either way — that part succeeded, and saying
+     * otherwise would be its own lie — so this reports partial success and
+     * names the thing that still needs doing.
+     */
+    const emailed = result.status === "sent";
+
     return NextResponse.json({
       ok: true,
+      emailed,
       url: finalised.hosted_invoice_url,
+      ...(emailed
+        ? {}
+        : {
+            warning:
+              "The invoice was raised but the email did not send. Send the payment link to the client by hand.",
+          }),
     });
   } catch (err) {
     console.error("[stripe] issue failed:", err);

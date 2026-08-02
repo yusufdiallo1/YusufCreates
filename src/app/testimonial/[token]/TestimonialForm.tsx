@@ -145,7 +145,19 @@ export function TestimonialForm({ token }: { token: string }) {
             ariaLabel="Send your testimonial"
             disabled={!ready}
             onConfirm={async () => {
-              if (!isConvexConfigured) return;
+              /*
+               * Throw, do not return.
+               *
+               * SlideToConfirm reads a resolved promise as success and draws
+               * its confirmation tick. Returning early here therefore showed
+               * "Sent" for a testimonial that never left the browser — the
+               * one outcome worse than an error, because the person believes
+               * they are finished and never tries again.
+               */
+              if (!isConvexConfigured) {
+                setError("Not connected right now. Please try again shortly.");
+                throw new Error("Convex is not configured.");
+              }
               setError(null);
               const res = await submit({
                 token,

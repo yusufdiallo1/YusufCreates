@@ -36,12 +36,25 @@ export function Overview() {
   }
 
   const { counts, revenue, pipeline, needsAttention } = data;
-  const money = (n: number) =>
+  const money = (n: number, currency = revenue.currency || "USD") =>
     new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: revenue.currency || "USD",
+      currency,
       maximumFractionDigits: 0,
     }).format(n);
+
+  /*
+   * The headline figures are one currency — the primary one. Any others are
+   * named underneath rather than added in, because summing dollars and
+   * dirhams produces a number that is not an amount of money.
+   *
+   * Normally this is empty: one currency, one figure, no extra line.
+   */
+  const others = (totals: { currency: string; amount: number }[]) =>
+    totals
+      .filter((t) => t.currency !== revenue.currency && t.amount !== 0)
+      .map((t) => money(t.amount, t.currency))
+      .join(" · ");
 
   return (
     <div className="space-y-10">
@@ -61,8 +74,16 @@ export function Overview() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Stat label="Needs a reply" value={counts.leadsNew} emphasis={counts.leadsNew > 0} />
           <Stat label="Hot leads open" value={counts.leadsHot} />
-          <Stat label="Paid this month" value={money(revenue.paidThisMonth)} />
-          <Stat label="Outstanding" value={money(revenue.outstanding)} />
+          <Stat
+            label="Paid this month"
+            value={money(revenue.paidThisMonth)}
+            note={others(revenue.paidByCurrency)}
+          />
+          <Stat
+            label="Outstanding"
+            value={money(revenue.outstanding)}
+            note={others(revenue.outstandingByCurrency)}
+          />
         </div>
       </section>
 
@@ -176,10 +197,13 @@ function Stat({
   label,
   value,
   emphasis = false,
+  note,
 }: {
   label: string;
   value: string | number;
   emphasis?: boolean;
+  /** Secondary line — used for totals held in another currency. */
+  note?: string;
 }) {
   return (
     <div className="admin-card">
@@ -191,6 +215,9 @@ function Stat({
       >
         {value}
       </p>
+      {note ? (
+        <p className="mt-1 text-xs text-secondary tabular-nums">plus {note}</p>
+      ) : null}
     </div>
   );
 }

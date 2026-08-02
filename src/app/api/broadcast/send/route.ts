@@ -126,11 +126,26 @@ export async function POST(request: Request) {
     }
     recipients = [{ email: to }];
   } else {
-    recipients = await fetchQuery(
-      api.subscribers.audienceRecipients,
-      { audience },
-      { token },
-    ).catch(() => []);
+    /*
+     * A failure here is NOT an empty audience.
+     *
+     * This used to `.catch(() => [])`, which turned an expired session or a
+     * Convex error into "No recipients in the newsletter audience" below —
+     * sending me off to re-add subscribers who were there the whole time.
+     * The two cases need opposite responses, so they get different answers.
+     */
+    try {
+      recipients = await fetchQuery(
+        api.subscribers.audienceRecipients,
+        { audience },
+        { token },
+      );
+    } catch {
+      return NextResponse.json(
+        { error: "Could not read the audience. Check you are still signed in." },
+        { status: 502 },
+      );
+    }
   }
 
   if (recipients.length === 0) {
@@ -155,9 +170,20 @@ export async function POST(request: Request) {
             body: content,
             ctaLabel: body.ctaLabel,
             ctaUrl: body.ctaUrl,
-            // Per-recipient, from their own token — a shared link would let
-            // anyone unsubscribe anyone.
-            unsubscribeUrl: `${siteUrl()}/newsletter/unsubscribe?token=${subscriber.token ?? ""}`,
+            /*
+             * Per-recipient, from their own token — a shared link would let
+             * anyone unsubscribe anyone.
+             *
+             * When there is no token the link is omitted rather than sent
+             * empty. `?token=` with nothing after it is a link that looks
+             * like an unsubscribe and cannot ever be one; the template falls
+             * back to the reply-to address, which a person can actually act
+             * on. Clients mailed directly have no subscription row, so this
+             * is a real case rather than a defensive branch.
+             */
+            unsubscribeUrl: subscriber.token
+              ? `${siteUrl()}/newsletter/unsubscribe?token=${subscriber.token}`
+              : undefined,
           }),
         });
 

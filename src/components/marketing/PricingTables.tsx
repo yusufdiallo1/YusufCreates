@@ -16,6 +16,7 @@ import {
   CURRENCIES,
   CURRENCY_SYMBOL,
   ENTERPRISE_FEATURES,
+  EXPRESS_DEPOSIT_USD,
   EXPRESS_FEATURES,
   EXPRESS_PRICE_USD,
   EXPRESS_WINDOW_HOURS,
@@ -115,9 +116,24 @@ export function PricingTables() {
     [live],
   );
 
-  // One source for the express figures, so deposit + balance always equals
-  // the total shown beside them.
-  const expressSplit = splitPrice(EXPRESS_PRICE_USD, currency, 0.5, rates);
+  /*
+   * The SAME split the checkout actually charges.
+   *
+   * This passed 0.5 while EXPRESS_DEPOSIT_USD is computed at 0.4, so the
+   * pricing card advertised a deposit of half — $34.50 on a $69 build —
+   * against the $27.60 the order page shows and Stripe takes. The card's own
+   * feature list says "40% up front" two lines below, so the page
+   * contradicted the checkout and itself at once.
+   *
+   * Derived from the deposit constant rather than repeating the ratio, so
+   * the two cannot drift apart again.
+   */
+  const expressSplit = splitPrice(
+    EXPRESS_PRICE_USD,
+    currency,
+    EXPRESS_DEPOSIT_USD / EXPRESS_PRICE_USD,
+    rates,
+  );
 
   const floating = !PEGGED.includes(currency);
   const growthUsd = growthPriceUsd(pages);

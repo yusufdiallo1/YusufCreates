@@ -206,7 +206,24 @@ export const join = mutation({
 
     const isCurrent = args.slotMonth === current;
     const takenNow = args.kind === "build" ? builds : care;
-    const limit = args.kind === "build" ? BUILD_SLOTS : CARE_SLOTS;
+    /*
+     * The LIVE limit, read the same way `slots` reads it.
+     *
+     * This used to use the BUILD_SLOTS/CARE_SLOTS constants directly while
+     * the booking grid above honoured the `slots.*` settings — so the two
+     * disagreed the moment either was changed. Setting slots.build to 0 to
+     * stop taking work showed a full month to every visitor and then quietly
+     * accepted their booking anyway; raising it to 4 advertised four
+     * openings and rejected the third as full.
+     *
+     * The gate a submission passes has to be the same number the page
+     * promised, or the page is not telling the truth.
+     */
+    const limit = await slotSetting(
+      ctx,
+      args.kind === "build" ? "slots.build" : "slots.care",
+      args.kind === "build" ? BUILD_SLOTS : CARE_SLOTS,
+    );
 
     const claimed = waiting.filter(
       (r) =>

@@ -79,7 +79,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not authorised." }, { status: 401 });
   }
 
-  const secret = process.env.EMAIL_LOG_SECRET!;
+  /*
+   * Checked, not asserted.
+   *
+   * authorised() above returns true on CRON_SECRET alone, but every mutation
+   * below is reached with EMAIL_LOG_SECRET and declares `secret: v.string()`.
+   * The old `!` meant a deployment with only CRON_SECRET set — the state of
+   * any project that wired up Vercel cron and nothing else — passed the auth
+   * check and then failed argument validation on every single run. Balance
+   * invoices never raised, expiry emails never sent, admin alerts never
+   * fired, and nothing anywhere said so: Vercel does not surface a failing
+   * cron in the app.
+   *
+   * A named 503 is recoverable. A validation error inside a scheduled job is
+   * invisible.
+   */
+  const secret = process.env.EMAIL_LOG_SECRET;
+  if (!secret) {
+    return NextResponse.json(
+      { error: "EMAIL_LOG_SECRET is not configured; nothing can be sent." },
+      { status: 503 },
+    );
+  }
   const sent: string[] = [];
   const failed: string[] = [];
 

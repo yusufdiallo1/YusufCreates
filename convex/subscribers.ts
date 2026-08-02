@@ -187,11 +187,24 @@ export const audienceRecipients = query({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
 
+    /*
+     * The token comes with the address.
+     *
+     * Without it every broadcast went out with "unsubscribe?token=" and an
+     * empty value, so the link 404'd for every recipient: the one link the
+     * law requires to work was the one link that could not. The unsubscribe
+     * mutation looks a subscriber up BY token, so there is no way to honour
+     * the request without it.
+     */
     const newsletter = async () => {
       const rows = await ctx.db.query("subscribers").collect();
       return rows
         .filter((r) => r.confirmed && r.unsubscribedAt === undefined)
-        .map((r) => ({ email: r.email, name: undefined as string | undefined }));
+        .map((r) => ({
+          email: r.email,
+          name: undefined as string | undefined,
+          token: r.token,
+        }));
     };
 
     const clients = async () => {
@@ -213,10 +226,16 @@ export const audienceRecipients = query({
         .map((c) => ({ email: c.email, name: c.name }));
     };
 
-    let list: { email: string; name?: string }[];
+    let list: { email: string; name?: string; token?: string }[];
     if (args.audience === "newsletter") list = await newsletter();
     else if (args.audience === "clients") list = await clients();
     else if (args.audience === "enterprise") list = await enterprise();
+    /*
+     * Newsletter first, so that on the "all" audience the subscriber row —
+     * the one carrying an unsubscribe token — is the copy that survives the
+     * dedupe below. A client who also subscribed is one person, and the
+     * version of them that can unsubscribe is the one worth keeping.
+     */
     else list = [...(await newsletter()), ...(await clients())];
 
     // One row per address. "All" overlaps by definition — someone on the

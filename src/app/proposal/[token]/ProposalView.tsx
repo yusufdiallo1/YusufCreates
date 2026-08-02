@@ -25,6 +25,14 @@ export function ProposalView({ token }: { token: string }) {
   const [done, setDone] = useState<string | null>(null);
   const [changes, setChanges] = useState("");
   const [asking, setAsking] = useState(false);
+  /*
+   * The accept path gets rollback and a pending state for free from
+   * SlideToConfirm. Decline and "request changes" are plain buttons, so a
+   * failed mutation left the page exactly as it was — no error, no spinner,
+   * nothing — and the only trace was an unhandled rejection in a console the
+   * client is not looking at. They click again, and again.
+   */
+  const [failed, setFailed] = useState<string | null>(null);
 
   useEffect(() => {
     void load({ token }).then(setProposal).catch(() => setProposal(null));
@@ -128,8 +136,17 @@ export function ProposalView({ token }: { token: string }) {
                   type="button"
                   disabled={changes.trim() === ""}
                   onClick={async () => {
-                    await respond({ token, action: "changes", message: changes });
-                    setDone("Sent — I'll revise and send it back.");
+                    setFailed(null);
+                    try {
+                      await respond({
+                        token,
+                        action: "changes",
+                        message: changes,
+                      });
+                      setDone("Sent — I'll revise and send it back.");
+                    } catch {
+                      setFailed("That didn't send. Try again in a moment.");
+                    }
                   }}
                   className="mt-3 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas disabled:opacity-40"
                 >
@@ -148,8 +165,13 @@ export function ProposalView({ token }: { token: string }) {
                 <button
                   type="button"
                   onClick={async () => {
-                    await respond({ token, action: "decline" });
-                    setDone("Understood — thanks for looking.");
+                    setFailed(null);
+                    try {
+                      await respond({ token, action: "decline" });
+                      setDone("Understood — thanks for looking.");
+                    } catch {
+                      setFailed("That didn't send. Try again in a moment.");
+                    }
                   }}
                   className="text-sm text-secondary hover:text-primary"
                 >
@@ -157,6 +179,15 @@ export function ProposalView({ token }: { token: string }) {
                 </button>
               </div>
             )}
+
+            {failed ? (
+              <p
+                role="alert"
+                className="mt-4 text-sm text-[color:var(--text-notice)]"
+              >
+                {failed}
+              </p>
+            ) : null}
           </div>
         </div>
       )}

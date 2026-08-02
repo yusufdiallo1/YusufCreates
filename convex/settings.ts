@@ -13,9 +13,23 @@ import { requireAdmin } from "./lib/auth";
  * without a deploy: availability, currency rates, response-time copy.
  */
 
+/**
+ * Reads one setting by key. ADMIN ONLY.
+ *
+ * This used to have no guard at all, which made the whole table readable
+ * from any browser: `key` is caller-supplied, so anything ever written
+ * through `set` could be fetched by naming it. The header above says a
+ * settings table is "readable by any query that forgets its auth check" —
+ * this was that query.
+ *
+ * The public pages do not need it. They read `publicRates` and `publicCopy`,
+ * which return a fixed handful of values that are printed on the page
+ * anyway; that is the right shape for public access, and this is not.
+ */
 export const get = query({
   args: { key: v.string() },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const row = await ctx.db
       .query("settings")
       .withIndex("by_key", (q) => q.eq("key", args.key))

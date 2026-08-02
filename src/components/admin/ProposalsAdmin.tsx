@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
 import { Field, TextArea,
@@ -168,6 +168,22 @@ function Drawer({
   const [leadId, setLeadId] = useState<string>(
     proposal?.leadId ?? leads[0]?.id ?? "",
   );
+
+  /*
+   * Adopt the first lead once the list arrives.
+   *
+   * useState only reads its initial value on the first render. The drawer
+   * mounts as soon as it is opened, which can be before api.admin.leads has
+   * resolved — and then `leads` was [], leadId stuck at "" permanently, and
+   * `valid` below could never become true. Save stayed greyed out for the
+   * life of the drawer with no way to recover but re-picking the same lead.
+   *
+   * Only fills a blank selection, so it can never overwrite a choice or the
+   * lead an existing proposal already points at.
+   */
+  useEffect(() => {
+    if (leadId === "" && leads.length > 0) setLeadId(leads[0].id);
+  }, [leadId, leads]);
   const [amount, setAmount] = useState(String(proposal?.amount ?? ""));
   const [currency] = useState(proposal?.currency ?? "USD");
   const [fields, setFields] = useState({
@@ -214,6 +230,17 @@ function Drawer({
               onChange={(e) => setLeadId(e.target.value)}
               className="hairline mt-2 w-full rounded-lg bg-surface-1 px-3.5 py-2.5 text-sm text-primary"
             >
+              {/*
+                An explicit empty option, so a blank selection LOOKS blank.
+                With value="" matching nothing, the browser renders the first
+                lead as though it were chosen — which made a disabled Save
+                button look like a bug rather than a missing field.
+              */}
+              {leadId === "" ? (
+                <option value="">
+                  {leads.length === 0 ? "Loading leads…" : "Choose a lead"}
+                </option>
+              ) : null}
               {leads.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.label}

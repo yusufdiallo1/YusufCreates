@@ -117,7 +117,10 @@ export function CommandPalette() {
     ];
 
     const quick: Action[] = [
-      { id: "do:broadcast", label: "Start a broadcast", hint: "Compose a newsletter", group: "Actions", run: () => go(`${ADMIN_PATH}/broadcasts/new`) },
+      // /broadcasts, not /broadcasts/new — there is no route at the latter,
+      // so the one shortcut for the action 404'd. The composer is on the
+      // index page itself.
+      { id: "do:broadcast", label: "Start a broadcast", hint: "Compose a newsletter", group: "Actions", run: () => go(`${ADMIN_PATH}/broadcasts`) },
       { id: "do:site", label: "View the live site", group: "Actions", keywords: "public home", run: () => { setOpen(false); window.open("/", "_blank", "noopener"); } },
     ];
 

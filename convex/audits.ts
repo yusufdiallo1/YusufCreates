@@ -42,10 +42,36 @@ export const request = mutation({
   },
 });
 
-/** Public read by id — the id is returned only to the person who asked. */
+/**
+ * Public read by id, for the page that is waiting on its own report.
+ *
+ * Returns the report and NOT the whole row. It used to hand back everything
+ * `ctx.db.get` produced, which included the `email` the audit was requested
+ * with and the `leadId` it created — neither of which the page renders. A
+ * document id is short and is handed to every caller, so treating it as a
+ * secret that protects an address was the wrong assumption; the fix is to
+ * stop sending the address rather than to hope the id stays private.
+ */
 export const get = query({
   args: { id: v.id("audits") },
-  handler: async (ctx, args) => await ctx.db.get(args.id),
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get(args.id);
+    if (!row) return null;
+
+    return {
+      _id: row._id,
+      url: row.url,
+      status: row.status,
+      score: row.score,
+      categories: row.categories,
+      fixes: row.fixes,
+      error: row.error,
+      siteName: row.siteName,
+      siteLogo: row.siteLogo,
+      siteDescription: row.siteDescription,
+      createdAt: row.createdAt,
+    };
+  },
 });
 
 /** Written by the route handler once PageSpeed replies. */

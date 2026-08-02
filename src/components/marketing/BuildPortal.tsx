@@ -373,6 +373,52 @@ function Overview({
         </Card>
       ) : null}
 
+      {/*
+        Paid, and waiting on me to start the clock.
+
+        This state had NO card at all, and it is the one that follows a
+        successful payment — express.ts sets it the moment the deposit
+        clears. The reactive query pushed the new status and every branch
+        here went false, so the client watched the page empty itself
+        seconds after paying. Silence is the worst possible answer to
+        "did my money arrive".
+      */}
+      {build.status === "paid_review" ? (
+        <Card title="Paid — thank you">
+          Your payment has arrived and your place is held. I look over every
+          brief before the clock starts, so the countdown begins when I have
+          checked it rather than the moment the card cleared
+          {isExpress ? ", and never while you would be asleep" : ""}. You will
+          get an email the moment it does.
+        </Card>
+      ) : null}
+
+      {/* Paid and in the queue, but not yet started. */}
+      {build.status === "queued" ? (
+        <Card title="In the queue">
+          Paid and queued. I will email you the moment I start, and the
+          countdown appears here as soon as it is running.
+        </Card>
+      ) : null}
+
+      {/* Both terminal states. Neither had a card, so a cancelled or expired
+          request also showed an empty page. */}
+      {build.status === "cancelled" ? (
+        <Card title="Cancelled">
+          This request has been cancelled and nothing further is owed. If that
+          is not what you expected, reply to any email from me and I will sort
+          it out.
+        </Card>
+      ) : null}
+
+      {build.status === "expired" ? (
+        <Card title="This one timed out">
+          The deposit was never paid, so the slot was released. Nothing was
+          charged. If you still want it built, reply to any email from me and
+          I will set it up again.
+        </Card>
+      ) : null}
+
       {/* The clock.
           Fades up once when it first resolves. The countdown renders null
           until the first tick lands, so without this the card appears

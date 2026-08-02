@@ -44,7 +44,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Bad request." }, { status: 400 });
   }
 
-  const build = await fetchQuery(api.express.byToken, { token });
+  /*
+   * A lookup FAILURE and a missing build are different answers.
+   *
+   * Unwrapped, a transient Convex error threw out of the handler and became
+   * a bare 500 on the screen where the client is trying to pay. But folding
+   * it into the 404 below would be worse than the crash: it would tell
+   * someone holding a valid link that their build does not exist, when the
+   * truth is that the lookup did not complete and retrying will work.
+   */
+  let build;
+  try {
+    build = await fetchQuery(api.express.byToken, { token });
+  } catch {
+    return NextResponse.json(
+      { error: "Could not reach your build just now. Try again in a moment." },
+      { status: 503 },
+    );
+  }
+
   if (!build) {
     return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
@@ -64,13 +82,27 @@ export async function POST(request: Request) {
     build.balanceAmount > 0;
 
   if (balanceDue) {
-    const intent = await stripe.paymentIntents.create({
-      amount: build.balanceAmount,
-      currency: build.currency,
-      automatic_payment_methods: { enabled: true },
-      metadata: { buildToken: token, kind: "build_balance" },
-    });
-    return NextResponse.json({ clientSecret: intent.client_secret });
+    /*
+     * Stripe rejects for reasons that are configuration, not client error:
+     * a currency not enabled on the account, an amount under that currency's
+     * minimum. Unwrapped those surfaced as a 500 on the pay screen, which
+     * tells the person with their card out nothing at all.
+     */
+    try {
+      const intent = await stripe.paymentIntents.create({
+        amount: build.balanceAmount,
+        currency: build.currency,
+        automatic_payment_methods: { enabled: true },
+        metadata: { buildToken: token, kind: "build_balance" },
+      });
+      return NextResponse.json({ clientSecret: intent.client_secret });
+    } catch (err) {
+      console.error("[stripe] balance intent failed:", err);
+      return NextResponse.json(
+        { error: "Could not start that payment. Please try again." },
+        { status: 502 },
+      );
+    }
   }
 
   if (!PAYABLE.has(build.status)) {
@@ -90,9 +122,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const intent = await stripe.paymentIntents.create({
-    amount: build.depositAmount,
-    currency: build.currency,
+  // Same guard as the balance branch: a Stripe rejection here is a
+  // configuration problem, and a 500 on the pay screen explains none of it.
+  try {
+    const intent = await stripe.paymentIntents.create({
+      amount: build.depositAmount,
+      currency: build.currency,
     /*
      * Automatic methods rather than a fixed list.
      *
@@ -110,10 +145,17 @@ export async function POST(request: Request) {
       buildToken: token,
       kind: "build_deposit",
     },
-    // No receipt_email: byToken deliberately does not return the address, so
-    // the client's own view cannot be used to read it back. Stripe collects
-    // one during checkout anyway.
-  });
+      // No receipt_email: byToken deliberately does not return the address,
+      // so the client's own view cannot be used to read it back. Stripe
+      // collects one during checkout anyway.
+    });
 
-  return NextResponse.json({ clientSecret: intent.client_secret });
+    return NextResponse.json({ clientSecret: intent.client_secret });
+  } catch (err) {
+    console.error("[stripe] deposit intent failed:", err);
+    return NextResponse.json(
+      { error: "Could not start that payment. Please try again." },
+      { status: 502 },
+    );
+  }
 }

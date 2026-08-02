@@ -96,13 +96,55 @@ export const overview = query({
       byTier.set(key, entry);
     }
 
-    const paidThisMonth = invoices
-      .filter((i) => i.status === "paid" && (i.paidAt ?? 0) >= monthStart)
-      .reduce((sum, i) => sum + i.amount, 0);
+    /*
+     * Totals PER CURRENCY, not one number across all of them.
+     *
+     * These used to sum `amount` over every invoice regardless of currency
+     * and label the result with `invoices[0].currency` — the oldest invoice's
+     * currency, chosen by insertion order and nothing else. One AED invoice
+     * beside three USD ones produced a figure that was not a real amount in
+     * any currency, presented as if it were. Pricing is quoted in USD, GBP,
+     * EUR, SAR and AED, so this was reachable, not theoretical.
+     *
+     * Reported as a list so the dashboard can show "$2,400 · £600" rather
+     * than adding pounds to dollars. `primary` keeps the single-currency
+     * case — which is the normal one — a plain number to render.
+     */
+    const sumByCurrency = (rows: typeof invoices) => {
+      const totals = new Map<string, number>();
+      for (const i of rows) {
+        const currency = i.currency ?? "USD";
+        totals.set(currency, (totals.get(currency) ?? 0) + i.amount);
+      }
+      return [...totals.entries()]
+        .map(([currency, amount]) => ({ currency, amount }))
+        .sort((a, b) => b.amount - a.amount);
+    };
 
-    const outstanding = invoices
-      .filter((i) => i.status === "sent" || i.status === "overdue")
-      .reduce((sum, i) => sum + i.amount, 0);
+    const paidByCurrency = sumByCurrency(
+      invoices.filter(
+        (i) => i.status === "paid" && (i.paidAt ?? 0) >= monthStart,
+      ),
+    );
+    const outstandingByCurrency = sumByCurrency(
+      invoices.filter((i) => i.status === "sent" || i.status === "overdue"),
+    );
+
+    /*
+     * The currency actually in use, rather than whichever row sorted first.
+     * Falls back to USD only when there are no invoices at all to read one
+     * from — an empty dashboard, where the label is arbitrary anyway.
+     */
+    const primaryCurrency =
+      outstandingByCurrency[0]?.currency ??
+      paidByCurrency[0]?.currency ??
+      "USD";
+
+    const paidThisMonth =
+      paidByCurrency.find((t) => t.currency === primaryCurrency)?.amount ?? 0;
+    const outstanding =
+      outstandingByCurrency.find((t) => t.currency === primaryCurrency)
+        ?.amount ?? 0;
 
     return {
       counts: {
@@ -117,7 +159,11 @@ export const overview = query({
       revenue: {
         paidThisMonth,
         outstanding,
-        currency: invoices[0]?.currency ?? "USD",
+        currency: primaryCurrency,
+        // The full breakdown, so a second currency is visible rather than
+        // silently folded into the headline figure.
+        paidByCurrency,
+        outstandingByCurrency,
       },
       pipeline: [...byTier.entries()]
         .map(([tier, v]) => ({ tier, ...v }))

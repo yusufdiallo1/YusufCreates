@@ -679,6 +679,17 @@ export const remove = mutation({
       .collect();
     for (const m of messages) await ctx.db.delete(m._id);
 
+    /*
+     * The balance invoice raised for this build, if there was one.
+     *
+     * Left behind, it outlives the thing it was for: it stays payable at
+     * /invoice/<token> — getByToken is public by design, so the link keeps
+     * working — and keeps counting toward the outstanding total on the
+     * dashboard. A deleted request that still asks to be paid is worse than
+     * either outcome on its own.
+     */
+    if (row.invoiceId) await ctx.db.delete(row.invoiceId);
+
     if (row.projectId) {
       // Rows hanging off the project, then the project itself.
       for (const table of ["milestones", "deliverables", "portalMessages"] as const) {
