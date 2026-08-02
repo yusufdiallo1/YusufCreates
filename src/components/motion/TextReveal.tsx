@@ -78,7 +78,7 @@ export function TextReveal({
                   ? { animate: { y: 0, opacity: 1 } }
                   : {
                       whileInView: { y: 0, opacity: 1 },
-                      viewport: { once: true, margin: "-40px", amount: "some" },
+                      viewport: { once: true, margin: "0px", amount: "some" },
                     })}
                 transition={
                   reduceMotion

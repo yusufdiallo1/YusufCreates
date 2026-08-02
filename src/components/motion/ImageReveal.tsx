@@ -41,7 +41,7 @@ export function ImageReveal({
       style={{ overflow: "hidden", willChange: "clip-path" }}
       initial={{ clipPath: "inset(100% 0 0 0)" }}
       whileInView={{ clipPath: "inset(0% 0 0 0)" }}
-      viewport={{ once: true, margin: "-40px", amount: "some" }}
+      viewport={{ once: true, margin: "0px", amount: "some" }}
       transition={{ duration: 1, delay, ease: [0.16, 1, 0.3, 1] }}
     >
       {/*
@@ -58,7 +58,7 @@ export function ImageReveal({
         }}
         initial={{ scale: 1.15 }}
         whileInView={{ scale: 1 }}
-        viewport={{ once: true, margin: "-40px", amount: "some" }}
+        viewport={{ once: true, margin: "0px", amount: "some" }}
         transition={{ duration: 1.2, delay, ease: [0.16, 1, 0.3, 1] }}
       >
         {children}

@@ -36,20 +36,22 @@ export function Reveal({
   duration = 0.6,
   y = 16,
   /*
-   * A small pixel inset, NOT a percentage.
+   * NO inset by default. Touching the viewport is enough.
    *
-   * This was "-10%", which shrinks the root by a tenth of the viewport at
-   * top AND bottom. A tall block sitting just below the fold — the express
-   * order form at 689px in a 735px window — then had only ~46px inside a
-   * trigger line drawn at 662px, so it never fired: the form rendered at
-   * opacity 0 and stayed there until something happened to scroll the page.
-   * An order form that is invisible on arrival is indistinguishable from a
-   * broken page.
+   * This was "-10%", then "-40px", and both shrink the trigger area at the
+   * top AND bottom edges. Any element that only ever peeks into the last few
+   * pixels of the fold then sits permanently outside it and never animates
+   * in — it renders at opacity 0 and simply stays there. The express order
+   * form does exactly that at 1280x720, the commonest laptop viewport
+   * there is: it starts at 690px with 30px on screen, inside a boundary
+   * drawn at 680px.
    *
-   * A fixed inset cannot scale into that failure, and `amount` below is what
-   * actually delays the trigger.
+   * A page that is invisible until you happen to scroll is indistinguishable
+   * from a broken one, and no amount of inset is worth that. The stagger
+   * comes from `delay`, and `amount` below decides how much must be visible
+   * — neither needs the root resized.
    */
-  margin = "-40px",
+  margin = "0px",
   once = true,
   className,
 }: RevealProps) {

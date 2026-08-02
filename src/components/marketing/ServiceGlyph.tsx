@@ -42,7 +42,7 @@ function Draw({
       {...STROKE}
       initial={{ pathLength: 0, opacity: 0 }}
       whileInView={{ pathLength: 1, opacity: 1 }}
-      viewport={{ once: true, margin: "-80px" }}
+      viewport={{ once: true, margin: "0px", amount: "some" }}
       transition={{ duration: 0.9, delay, ease: [0.16, 1, 0.3, 1] }}
     />
   );
