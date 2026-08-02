@@ -12,8 +12,28 @@ import type { MutationCtx } from "./_generated/server";
  * completes the flow has their user row deleted and the sign-in aborted, so no
  * account is ever created for a non-admin.
  */
+/**
+ * Sign-in is by USERNAME, not email.
+ *
+ * The Password provider validates its identifier as an email address by
+ * default, which meant the one account on this deployment was named after a
+ * real inbox — and that address shipped in the sign-in form. A username is
+ * not an address, cannot be guessed from a WHOIS record, and gives away
+ * nothing if the page is read.
+ *
+ * The `profile` override is what removes the email check: the identifier is
+ * taken as an opaque string and stored on the user's `email` field, because
+ * that is the column Convex Auth keys accounts on. It is a name, not an
+ * address, and nothing ever tries to send mail to it.
+ */
+const UsernamePassword = Password({
+  profile(params) {
+    return { email: String(params.email ?? "").trim().toLowerCase() };
+  },
+});
+
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
-  providers: [Password],
+  providers: [UsernamePassword],
   /*
    * Four failed attempts an hour, down from a default of ten.
    *
@@ -38,12 +58,12 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
      * access. That separation is the whole reason this is safe to loosen.
      */
     async afterUserCreatedOrUpdated(ctx, { userId, profile }) {
-      const allowed = process.env.ADMIN_EMAIL;
+      const allowed = process.env.ADMIN_USERNAME ?? process.env.ADMIN_EMAIL;
 
       // Fail closed. An unset variable must never mean "allow everyone".
       if (!allowed) {
         await ctx.db.delete(userId);
-        throw new Error("ADMIN_EMAIL is not configured; sign-in refused.");
+        throw new Error("ADMIN_USERNAME is not configured; sign-in refused.");
       }
 
       const incoming = String(

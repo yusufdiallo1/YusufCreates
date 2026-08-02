@@ -94,26 +94,32 @@ export function AdminSignIn() {
       <Logo variant="mark" className="mx-auto h-8 w-auto" />
       <h1 className="mt-8 text-2xl">Admin</h1>
 
-      {/* Typed rather than hardcoded. The address used to be a constant in
-          this file, which put my personal email in a public JS chunk for
-          anyone reading the page source. Convex checks it against ADMIN_EMAIL
-          on every attempt and fails closed, so sending it from here grants
-          nothing — there is no reason to publish it. */}
+      {/* A username, not an email.
+          Typed rather than hardcoded: the identifier used to be a constant in
+          this file, which put a real inbox in a public JS chunk for anyone
+          reading the page source. A username gives away nothing even when the
+          page is read, and cannot be harvested or guessed from a domain
+          record. Convex checks it on every attempt and fails closed, so
+          sending it from here grants nothing. */}
       <div className="mt-8">
-        <label htmlFor="admin-email" className="sr-only">
-          Email
+        <label htmlFor="admin-username" className="sr-only">
+          Username
         </label>
         <input
-          id="admin-email"
-          type="email"
+          id="admin-username"
+          /* Deliberately `text`. `type="email"` made the browser refuse to
+             submit anything without an @, which is exactly what a username
+             is. */
+          type="text"
           autoComplete="username"
+          autoCapitalize="none"
           spellCheck={false}
           value={email}
           onChange={(e) => {
             setEmail(e.target.value);
             setError(null);
           }}
-          placeholder="Email"
+          placeholder="Username"
           className="hairline w-full rounded-full bg-surface-1 px-5 py-3 text-center text-sm"
         />
       </div>

@@ -105,11 +105,9 @@ export function CommandPalette() {
       { id: "nav:overview", label: "Overview", group: "Go to", run: () => go(`${ADMIN_PATH}`) },
       { id: "nav:leads", label: "Leads and inquiries", group: "Go to", keywords: "inbox enquiries", run: () => go(`${ADMIN_PATH}/leads`) },
       { id: "nav:analytics", label: "Analytics", group: "Go to", keywords: "traffic stats", run: () => go(`${ADMIN_PATH}/analytics`) },
-      { id: "nav:projects", label: "Projects and case studies", group: "Go to", keywords: "work portfolio", run: () => go(`${ADMIN_PATH}/projects`) },
-      { id: "nav:testimonials", label: "Testimonials", group: "Go to", run: () => go(`${ADMIN_PATH}/testimonials`) },
+      { id: "nav:content", label: "Content — portfolio, blog, testimonials", group: "Go to", keywords: "work portfolio posts writing quotes", run: () => go(`${ADMIN_PATH}/content`) },
       { id: "nav:feedback", label: "Feedback", group: "Go to", run: () => go(`${ADMIN_PATH}/feedback`) },
       { id: "nav:broadcasts", label: "Broadcasting", group: "Go to", keywords: "newsletter email send", run: () => go(`${ADMIN_PATH}/broadcasts`) },
-      { id: "nav:blog", label: "Blog", group: "Go to", keywords: "posts writing", run: () => go(`${ADMIN_PATH}/blog`) },
       { id: "nav:kb", label: "AI knowledge base", group: "Go to", keywords: "bot chat questions", run: () => go(`${ADMIN_PATH}/kb`) },
       { id: "nav:invoices", label: "Proposals and invoices", group: "Go to", keywords: "money billing vat", run: () => go(`${ADMIN_PATH}/invoices`) },
       { id: "nav:promos", label: "Promotions", group: "Go to", keywords: "discount code sale offer", run: () => go(`${ADMIN_PATH}/promos`) },
@@ -120,8 +118,6 @@ export function CommandPalette() {
 
     const quick: Action[] = [
       { id: "do:broadcast", label: "Start a broadcast", hint: "Compose a newsletter", group: "Actions", run: () => go(`${ADMIN_PATH}/broadcasts/new`) },
-      { id: "do:project", label: "New project", group: "Actions", run: () => go(`${ADMIN_PATH}/projects/new`) },
-      { id: "do:post", label: "New blog post", group: "Actions", run: () => go(`${ADMIN_PATH}/blog/new`) },
       { id: "do:site", label: "View the live site", group: "Actions", keywords: "public home", run: () => { setOpen(false); window.open("/", "_blank", "noopener"); } },
     ];
 
@@ -142,7 +138,7 @@ export function CommandPalette() {
         hint: p.status,
         group: "Projects",
         keywords: p.slug,
-        run: () => go(`${ADMIN_PATH}/projects/${p._id}`),
+        run: () => go(`${ADMIN_PATH}/content`),
       })) ?? [];
 
     return [...nav, ...quick, ...leadActions, ...projectActions];

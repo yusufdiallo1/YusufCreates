@@ -18,6 +18,21 @@ import type { Id } from "../_generated/dataModel";
  * Fails closed. An unset ADMIN_EMAIL denies everyone rather than admitting
  * anyone, which is the only safe direction for a misconfiguration.
  */
+/**
+ * The login identifier for the admin account.
+ *
+ * Separate from ADMIN_EMAIL, which is where notifications are SENT. Sign-in
+ * is by username now, so the thing typed into the form and the address mail
+ * goes to are two different values — conflating them meant the inbox that
+ * receives alerts was also the credential, and it shipped in the form.
+ *
+ * Falls back to ADMIN_EMAIL so a deployment that has not set the new variable
+ * keeps working rather than locking me out.
+ */
+function adminIdentifier(): string | undefined {
+  return process.env.ADMIN_USERNAME ?? process.env.ADMIN_EMAIL;
+}
+
 export async function requireAdmin(
   ctx: QueryCtx | MutationCtx,
 ): Promise<Id<"users">> {
@@ -26,9 +41,9 @@ export async function requireAdmin(
     throw new Error("Not authenticated.");
   }
 
-  const allowed = process.env.ADMIN_EMAIL;
+  const allowed = adminIdentifier();
   if (!allowed) {
-    throw new Error("ADMIN_EMAIL is not configured.");
+    throw new Error("ADMIN_USERNAME is not configured.");
   }
 
   const user = await ctx.db.get(userId);

@@ -21,7 +21,7 @@ export const SITE = {
  * re-checking every Convex call and failing closed. This only keeps it out of
  * casual reach.
  */
-export const ADMIN_PATH = "/admin-yusuf-creates-secure";
+export const ADMIN_PATH = "/yusuf-diallo-creates";
 
 export const MARKETING_NAV = [
   { href: "/", label: "Home" },

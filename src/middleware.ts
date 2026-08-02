@@ -47,6 +47,29 @@ const convexMiddleware = convexAuthNextjsMiddleware(
     const signInRoute = isSignIn(request);
     if (!protectedRoute && !signInRoute) return;
 
+    /*
+     * /admin is a shortcut, not a route.
+     *
+     * There is no page at /admin — the back office lives at ADMIN_PATH. This
+     * used to be handled only by the signed-out branch below, which meant
+     * that once signed in the request fell through to the router and 404'd:
+     * the one time the shortcut was worth having, it was the one time it did
+     * not work.
+     *
+     * Redirected before the auth check so it behaves the same either way, and
+     * the signed-out case still lands on the sign-in page from ADMIN_PATH.
+     */
+    const path = request.nextUrl.pathname;
+    /*
+     * Exactly /admin or /admin/... — NOT ADMIN_PATH, which also begins with
+     * "/admin" and would rewrite onto itself forever. The boundary check is
+     * what keeps the real path out of this branch.
+     */
+    if (path === "/admin" || path.startsWith("/admin/")) {
+      const rest = path.slice("/admin".length);
+      return nextjsMiddlewareRedirect(request, `${ADMIN_PATH}${rest}`);
+    }
+
     const authed = await convexAuth.isAuthenticated();
 
     if (protectedRoute && !authed) {
@@ -63,7 +86,30 @@ export default function middleware(
   request: NextRequest,
   event: Parameters<typeof convexMiddleware>[1],
 ) {
-  if (!configured) return NextResponse.next();
+  /*
+   * Without Convex there is no way to verify a session — so the admin FAILS
+   * CLOSED rather than open.
+   *
+   * This used to pass every request straight through, which meant a missing
+   * or mistyped NEXT_PUBLIC_CONVEX_URL turned the entire back office into a
+   * public URL. A misconfiguration must never be the thing that unlocks it.
+   *
+   * Marketing pages still render, because they need no session and taking the
+   * whole site down over an unset variable helps nobody.
+   */
+  if (!configured) {
+    const path = request.nextUrl.pathname;
+    const isAdminPath =
+      path === "/admin" ||
+      path.startsWith("/admin/") ||
+      path === ADMIN_PATH ||
+      path.startsWith(`${ADMIN_PATH}/`);
+
+    if (isAdminPath) {
+      return NextResponse.redirect(new URL("/sign-in-admin", request.url));
+    }
+    return NextResponse.next();
+  }
   return convexMiddleware(request, event);
 }
 

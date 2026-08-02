@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePreloadedQuery, type Preloaded } from "convex/react";
-import type { api } from "@/lib/convex-api";
+import { usePreloadedQuery, useQuery, type Preloaded } from "convex/react";
+import { api, isConvexConfigured } from "@/lib/convex-api";
+import type { Id } from "@convex/_generated/dataModel";
 import { Reveal } from "@/components/motion/Reveal";
 
 type Post = {
@@ -24,6 +25,20 @@ export function BlogIndex({
   preloaded: Preloaded<typeof api.posts.listPublished>;
 }) {
   const posts = usePreloadedQuery(preloaded) as Post[] | undefined;
+
+  /*
+   * Counts for every post on the page in one subscription.
+   *
+   * Reactive, so a like or an approved comment appears here without a
+   * refresh — the point being that you can see engagement from the index
+   * rather than having to open each post to find out.
+   */
+  const counts = useQuery(
+    api.engagement.countsForPosts,
+    isConvexConfigured && posts?.length
+      ? { postIds: posts.map((p) => p._id as Id<"posts">) }
+      : "skip",
+  );
 
   if (!posts || posts.length === 0) {
     return (
@@ -79,6 +94,43 @@ export function BlogIndex({
                   {post.tags?.length ? (
                     <span>{post.tags.join(" · ")}</span>
                   ) : null}
+                </p>
+
+                {/* Counts, live. Shown at zero as well, so the absence of a
+                    number never has to be read as "none" or "not counted". */}
+                <p className="mt-2.5 flex items-center gap-4 text-xs text-secondary">
+                  <span className="flex items-center gap-1.5">
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="size-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      aria-hidden="true"
+                    >
+                      <path d="M12 20.5s-7.5-4.7-7.5-9.6a4.2 4.2 0 0 1 7.5-2.6 4.2 4.2 0 0 1 7.5 2.6c0 4.9-7.5 9.6-7.5 9.6Z" />
+                    </svg>
+                    <span className="tabular-nums">
+                      {counts?.[post._id]?.likes ?? 0}
+                    </span>
+                    <span className="sr-only">likes</span>
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="size-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      aria-hidden="true"
+                    >
+                      <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.9 8.9 0 0 1-3.8-.9L3 20.5l1.6-4.9A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4Z" />
+                    </svg>
+                    <span className="tabular-nums">
+                      {counts?.[post._id]?.comments ?? 0}
+                    </span>
+                    <span className="sr-only">comments</span>
+                  </span>
                 </p>
               </div>
             </Link>

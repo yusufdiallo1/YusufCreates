@@ -1,8 +1,11 @@
-import type { Metadata } from "next";
-import { ProjectsAdmin } from "@/components/admin/ProjectsAdmin";
+import { redirect } from "next/navigation";
+import { ADMIN_PATH } from "@/lib/constants";
 
-export const metadata: Metadata = { title: "Projects" };
-
-export default function AdminProjectsPage() {
-  return <ProjectsAdmin />;
+/**
+ * Merged into the single Content page. Kept as a redirect rather than
+ * deleted: bookmarks, the command palette and any link I have sent myself
+ * still resolve instead of 404ing.
+ */
+export default function Redirect() {
+  redirect(`${ADMIN_PATH}/content`);
 }

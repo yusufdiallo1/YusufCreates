@@ -174,3 +174,43 @@ export const stats = query({
     };
   },
 });
+
+/**
+ * Like and comment counts for a list of posts.
+ *
+ * One query for the whole index rather than one per card: a listing page with
+ * a dozen posts would otherwise open a dozen subscriptions, and the counts are
+ * a single number each — the round trips would cost more than the data.
+ *
+ * Reactive like every Convex query, so a like landing anywhere updates every
+ * open listing without a refresh.
+ *
+ * Public and unauthenticated. These counts are already visible on each post;
+ * withholding them on the index would hide nothing.
+ */
+export const countsForPosts = query({
+  args: { postIds: v.array(v.id("posts")) },
+  handler: async (ctx, args) => {
+    const out: Record<string, { likes: number; comments: number }> = {};
+
+    for (const postId of args.postIds) {
+      const likes = await ctx.db
+        .query("postLikes")
+        .withIndex("by_post", (q) => q.eq("postId", postId))
+        .collect();
+
+      // Approved only. An unapproved comment is not public, and counting it
+      // would advertise a comment nobody can read.
+      const comments = await ctx.db
+        .query("postComments")
+        .withIndex("by_post", (q) =>
+          q.eq("postId", postId).eq("approved", true),
+        )
+        .collect();
+
+      out[postId] = { likes: likes.length, comments: comments.length };
+    }
+
+    return out;
+  },
+});

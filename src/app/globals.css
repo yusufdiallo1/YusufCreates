@@ -28,6 +28,9 @@
   --accent: #5e6ad2;
   --accent-glow: rgba(94, 106, 210, 0.35);
   --danger: #e5484d;
+  /* Alive and on track. Distinct from --danger and from --text-notice: those
+     say "wrong" and "needs you", this says "running". */
+  --success: #3fb950;
 
   /* --accent at 4.42:1 under --text-primary sits just under the 4.5:1 needed
      for body text on a filled button. This slightly darker step is for that
@@ -198,6 +201,9 @@
   --accent-glow: rgba(76, 88, 192, 0.28);
   --accent-solid: #4c58c0;
   --danger: #d13239;
+  /* Darker on a light canvas: #3fb950 is tuned for a near-black background
+     and drops under 4.5:1 against white. */
+  --success: #1a7f37;
   --danger-solid: #c02b31;
 
   /* Amber has to go much darker on a light canvas to stay legible; the dark
@@ -952,6 +958,14 @@
 
   .badge-warm {
     color: var(--text-primary);
+  }
+
+  /* Approved and moving: taken on, paid, building, delivered. Green because
+     the question it answers is "is this alive?" rather than "is this urgent?"
+     — those are different, and --text-notice already owns the second. */
+  .badge-live {
+    color: var(--success, #3fb950);
+    border-color: color-mix(in srgb, var(--success, #3fb950) 35%, transparent);
   }
 
   .badge-cold {

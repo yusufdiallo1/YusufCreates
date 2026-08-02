@@ -92,20 +92,14 @@ export function PostEngagement({ postId }: { postId: string }) {
             : "Comments"}
         </h2>
 
+        {/* Each comment is name and body only. A date on a blog comment
+            answers a question nobody asked, and makes an older thread read as
+            stale when the writing in it has not changed. */}
         {comments.length > 0 ? (
           <ul className="mt-5 space-y-5">
             {comments.map((c) => (
               <li key={c._id} className="hairline-t pt-5 first:border-0 first:pt-0">
-                <div className="flex items-baseline justify-between gap-4">
-                  <span className="text-sm text-primary">{c.name}</span>
-                  <span className="shrink-0 text-xs text-secondary">
-                    {new Date(c.createdAt).toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </span>
-                </div>
+                <span className="text-sm text-primary">{c.name}</span>
                 {/* pre-wrap keeps their line breaks; nothing else in what they
                     wrote is interpreted. */}
                 <p className="mt-1.5 text-sm whitespace-pre-wrap text-secondary">

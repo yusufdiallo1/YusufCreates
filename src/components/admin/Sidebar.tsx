@@ -43,11 +43,10 @@ const GROUPS: { heading: string; items: { href: string; label: string }[] }[] = 
   },
   {
     heading: "Site",
-    items: [
-      { href: `${ADMIN_PATH}/projects`, label: "Portfolio" },
-      { href: `${ADMIN_PATH}/blog`, label: "Blog" },
-      { href: `${ADMIN_PATH}/testimonials`, label: "Testimonials" },
-    ],
+    // Portfolio, blog and testimonials are one page with tabs. Three entries
+    // made the admin look like it had more to run than it does, and none of
+    // them is a daily job.
+    items: [{ href: `${ADMIN_PATH}/content`, label: "Content" }],
   },
   {
     heading: "Growth",
