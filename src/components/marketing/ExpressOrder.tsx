@@ -8,6 +8,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { TextReveal } from "@/components/motion/TextReveal";
 import { Typewriter } from "@/components/motion/Typewriter";
 import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
+import { WorkingHours } from "@/components/marketing/WorkingHours";
 import { FieldError } from "@/components/ui/FieldError";
 import { validateEmail, validateRequired } from "@/lib/validate";
 import {
@@ -158,6 +159,11 @@ export function ExpressOrder() {
             />
             {touched.brief ? <FieldError>{briefError}</FieldError> : null}
           </div>
+
+          {/* Before money changes hands. An express build has a delivery
+              clock attached, and it starts when I start — so the hours that
+              clock runs on are stated before the deposit, not after. */}
+          <WorkingHours className="mt-6" />
 
           <div className="mt-6">
             <SlideToConfirm

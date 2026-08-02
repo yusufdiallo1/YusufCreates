@@ -6,6 +6,7 @@ import { storedReferralCode } from "@/lib/referral";
 import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
 import { Reveal } from "@/components/motion/Reveal";
 import { SubmitSuccess } from "@/components/marketing/SubmitSuccess";
+import { WorkingHours } from "@/components/marketing/WorkingHours";
 import { FieldError } from "@/components/ui/FieldError";
 import { playConfirmation } from "@/lib/sound";
 import { track } from "@/lib/track";
@@ -378,6 +379,11 @@ export function StartForm() {
                 </a>
                 . I use your details to reply, and nothing else.
               </p>
+
+              {/* Above the send control, not below it: the point is to set
+                  the expectation before the enquiry goes, so nobody spends a
+                  Friday night wondering why it has gone quiet. */}
+              <WorkingHours className="mt-6" />
 
               <div className="mt-4">
                 {/* The one irreversible action in this flow. onConfirm is

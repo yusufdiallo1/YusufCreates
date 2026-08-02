@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { Logo } from "@/components/ui/Logo";
 import { FieldError } from "@/components/ui/FieldError";
+import { ADMIN_PATH } from "@/lib/constants";
 
 /**
  * Admin sign-in — Convex Auth, Password provider.
@@ -68,7 +69,15 @@ export function AdminSignIn() {
       form.set("password", value);
       form.set("flow", "signIn");
       await signIn("password", form);
-      router.push("/admin");
+      /*
+       * Straight to the real path, not /admin.
+       *
+       * /admin now always redirects here so it can never act as an
+       * auto-login, which means pushing to it after a successful sign-in
+       * would bounce right back to this form — a loop that looks like the
+       * password was rejected.
+       */
+      router.push(ADMIN_PATH);
     } catch {
       /*
        * No signUp fallback.

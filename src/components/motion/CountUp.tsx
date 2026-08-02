@@ -39,7 +39,13 @@ export function CountUp({
 }: CountUpProps) {
   const reduceMotion = useReducedMotion();
   const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-15%" });
+  /*
+   * A pixel inset rather than a percentage of the viewport: a percentage
+   * shrinks the root at top and bottom, and an element sitting just below
+   * the fold can end up permanently outside the trigger line — never
+   * animating, so a counter would sit at zero on a page that looks loaded.
+   */
+  const inView = useInView(ref, { once: true, margin: "-40px", amount: "some" });
 
   const motionValue = useMotionValue(0);
   // Seeded with the final value: correct without JS, correct under reduced

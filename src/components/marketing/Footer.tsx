@@ -7,6 +7,7 @@ import { NewsletterForm } from "@/components/marketing/NewsletterForm";
 import { ShareWithFriendLink } from "@/components/marketing/ShareWithFriend";
 import { FeedbackModal } from "@/components/marketing/FeedbackModal";
 import { AvailabilityBadge } from "@/components/marketing/AvailabilityBadge";
+import { WorkingHours } from "@/components/marketing/WorkingHours";
 
 /**
  * Footer — four columns collapsing to one on mobile.
@@ -40,6 +41,10 @@ export function Footer() {
             <div className="mt-4">
               <AvailabilityBadge />
             </div>
+            {/* The standing policy rather than the live clock: a footer is
+                read on every page, and "I'm at my desk right now" belongs
+                where someone is about to act on it, not under the logo. */}
+            <WorkingHours variant="summary" className="mt-3 max-w-56" />
           </div>
 
           {/* 2. Navigation */}

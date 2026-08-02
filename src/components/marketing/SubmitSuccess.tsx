@@ -3,6 +3,7 @@
 import { motion, useReducedMotion } from "motion/react";
 import { useQuery } from "convex/react";
 import { api, isConvexConfigured } from "@/lib/convex-api";
+import { WorkingHours } from "@/components/marketing/WorkingHours";
 
 /**
  * Post-submission state. Deliberately a full panel rather than a toast: the
@@ -21,7 +22,7 @@ const NEXT_STEPS = [
     // The window is substituted at render from settings, so the promise
     // shown here is the one currently being made.
     title: "I read it within {reply}",
-    body: "Every enquiry gets a real reply from me, not an autoresponder.",
+    body: "Counted in working hours, so a Thursday night message gets read Saturday. Every enquiry gets a real reply from me, not an autoresponder.",
   },
   {
     n: "02",
@@ -89,6 +90,11 @@ export function SubmitSuccess({
       <p className="mx-auto mt-3 max-w-md text-center text-secondary">
         A confirmation is on its way to your inbox.
       </p>
+
+      {/* The reply window below is counted in working hours, so it is worth
+          saying which hours those are — otherwise "within 24 hours" reads as
+          a clock that runs through Friday, and it does not. */}
+      <WorkingHours className="mx-auto mt-8 max-w-md" />
 
       <ol className="mt-12 space-y-6">
         {NEXT_STEPS.map((step, index) => (

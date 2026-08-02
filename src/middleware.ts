@@ -26,11 +26,6 @@ const isProtected = createRouteMatcher([`${ADMIN_PATH}(.*)`, "/admin(.*)"]);
 // The portal handles its own three-state auth in-page rather than redirecting:
 // a client arriving from an email link should see an explanation, not a
 // sign-in form for an account they may not realise they have.
-// Sign-in is the Password provider at /sign-in-admin. The old /signin page
-// used GitHub OAuth, which convex/auth.ts no longer configures, so sending
-// anyone there was sending them to a dead end.
-const isSignIn = createRouteMatcher(["/sign-in-admin"]);
-
 // The Convex middleware throws without a deployment URL, which would take down
 // every route. Until `npx convex dev` has run, pass requests through untouched.
 const configured = Boolean(process.env.NEXT_PUBLIC_CONVEX_URL);
@@ -38,36 +33,31 @@ const configured = Boolean(process.env.NEXT_PUBLIC_CONVEX_URL);
 const convexMiddleware = convexAuthNextjsMiddleware(
   async (request, { convexAuth }) => {
     /*
-     * Only the two route groups below care whether there is a session, but
-     * this matcher runs on every page. Verifying the token unconditionally
-     * put a round-trip in front of every marketing page for an answer they
-     * never read — so the check is made lazily, per branch.
+     * Only the admin cares whether there is a session, and this matcher runs
+     * on every page. Verifying the token unconditionally put a round-trip in
+     * front of every marketing page for an answer none of them read.
+     *
+     * The sign-in page is deliberately not checked at all: it renders the
+     * same form whether or not a session exists, so asking costs a round-trip
+     * to change nothing.
      */
     const protectedRoute = isProtected(request);
-    const signInRoute = isSignIn(request);
-    if (!protectedRoute && !signInRoute) return;
+    if (!protectedRoute) return;
 
     /*
-     * /admin is a shortcut, not a route.
+     * /admin is a door, not a key: it always lands on the sign-in page.
      *
-     * There is no page at /admin — the back office lives at ADMIN_PATH. This
-     * used to be handled only by the signed-out branch below, which meant
-     * that once signed in the request fell through to the router and 404'd:
-     * the one time the shortcut was worth having, it was the one time it did
-     * not work.
+     * It used to redirect to ADMIN_PATH, where an existing session cookie
+     * meant the back office simply opened — typing /admin on a browser that
+     * was already signed in walked straight in with no password asked for.
      *
-     * Redirected before the auth check so it behaves the same either way, and
-     * the signed-out case still lands on the sign-in page from ADMIN_PATH.
+     * Matched as exactly /admin or /admin/... and NOT as a prefix, because
+     * ADMIN_PATH also begins with "/admin" and a prefix test would send the
+     * real path here forever.
      */
     const path = request.nextUrl.pathname;
-    /*
-     * Exactly /admin or /admin/... — NOT ADMIN_PATH, which also begins with
-     * "/admin" and would rewrite onto itself forever. The boundary check is
-     * what keeps the real path out of this branch.
-     */
     if (path === "/admin" || path.startsWith("/admin/")) {
-      const rest = path.slice("/admin".length);
-      return nextjsMiddlewareRedirect(request, `${ADMIN_PATH}${rest}`);
+      return nextjsMiddlewareRedirect(request, "/sign-in-admin");
     }
 
     const authed = await convexAuth.isAuthenticated();
@@ -76,9 +66,15 @@ const convexMiddleware = convexAuthNextjsMiddleware(
       return nextjsMiddlewareRedirect(request, "/sign-in-admin");
     }
 
-    if (signInRoute && authed) {
-      return nextjsMiddlewareRedirect(request, ADMIN_PATH);
-    }
+    /*
+     * Landing on the sign-in page while signed in is deliberately NOT
+     * redirected onward.
+     *
+     * That bounce is what made /admin read as an auto-login: the redirect
+     * above arrived here and was thrown into the back office before anything
+     * was typed. Reaching the sign-in page should always show the form. The
+     * sign-in action is what moves you on — the page itself never does.
+     */
   },
 );
 
