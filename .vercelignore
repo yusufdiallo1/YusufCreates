@@ -1,0 +1,17 @@
+# Social content is authored in this repo but never served by the site.
+#
+# Roughly 100MB of rendered PNGs and MP4s — carousels for Instagram and the
+# 9:16 videos. Without this file the CLI uploads all of it on every deploy,
+# which pushed the bundle past 108MB and made the upload itself the thing that
+# failed. Nothing under here is imported by src/, so excluding it changes the
+# build not at all and removes the failure mode entirely.
+#
+# The files are still committed and still in the repo — this only keeps them
+# out of the deployment bundle.
+YusufCreates Social Media/
+Monday Posts/
+Sunday Posts/
+Logo:Favicon/
+
+# Local render scratch
+.playwright-mcp/
