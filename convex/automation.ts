@@ -406,3 +406,117 @@ export const raiseBalanceInvoicePublic = mutation({
     return await applyRaiseInvoice(ctx, args.id);
   },
 });
+
+/* ------------------------------------------------- admin notifications --- */
+
+/**
+ * Things that need me, as a queue for the cron route to email.
+ *
+ * Everything here is time-sensitive in a way the admin sitting open is not a
+ * substitute for: an express build is two hours long, so "I will see it next
+ * time I look" is not a plan. Three kinds:
+ *
+ *   new      — a request arrived and nobody has read it
+ *   paid     — money landed; the clock is waiting on my check
+ *   message  — a client wrote during a live build
+ *
+ * Each is claimed by stamping the row in the same mutation that reports it,
+ * for the same reason as every other sweep here: a cron with no memory sees
+ * the same row again in five minutes.
+ */
+async function collectAdminAlerts(ctx: QueryCtx) {
+    const out: {
+      id: Id<"expressBuilds">;
+      kind: "new" | "paid" | "message";
+      name: string;
+      email: string;
+      token: string;
+      plan: string;
+      brief: string;
+      preview: string;
+    }[] = [];
+
+    for (const status of ["pending_approval", "paid_review", "building"] as const) {
+      const rows = await ctx.db
+        .query("expressBuilds")
+        .withIndex("by_status", (q) => q.eq("status", status))
+        .take(100);
+
+      for (const r of rows) {
+        const base = {
+          id: r._id,
+          name: r.name,
+          email: r.email,
+          token: r.token,
+          plan: r.plan ?? "express",
+          brief: r.brief.slice(0, 400),
+        };
+
+        if (r.status === "pending_approval" && !r.newNotifiedAt) {
+          out.push({ ...base, kind: "new", preview: r.brief.slice(0, 200) });
+          continue;
+        }
+
+        if (r.status === "paid_review" && !r.paidNotifiedAt) {
+          out.push({ ...base, kind: "paid", preview: r.brief.slice(0, 200) });
+          continue;
+        }
+
+        // A live build with a client message I have not been told about.
+        if (r.status === "building") {
+          const msgs = await ctx.db
+            .query("buildMessages")
+            .withIndex("by_build", (q) => q.eq("buildId", r._id))
+            .collect();
+          const latest = msgs
+            .filter((m) => m.fromClient)
+            .sort((a, b) => b.createdAt - a.createdAt)[0];
+          if (latest && !r.messageNotifiedAt) {
+            out.push({ ...base, kind: "message", preview: latest.body.slice(0, 200) });
+          }
+        }
+      }
+    }
+
+    return out;
+}
+
+export const adminAlerts = internalQuery({
+  args: {},
+  handler: async (ctx) => await collectAdminAlerts(ctx),
+});
+
+/** Claims an alert so the next sweep does not send it again. */
+async function applyAlerted(ctx: MutationCtx, id: Id<"expressBuilds">, kind: string) {
+    const field =
+      kind === "new"
+        ? "newNotifiedAt"
+        : kind === "paid"
+          ? "paidNotifiedAt"
+          : kind === "message"
+            ? "messageNotifiedAt"
+            : null;
+    if (!field) throw new Error(`Unknown alert kind: ${kind}`);
+    await ctx.db.patch(id, { [field]: Date.now() });
+}
+
+export const markAlerted = internalMutation({
+  args: { id: v.id("expressBuilds"), kind: v.string() },
+  handler: async (ctx, args) => await applyAlerted(ctx, args.id, args.kind),
+});
+
+export const adminAlertsPublic = query({
+  args: { secret: v.string() },
+  handler: async (ctx, args) => {
+    assertSecret(args.secret);
+    return await collectAdminAlerts(ctx);
+  },
+});
+
+export const markAlertedPublic = mutation({
+  args: { secret: v.string(), id: v.id("expressBuilds"), kind: v.string() },
+  handler: async (ctx, args) => {
+    assertSecret(args.secret);
+    await applyAlerted(ctx, args.id, args.kind);
+  },
+});

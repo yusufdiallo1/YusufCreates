@@ -13,13 +13,15 @@ import { requireAdmin } from "./lib/auth";
  *
  * Two decisions that shape the whole file:
  *
- * 1. Nobody pays before I have approved the brief. An order lands as
- *    pending_approval; I read it and either approve — which mints nothing new,
- *    they already have their token, but does send them the portal link and
- *    unlock payment — or decline it. Taking money for work I have not agreed
- *    to do is the one thing this flow must not allow.
- * 1b. The clock starts on PAYMENT, not on approval. An approved order sitting
- *    unopened in an inbox must not burn the two hours.
+ * 1. Nobody pays before I have approved the brief. A request lands as
+ *    pending_approval; I read it and either approve — which creates the
+ *    client, their project and their portal, and unlocks payment — or decline
+ *    it. Taking money for work I have not agreed to do is the one thing this
+ *    flow must not allow.
+ * 1b. Paying does not start the clock either. It moves the request to
+ *    paid_review and notifies me; I check what actually arrived and start the
+ *    two hours deliberately. A card clearing at 3am, or against a brief still
+ *    missing its copy, must not burn a window I cannot work in.
  * 2. Whether the balance is owed is decided ONCE, at delivery, and written
  *    down. Deriving it later from timestamps means the answer could change if
  *    the window constant ever moves — and this decides who keeps money.
@@ -28,9 +30,19 @@ import { requireAdmin } from "./lib/auth";
 /** Two hours, in milliseconds. */
 export const WINDOW_MS = 2 * 60 * 60 * 1000;
 
-/** Total price in minor units. Half up front, half only if I am on time. */
+/**
+ * Total price in minor units, and the share taken up front.
+ *
+ * 40/60, matching invoices.ts — the deposit covers being committed to, the
+ * balance is what the finished work is worth. The balance is derived as the
+ * REMAINDER rather than as a second percentage: rounding both independently
+ * lets the two instalments sum to a penny either side of the quoted total,
+ * and a client who adds up their receipts and gets a different number is
+ * right to ask why.
+ */
 export const EXPRESS_TOTAL = 6900;
-export const EXPRESS_DEPOSIT = EXPRESS_TOTAL / 2;
+export const DEPOSIT_SHARE = 0.4;
+export const EXPRESS_DEPOSIT = Math.round(EXPRESS_TOTAL * DEPOSIT_SHARE);
 
 const ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
 
@@ -158,13 +170,76 @@ export const markDepositPaid = mutation({
       .unique();
     if (!row || row.depositPaidAt) return;
 
-    // Paying is what starts the clock. They only reached a pay button because
-    // I had already approved the brief, so there is nothing left to decide.
+    /*
+     * Money in does NOT start the clock.
+     *
+     * It used to, and that was wrong: a two-hour promise begins running the
+     * instant a card clears, which could be 3am, or while the brief is still
+     * missing the copy and images it says it needs. Either way the window
+     * burns on work I cannot start.
+     *
+     * So paying moves it to `paid_review` and notifies me. I check what came
+     * in and start the clock deliberately. The client is told this plainly —
+     * "payment received, I am checking it over" — because a countdown that
+     * has not visibly started needs explaining.
+     */
     await ctx.db.patch(row._id, {
       depositPaidAt: Date.now(),
       stripeSessionId: args.stripeSessionId,
+      status: "paid_review",
+      // Cleared so the notification sweep picks this up as new.
+      paidNotifiedAt: undefined,
     });
+  },
+});
+
+/**
+ * Starts the two hours, by hand, after I have checked what was paid for.
+ *
+ * The deliberate act the whole flow hangs on. Separate from approval (which
+ * only opens payment) and from payment (which only proves they are serious),
+ * because this is the one that puts a deadline against my name.
+ */
+export const startBuild = mutation({
+  args: { id: v.id("expressBuilds") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const row = await ctx.db.get(args.id);
+    if (!row) throw new Error("No such build.");
+    if (!row.depositPaidAt && !row.paymentSkipped) {
+      throw new Error("Nothing has been paid, and payment was not skipped.");
+    }
+    if (row.acceptedAt) return; // Already running.
+
     await startClock(ctx, row);
+  },
+});
+
+/**
+ * Starts the work without taking money first.
+ *
+ * For the ones where charging is the wrong move — a friend, a rebuild of my
+ * own mistake, a client I already owe. It skips the deposit and the review
+ * step together: I would not waive a fee for someone whose brief I had not
+ * already read.
+ */
+export const skipPaymentAndStart = mutation({
+  args: { id: v.id("expressBuilds"), note: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const row = await ctx.db.get(args.id);
+    if (!row) throw new Error("No such build.");
+    if (row.acceptedAt) return;
+
+    await ctx.db.patch(args.id, {
+      paymentSkipped: true,
+      manualNote: args.note?.trim().slice(0, 200),
+      // No deposit is owed, so no balance can be withheld against it later.
+      depositAmount: 0,
+    });
+
+    const fresh = await ctx.db.get(args.id);
+    if (fresh) await startClock(ctx, fresh);
   },
 });
 
@@ -681,6 +756,17 @@ export const sendMessage = mutation({
       body,
       createdAt: Date.now(),
     });
+
+    /*
+     * Flag it so I actually find out.
+     *
+     * Cleared rather than set: the notification sweep looks for a message
+     * newer than messageNotifiedAt, so blanking it marks this thread as
+     * needing a nudge. Without this, a client asking "can the logo be bigger?"
+     * during a two-hour build waits until I next happen to open the admin —
+     * which on a two-hour build is the whole build.
+     */
+    await ctx.db.patch(build._id, { messageNotifiedAt: undefined });
   },
 });
 
@@ -857,10 +943,10 @@ export const createFromLead = mutation({
     }
 
     const total = PLAN_TOTAL_MINOR[args.plan] ?? 0;
-    // Half up front, the same split express uses. A zero total (enterprise,
-    // revive) yields a zero deposit, which is correct: there is nothing to
-    // pay until the scope call produces a figure.
-    const deposit = Math.round(total / 2);
+    // 40% up front, the same split every other plan uses. A zero total
+    // (enterprise, revive) yields a zero deposit, which is correct: there is
+    // nothing to pay until the scope call produces a figure.
+    const deposit = Math.round(total * DEPOSIT_SHARE);
 
     const token = makeToken();
     const id = await ctx.db.insert("expressBuilds", {
@@ -882,5 +968,83 @@ export const createFromLead = mutation({
     });
 
     return { id, token, reused: false };
+  },
+});
+
+/* -------------------------------------------------------- testimonial --- */
+
+/**
+ * Mints the testimonial invitation for a finished build.
+ *
+ * Asked from inside the portal while it is still open, rather than emailed
+ * weeks later: the moment someone has just received work they are happy with
+ * is the only moment they will write about it. A request that arrives after
+ * the portal closes arrives after they have moved on.
+ *
+ * Optional, always. A testimonial extracted as a condition of delivery is
+ * worth nothing to either of us.
+ */
+export const inviteTestimonial = mutation({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const row = await ctx.db
+      .query("expressBuilds")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .unique();
+    if (!row) return null;
+    // Only for work actually finished. Nothing else has anything to review.
+    if (row.status !== "delivered") return null;
+    if (row.testimonialToken) return { token: row.testimonialToken };
+
+    const testimonialToken = makeToken();
+    await ctx.db.insert("testimonials", {
+      author: row.name,
+      quote: "",
+      featured: false,
+      order: 999,
+      approved: false,
+      requestToken: testimonialToken,
+    });
+
+    await ctx.db.patch(row._id, {
+      testimonialToken,
+      testimonialAskedAt: Date.now(),
+    });
+    return { token: testimonialToken };
+  },
+});
+
+/**
+ * Every client who has ever paid or been worked for.
+ *
+ * Reads from the request rows rather than a separate ledger: the request IS
+ * the record of the engagement, and a second table would be a second thing to
+ * keep in step. Ordered by most recent activity, since that is how I look for
+ * someone — "the roastery, a few weeks ago" rather than by name.
+ */
+export const customerLog = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const rows = await ctx.db.query("expressBuilds").order("desc").take(500);
+
+    return rows
+      .filter((r) => r.depositPaidAt || r.paymentSkipped || r.acceptedAt)
+      .map((r) => ({
+        _id: r._id,
+        name: r.name,
+        email: r.email,
+        company: r.company ?? null,
+        plan: r.plan ?? "express",
+        status: r.status,
+        token: r.token,
+        paid: (r.depositPaidAt ? r.depositAmount : 0) +
+          (r.balancePaidAt ? r.balanceAmount : 0),
+        currency: r.currency,
+        paymentSkipped: r.paymentSkipped ?? false,
+        balanceWaived: r.balanceWaived ?? false,
+        deliveredAt: r.deliveredAt ?? null,
+        lastActivity: r.deliveredAt ?? r.acceptedAt ?? r.createdAt,
+      }));
   },
 });

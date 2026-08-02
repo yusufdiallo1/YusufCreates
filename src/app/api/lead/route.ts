@@ -221,16 +221,48 @@ export async function POST(request: Request) {
      */
     const logSecret = process.env.EMAIL_LOG_SECRET;
     if (leadId && logSecret) {
+      /*
+       * The brief, assembled from whichever fields the chosen plan collected.
+       *
+       * This used to read only projectPurpose/message/audience/existingUrl —
+       * fields the care-plan flow does not ask for. A support enquiry
+       * therefore produced an empty brief and was silently dropped before it
+       * ever reached the inbox: the lead saved, and the request that should
+       * have been waiting for approval never existed.
+       *
+       * Every plan's own questions are included, so adding a field to a flow
+       * cannot quietly stop its requests appearing.
+       */
+      const label = (prefix: string, value?: string) =>
+        value ? `${prefix}: ${value}` : undefined;
+
       const brief = [
         trim(payload.projectPurpose),
+        trim(payload.onePagePurpose),
+        trim(payload.supportIssues),
         trim(payload.message),
-        trim(payload.audience) ? `Audience: ${trim(payload.audience)}` : undefined,
-        trim(payload.existingUrl) ? `Existing: ${trim(payload.existingUrl)}` : undefined,
+        label("Audience", trim(payload.audience)),
+        label("Site", trim(payload.supportUrl) ?? trim(payload.existingUrl)),
+        label("Needs", trim(payload.supportScope)),
+        label("Built with", trim(payload.supportStack)),
+        label("Access", trim(payload.supportAccess)),
+        label("Platforms", trim(payload.platforms)),
+        label("Where they are", trim(payload.currentState)),
+        label("Timeline", trim(payload.timeline)),
       ]
         .filter(Boolean)
         .join("\n\n");
 
-      if (brief) {
+      /*
+       * A brief with nothing in it should not silently vanish.
+       *
+       * Falling back to the plan label means the request still lands in the
+       * inbox — where I can read the lead and decide — rather than being
+       * dropped where nobody would ever know it existed.
+       */
+      const briefText = brief || `${projectType ?? payload.plan ?? "Enquiry"} — no detail given`;
+
+      if (briefText) {
         try {
           await fetchMutation(api.express.createFromLead, {
             secret: logSecret,
@@ -238,7 +270,7 @@ export async function POST(request: Request) {
             name: payload.name?.trim() ?? "",
             email,
             company: trim(payload.company),
-            brief,
+            brief: briefText,
             plan: payload.plan || "one-page",
             // The band is text ("4 to 6"); its first number is the page count
             // the request is priced and briefed against.

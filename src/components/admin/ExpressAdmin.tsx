@@ -65,6 +65,8 @@ export function ExpressAdmin() {
   const remove = useMutation(api.express.remove);
   const markPaid = useMutation(api.express.markDepositPaidManually);
   const setPreview = useMutation(api.express.setPreviewUrl);
+  const startBuild = useMutation(api.express.startBuild);
+  const skipPayment = useMutation(api.express.skipPaymentAndStart);
 
   const [urls, setUrls] = useState<Record<string, string>>({});
   // One thread open at a time: these are read in passing between builds, not
@@ -87,10 +89,9 @@ export function ExpressAdmin() {
         <h1 className="text-2xl">Requests</h1>
         <p className="mt-1 text-sm text-secondary">
           Every incoming request, whatever the plan. Approving creates the
-          client, their project and their portal, and emails them the link —
-          you do not have to add anyone by hand. The clock starts when they
-          pay, not when you approve, and a missed express window writes off the
-          balance on its own.
+          client, their project and their portal, and emails them the link.
+          Paying does not start the clock — you do, once you have checked what
+          came in. A missed express window writes off the balance on its own.
         </p>
       </div>
 
@@ -153,16 +154,18 @@ export function ExpressAdmin() {
                     </span>
                   ) : (
                     <span
-                      /* Hot means it is on me. Only pending_approval and a
-                         stranded queued row qualify — awaiting_payment is
-                         the client's move, and a hot badge on it would read
-                         as a task I am failing to do. */
+                      /* Approved states read GREEN and stay in the list.
+                         A request vanishing the moment I approved it meant
+                         the one thing I most wanted to look at — the job I
+                         just took on — was the only thing I could not see. */
                       className={`badge shrink-0 ${
-                        row.status === "pending_approval" ||
-                        row.status === "queued"
+                        row.status === "pending_approval"
                           ? "badge-hot"
-                          : row.status === "delivered"
-                            ? ""
+                          : row.status === "awaiting_payment" ||
+                              row.status === "paid_review" ||
+                              row.status === "building" ||
+                              row.status === "delivered"
+                            ? "badge-live"
                             : "badge-cold"
                       }`}
                     >
@@ -200,6 +203,37 @@ export function ExpressAdmin() {
                       start the clock; paying does. */}
                   {row.status === "pending_approval" ? (
                     <Decision id={row._id} name={row.name} />
+                  ) : null}
+
+                  {/* Paid, clock NOT running. The deliberate gap: money
+                      cleared, and the two hours start when I say so. */}
+                  {row.status === "paid_review" ? (
+                    <div className="w-[14rem]">
+                      <MiniSlide
+                        label="Slide to start the clock"
+                        pendingLabel="Starting"
+                        doneLabel="Running"
+                        ariaLabel={`Start the build for ${row.name}`}
+                        onConfirm={async () => {
+                          await startBuild({ id: row._id });
+                        }}
+                      />
+                    </div>
+                  ) : null}
+
+                  {/* Start without charging. For the ones where taking money
+                      is the wrong move — and it skips the review step too,
+                      since I would not waive a fee for a brief I had not
+                      already read. */}
+                  {row.status === "awaiting_payment" ||
+                  row.status === "paid_review" ? (
+                    <button
+                      type="button"
+                      onClick={() => void skipPayment({ id: row._id })}
+                      className="text-xs text-secondary transition-colors duration-fast hover:text-primary"
+                    >
+                      Skip payment & start
+                    </button>
                   ) : null}
 
                   {row.status === "building" ? (

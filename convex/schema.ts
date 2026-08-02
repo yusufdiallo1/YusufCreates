@@ -305,6 +305,14 @@ export default defineSchema({
       v.literal("pending_approval"),
       /** Approved by me; they have the link and can now pay. */
       v.literal("awaiting_payment"),
+      /**
+       * Paid, waiting for me to check it over and start the clock.
+       *
+       * Money arriving does not start a two-hour promise: a card can clear at
+       * 3am, or against a brief still missing the copy it needs. This is the
+       * gap where I look before the deadline is mine.
+       */
+      v.literal("paid_review"),
       /** Paid. For express the clock is already running. */
       v.literal("queued"),
       v.literal("building"),
@@ -360,6 +368,18 @@ export default defineSchema({
      * in the SAME mutation as the effect it guards, so a job that dies partway
      * cannot leave the effect applied and the stamp unset.
      */
+    /** Set when I waived the deposit rather than collecting it. */
+    paymentSkipped: v.optional(v.boolean()),
+    /** A new request I have not been told about yet. */
+    newNotifiedAt: v.optional(v.number()),
+    /** A payment landed and I have not been told yet. */
+    paidNotifiedAt: v.optional(v.number()),
+    /** Unread client messages I have not been notified about. */
+    messageNotifiedAt: v.optional(v.number()),
+    /** The end-of-project testimonial invitation. */
+    testimonialToken: v.optional(v.string()),
+    testimonialAskedAt: v.optional(v.number()),
+
     /** Deposit-chase reminder is due. */
     reminderSentAt: v.optional(v.number()),
     /** Aged out unpaid. */

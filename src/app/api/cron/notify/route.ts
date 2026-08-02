@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { api, isConvexConfigured } from "@/lib/convex-api";
-import { sendEmail, siteUrl } from "@/lib/email";
+import { sendEmail, siteUrl, adminEmail } from "@/lib/email";
 import { logEmailSend } from "@/lib/emailLog";
 import { getStripe } from "@/lib/stripe";
 import { BuildOverdue } from "@emails/BuildOverdue";
 import { DepositReminder } from "@emails/DepositReminder";
 import { RequestExpired } from "@emails/RequestExpired";
+import { AdminAlert } from "@emails/AdminAlert";
+import { ADMIN_PATH } from "@/lib/constants";
 
 /**
  * Drains the automation queues: sends the emails and raises the invoices that
@@ -139,6 +141,58 @@ export async function POST(request: Request) {
       sent.push(`${row.kind}:${row.name}`);
     } else {
       failed.push(`${row.kind}:${row.name}:${result.status}`);
+    }
+  }
+
+  /* ------------------------------------------------------ admin alerts --- */
+
+  /*
+   * Things that need ME, sent to my own address.
+   *
+   * Separate from the client notifications above because the failure mode is
+   * different: a client email that does not arrive is a bad experience, but
+   * an alert that does not arrive means a two-hour clock running against a
+   * question I never saw.
+   */
+  const admin = adminEmail();
+  if (admin) {
+    const alerts = await fetchQuery(api.automation.adminAlertsPublic, { secret });
+
+    for (const a of alerts) {
+      const subject =
+        a.kind === "new"
+          ? `New request — ${a.name}`
+          : a.kind === "paid"
+            ? `Paid, waiting on you — ${a.name}`
+            : `Message from ${a.name}`;
+
+      const result = await sendEmail({
+        to: admin,
+        subject,
+        // Replying goes straight to the client rather than to myself.
+        replyTo: a.email,
+        react: AdminAlert({
+          kind: a.kind,
+          name: a.name,
+          email: a.email,
+          plan: a.plan,
+          preview: a.preview,
+          adminUrl: `${siteUrl()}${ADMIN_PATH}/express`,
+        }),
+      });
+
+      await logEmailSend({ to: admin, template: `AdminAlert-${a.kind}`, subject, result });
+
+      if (result.status === "sent") {
+        await fetchMutation(api.automation.markAlertedPublic, {
+          secret,
+          id: a.id,
+          kind: a.kind,
+        });
+        sent.push(`alert-${a.kind}:${a.name}`);
+      } else {
+        failed.push(`alert-${a.kind}:${a.name}:${result.status}`);
+      }
     }
   }
 
