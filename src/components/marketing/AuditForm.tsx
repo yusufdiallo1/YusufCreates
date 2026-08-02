@@ -27,11 +27,24 @@ const CATEGORY_ORDER = [
   { id: "seo", label: "SEO" },
 ] as const;
 
-export function AuditForm() {
+export function AuditForm({
+  /*
+   * An audit to open straight into, from ?id= on the URL.
+   *
+   * The results email links here with the id of the report it is about, and
+   * without this the link landed on an empty form: the state was seeded to
+   * null and nothing ever read the query string. Every "See the full report"
+   * button ever sent was dead, and re-running the audit to get back to it
+   * spends one of three allowed per day.
+   */
+  initialAuditId = null,
+}: {
+  initialAuditId?: Id<"audits"> | null;
+} = {}) {
   const [url, setUrl] = useState("");
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
-  const [auditId, setAuditId] = useState<Id<"audits"> | null>(null);
+  const [auditId, setAuditId] = useState<Id<"audits"> | null>(initialAuditId);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const openedAt = useRef<number | null>(null);

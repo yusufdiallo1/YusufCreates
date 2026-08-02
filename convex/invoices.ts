@@ -53,7 +53,43 @@ export const getByToken = query({
     if (!invoice) return null;
     if (invoice.status === "draft" || invoice.status === "void") return null;
 
-    return invoice;
+    /*
+     * The invoice as the client should see it, NOT the whole row.
+     *
+     * Returning the document handed anyone with the link my side of the
+     * transaction: stripeFee and netReceived together state exactly what I
+     * clear on their payment, and stripeCustomerId / stripeSubscriptionId /
+     * leadId / projectId are internal keys they have no use for. An invoice
+     * token travels — forwarded to a bookkeeper, pasted into a thread — and
+     * everything returned here is readable in the page source.
+     *
+     * These are precisely the fields InvoiceView declares.
+     */
+    return {
+      _id: invoice._id,
+      clientName: invoice.clientName,
+      clientEmail: invoice.clientEmail,
+      description: invoice.description,
+      amount: invoice.amount,
+      currency: invoice.currency,
+      stage: invoice.stage,
+      status: invoice.status,
+      reference: invoice.reference,
+      dueDate: invoice.dueDate,
+      issuedAt: invoice.issuedAt,
+      paidAt: invoice.paidAt,
+      stripeHostedUrl: invoice.stripeHostedUrl,
+      stripePdfUrl: invoice.stripePdfUrl,
+      paymentMethodUsed: invoice.paymentMethodUsed,
+      declineReason: invoice.declineReason,
+      /*
+       * Needed by /api/stripe/intent, which gates wallet payment methods on
+       * it — dropping it silently turned Apple and Google Pay off for the
+       * tiers that have them. It is the name of a plan the client already
+       * bought, not something they should not see.
+       */
+      tier: invoice.tier,
+    };
   },
 });
 

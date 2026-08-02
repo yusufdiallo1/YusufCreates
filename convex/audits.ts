@@ -65,6 +65,16 @@ export const get = query({
       score: row.score,
       categories: row.categories,
       fixes: row.fixes,
+      /*
+       * The full findings list, not just the three headline fixes.
+       *
+       * Omitting this from the projection silently emptied the "Everything
+       * else found" section — the part that makes a site with thirty
+       * problems read as a site with thirty problems rather than three. It
+       * types as optional, so nothing failed; the section just stopped
+       * existing.
+       */
+      issues: row.issues,
       error: row.error,
       siteName: row.siteName,
       siteLogo: row.siteLogo,
