@@ -1040,16 +1040,29 @@
      ---------------------------------------------------------------------- */
 
   .admin-scope {
-    /* Row height, switched by the density toggle. Everything that draws a row
-       reads this rather than hardcoding a height, so one control moves the
-       whole admin. */
+    /*
+     * Row height, switched by the density toggle.
+     *
+     * --row-cell-y is the load-bearing one. `height` on a <tr> is a MINIMUM,
+     * not a height: the cells' own padding plus their content decide the real
+     * figure, so setting only --row-h left both densities identical at 53px
+     * and the toggle did nothing visible. The padding has to move too.
+     */
     --row-h: 44px;
+    --row-cell-y: 0.5rem; /* 8 */
     --admin-pad: 1.5rem; /* 24 */
     --admin-gap: 2rem; /* 32 */
   }
 
   .admin-scope[data-density="compact"] {
     --row-h: 36px;
+    --row-cell-y: 0.25rem; /* 4 */
+  }
+
+  /* Applied by DataTable to every body cell. */
+  .admin-scope .row-cell {
+    padding-top: var(--row-cell-y);
+    padding-bottom: var(--row-cell-y);
   }
 
   /* Page title. 24px flat — NOT --text-3xl, which clamps to 32 on a wide

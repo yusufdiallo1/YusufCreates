@@ -310,7 +310,10 @@ export function DataTable<T>({
                   {visible.map((col) => (
                     <td
                       key={col.id}
-                      className={`px-3 py-2 ${
+                      /* row-cell, not py-2: the padding is what actually
+                         sets a row's height, so the density toggle has to
+                         drive it. See --row-cell-y. */
+                      className={`row-cell px-3 ${
                         col.align === "right"
                           ? "text-right tabular-nums"
                           : "text-left"
