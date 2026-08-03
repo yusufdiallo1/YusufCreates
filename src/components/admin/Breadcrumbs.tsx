@@ -41,6 +41,7 @@ const LABELS: Record<string, string> = {
   express: "Express",
   audits: "Site audits",
   waitlist: "Waitlist",
+  subscribers: "Subscribers",
   settings: "Settings",
   new: "New",
 };

@@ -3,11 +3,19 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
-import { Field, TextArea,
-  DeleteSlide,
-} from "@/components/admin/shared/Fields";
-import { Empty, Skeleton } from "@/components/admin/ProjectsAdmin";
-import { CopyButton } from "@/components/ui/CopyButton";
+import { Field, TextArea } from "@/components/admin/shared/Fields";
+import { PageHeader } from "@/components/admin/PageHeader";
+import {
+  DataTable,
+  type Column,
+  type RowAction,
+} from "@/components/admin/DataTable";
+import {
+  TableToolbar,
+  downloadCsv,
+  useTableFilters,
+} from "@/components/admin/TableToolbar";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import type { Doc, Id } from "@convex/_generated/dataModel";
 
 /**
@@ -26,100 +34,241 @@ export function ProposalsAdmin() {
   const remove = useMutation(api.proposals.remove);
 
   const [editing, setEditing] = useState<Doc<"proposals"> | "new" | null>(null);
+  const [deleting, setDeleting] = useState<Doc<"proposals"> | null>(null);
+
+  const { search, filters, setParam } = useTableFilters(["status", "viewed"]);
+
+  const money = (n: number, currency: string) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currency || "USD",
+      maximumFractionDigits: 0,
+    }).format(n);
+
+  const day = (ts: number | undefined) =>
+    ts
+      ? new Date(ts).toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+        })
+      : "—";
+
+  const all = proposals ?? [];
+
+  /* Filtered in the browser: listAll already returns the whole page, so a
+     round trip would be for data we are holding. */
+  const rows = all.filter((p) => {
+    if (filters.status && p.status !== filters.status) return false;
+    if (filters.viewed === "yes" && !p.viewedAt) return false;
+    if (filters.viewed === "no" && p.viewedAt) return false;
+    if (search) {
+      const hay = `${p.clientName ?? ""} ${p.clientEmail ?? ""}`.toLowerCase();
+      if (!hay.includes(search.toLowerCase())) return false;
+    }
+    return true;
+  });
+
+  const columns: Column<Doc<"proposals">>[] = [
+    {
+      id: "client",
+      header: "Client",
+      alwaysVisible: true,
+      sortValue: (p) => p.clientName ?? "",
+      cell: (p) => (
+        <div className="min-w-0">
+          <div className="truncate text-primary">
+            {p.clientName ?? "Untitled"}
+          </div>
+          {p.clientEmail ? (
+            <div className="truncate text-xs text-secondary">
+              {p.clientEmail}
+            </div>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      id: "amount",
+      header: "Amount",
+      align: "right",
+      sortValue: (p) => p.amount,
+      cell: (p) => money(p.amount, p.currency),
+    },
+    {
+      id: "status",
+      header: "Status",
+      sortValue: (p) => p.status,
+      cell: (p) => <span className="badge">{p.status}</span>,
+    },
+    {
+      id: "sent",
+      header: "Sent",
+      hideBelow: "md",
+      sortValue: (p) => p.sentAt ?? null,
+      cell: (p) => <span className="text-secondary">{day(p.sentAt)}</span>,
+    },
+    {
+      id: "viewed",
+      header: "Viewed",
+      sortValue: (p) => p.viewedAt ?? null,
+      cell: (p) =>
+        p.viewedAt ? (
+          <span className="badge badge-warm">{day(p.viewedAt)}</span>
+        ) : p.status === "sent" ? (
+          <span className="badge badge-cold">not opened</span>
+        ) : (
+          <span className="text-secondary">—</span>
+        ),
+    },
+    {
+      id: "expires",
+      header: "Expires",
+      hideBelow: "lg",
+      sortValue: (p) => p.sentAt ?? null,
+      cell: (p) => (
+        <span className="text-secondary">
+          {/* Proposals do not carry an explicit expiry, so this is the
+              change-request flag instead — the thing that actually decides
+              whether one still needs you. */}
+          {p.changeRequest ? (
+            <span className="text-[color:var(--text-notice)]">
+              changes asked
+            </span>
+          ) : (
+            "—"
+          )}
+        </span>
+      ),
+    },
+  ];
+
+  const actions: RowAction<Doc<"proposals">>[] = [
+    {
+      label: "Edit",
+      onSelect: (p) => setEditing(p),
+    },
+    {
+      label: "Issue",
+      show: (p) => p.status === "draft",
+      onSelect: (p) => void send({ id: p._id }),
+    },
+    {
+      label: "Copy link",
+      show: (p) => Boolean(p.token),
+      onSelect: (p) => {
+        void navigator.clipboard.writeText(
+          `${window.location.origin}/proposal/${p.token}`,
+        );
+      },
+    },
+    {
+      label: "Delete",
+      destructive: true,
+      onSelect: (p) => setDeleting(p),
+    },
+  ];
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl">Proposals</h1>
-          <p className="mt-1 text-sm text-secondary">
-            Hosted links, not PDFs — so they stay current and report when they
-            were opened.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setEditing("new")}
-          className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
-        >
-          New proposal
-        </button>
-      </div>
+      <PageHeader
+        title="Proposals"
+        description="Hosted links, not PDFs. They report when they were opened."
+        action={
+          <button
+            type="button"
+            onClick={() => setEditing("new")}
+            className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+          >
+            New proposal
+          </button>
+        }
+      />
 
-      {proposals === undefined ? (
-        <Skeleton />
-      ) : proposals.length === 0 ? (
-        <Empty
-          title="No proposals yet"
-          body="Start one from a lead and send the link."
+      <TableToolbar
+        search={search}
+        onSearch={(v) => setParam("q", v || null)}
+        placeholder="Search client or email"
+        filters={filters}
+        onFilter={setParam}
+        shown={rows.length}
+        total={all.length}
+        facets={[
+          {
+            id: "status",
+            label: "Status",
+            options: [
+              "draft",
+              "sent",
+              "security_review",
+              "procurement",
+              "signed",
+              "lost",
+            ].map((v) => ({ value: v, label: v.replace(/_/g, " ") })),
+          },
+          {
+            id: "viewed",
+            label: "Opened",
+            options: [
+              { value: "yes", label: "Opened" },
+              { value: "no", label: "Not opened" },
+            ],
+          },
+        ]}
+        onExport={() =>
+          downloadCsv(
+            "proposals.csv",
+            ["Client", "Email", "Amount", "Currency", "Status", "Sent", "Viewed"],
+            rows.map((p) => [
+              p.clientName ?? "",
+              p.clientEmail ?? "",
+              p.amount,
+              p.currency,
+              p.status,
+              p.sentAt ? new Date(p.sentAt).toISOString() : "",
+              p.viewedAt ? new Date(p.viewedAt).toISOString() : "",
+            ]),
+          )
+        }
+      />
+
+      <DataTable
+        rows={proposals === undefined ? undefined : rows}
+        columns={columns}
+        rowKey={(p) => p._id}
+        onRowClick={(p) => setEditing(p)}
+        actions={actions}
+        caption="Proposals"
+        empty={
+          <div className="space-y-3">
+            <p className="admin-section-title">No proposals yet</p>
+            <p className="text-[13px] text-secondary">
+              Start one from a lead and send the link.
+            </p>
+            {/* The action lives in the empty state, not only in the corner —
+                pointing at a button elsewhere is a worse answer than being
+                the button. */}
+            <button
+              type="button"
+              onClick={() => setEditing("new")}
+              className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+            >
+              New proposal
+            </button>
+          </div>
+        }
+      />
+
+      {deleting ? (
+        <ConfirmDialog
+          title="Delete this proposal?"
+          body="The hosted link stops working immediately. This cannot be undone."
+          what="this proposal"
+          onConfirm={async () => {
+            await remove({ id: deleting._id });
+          }}
+          onClose={() => setDeleting(null)}
         />
-      ) : (
-        <ul className="space-y-2">
-          {proposals.map((p) => (
-            <li key={p._id} className="admin-card">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <button
-                  type="button"
-                  onClick={() => setEditing(p)}
-                  className="min-w-0 flex-1 text-left"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm text-primary">
-                      {p.clientName ?? "Untitled"}
-                    </span>
-                    <span className="badge">{p.status}</span>
-                    {p.viewedAt ? (
-                      <span className="badge badge-warm">opened</span>
-                    ) : p.status === "sent" ? (
-                      <span className="badge badge-cold">not opened</span>
-                    ) : null}
-                  </div>
-                  <p className="mt-1 text-xs text-secondary">
-                    {new Intl.NumberFormat("en-US", {
-                      style: "currency",
-                      currency: p.currency || "USD",
-                      maximumFractionDigits: 0,
-                    }).format(p.amount)}
-                    {p.viewedAt
-                      ? ` · opened ${new Date(p.viewedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
-                      : ""}
-                  </p>
-                </button>
-
-                <div className="flex shrink-0 items-center gap-2">
-                  {p.token ? (
-                    <CopyButton
-                      value={`${typeof window !== "undefined" ? window.location.origin : ""}/proposal/${p.token}`}
-                      label="Copy link"
-                    />
-                  ) : null}
-                  {p.status === "draft" ? (
-                    <button
-                      type="button"
-                      onClick={() => void send({ id: p._id })}
-                      className="rounded-full bg-primary px-3 py-1 text-xs font-medium text-canvas"
-                    >
-                      Issue
-                    </button>
-                  ) : null}
-                  <DeleteSlide
-                    what="this proposal"
-                    onDelete={async () => {
-                      await remove({ id: p._id });
-                    }}
-                  />
-                </div>
-              </div>
-
-              {p.changeRequest ? (
-                <p className="mt-3 text-xs text-[color:var(--text-notice)]">
-                  Changes requested: {p.changeRequest}
-                </p>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      )}
+      ) : null}
 
       {editing ? (
         <Drawer

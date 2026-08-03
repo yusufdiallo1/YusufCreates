@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
 import { Empty, Skeleton } from "@/components/admin/ProjectsAdmin";
@@ -30,14 +31,21 @@ export function AuditsAdmin() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl">Site audits</h1>
-        <p className="mt-1 text-sm text-secondary">
-          {rows === undefined
+      {/*
+        Kept as an accordion rather than converted to a DataTable. Each row
+        expands into a score breakdown, four category tiles and a findings
+        list — genuinely different content per item, which is exactly the case
+        cards are for. A table of "URL, score, email" would hide the part that
+        matters and need a drawer to show it again.
+      */}
+      <PageHeader
+        title="Site audits"
+        description={
+          rows === undefined
             ? "Loading…"
-            : `${rows.length} run. Each one is someone who asked about their own site.`}
-        </p>
-      </div>
+            : `${rows.length} run — each one someone asking about their own site.`
+        }
+      />
 
       {rows === undefined ? (
         <Skeleton />

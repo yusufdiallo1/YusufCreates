@@ -22,10 +22,14 @@ import { ADMIN_PATH } from "@/lib/constants";
 /**
  * Navigation.
  *
- * Three groups, not four, and the two screens I open every day sit at the top
- * outside any group. Fourteen links under four headings read as a directory;
- * this reads as a tool. Everything still reachable is still reachable —
- * anything not here is one Cmd+K away.
+ * Four groups, and the two screens I open every day sit at the top outside
+ * any group.
+ *
+ * The fourth — TOOLS — was previously an unlabelled block of five links
+ * below a separator, which read as leftovers rather than as a section. Giving
+ * it a heading costs one line and makes the sidebar four labelled groups
+ * instead of three plus a remainder. The waitlist joined it at the same time:
+ * it had a page and no way to reach it except by typing the URL.
  */
 const PRIMARY = [
   { href: `${ADMIN_PATH}`, label: "Overview" },
@@ -52,6 +56,7 @@ const GROUPS: { heading: string; items: { href: string; label: string }[] }[] = 
     heading: "Growth",
     items: [
       { href: `${ADMIN_PATH}/broadcasts`, label: "Broadcast" },
+      { href: `${ADMIN_PATH}/subscribers`, label: "Subscribers" },
       { href: `${ADMIN_PATH}/promos`, label: "Promotions" },
       { href: `${ADMIN_PATH}/analytics`, label: "Analytics" },
       { href: `${ADMIN_PATH}/kb`, label: "AI" },
@@ -121,14 +126,14 @@ export function Sidebar() {
       <button
         type="button"
         onClick={() => setConfirmingSignOut(true)}
-        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-5 text-left transition-colors duration-fast hover:bg-surface-2"
+        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-3.5 text-left transition-colors duration-fast hover:bg-surface-2"
         aria-label="Sign out of the admin"
       >
         <Logo variant="mark" className="h-6 w-auto" />
         <span className="text-sm text-primary">Admin</span>
       </button>
 
-      <div className="flex-1 space-y-6 overflow-y-auto px-1 pb-4">
+      <div className="flex-1 space-y-4 overflow-y-auto px-1 pb-4">
         {/* Ungrouped and first: the two screens opened every day should not
             be buried under a heading with everything else. */}
         <ul>
