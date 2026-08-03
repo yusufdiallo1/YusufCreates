@@ -23,6 +23,7 @@ import {
   GROWTH,
   NATIVE_TIER,
   PACKAGED_TIERS,
+  PAGE_EXTRAS,
   PEGGED,
   REVIVE_FEATURES,
   REVIVE_PRICE_USD,
@@ -359,14 +360,18 @@ export function PricingTables() {
                         className="mt-2 w-full accent-[color:var(--accent)]"
                       />
 
-                      {/* Said plainly, because the slider otherwise implies a
-                          per-page charge. Knowing the price stops moving at
-                          four is the point — it means adding a page later is
-                          a decision about the site, not about money. */}
+                      {/*
+                        The rate is stated, not left to be inferred from the
+                        slider. This used to promise "four to nine is the same
+                        price", which stopped being true when pages started
+                        being charged individually — and a pricing page that
+                        contradicts its own figure is worse than one that says
+                        nothing.
+                      */}
                       <p className="mt-2 text-xs text-secondary">
-                        {pages >= GROWTH.flatFrom
-                          ? "Four to nine pages is the same price — add pages without the cost changing."
-                          : "Three pages. Four or more is a single flat price, however many you end up needing."}
+                        {pages <= PAGE_EXTRAS.includedUpTo
+                          ? `Up to ${PAGE_EXTRAS.includedUpTo} pages included.`
+                          : `${PAGE_EXTRAS.includedUpTo} pages included, then ${CURRENCY_SYMBOL[currency].trim()}${convert(PAGE_EXTRAS.nearRate, currency, rates).toLocaleString("en-US")} a page — ${CURRENCY_SYMBOL[currency].trim()}${convert(PAGE_EXTRAS.farRate, currency, rates).toLocaleString("en-US")} from the ${PAGE_EXTRAS.farFrom}th.`}
                       </p>
                     </div>
                   ) : null}

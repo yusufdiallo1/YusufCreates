@@ -38,6 +38,8 @@ type Build = {
   depositPaidAt: number | null;
   balancePaidAt: number | null;
   balanceWaived: boolean;
+  /** Waived outright by me, rather than lost by running late. */
+  paymentSkipped: boolean;
   plan?: string;
 };
 
@@ -148,9 +150,14 @@ export function BuildPayment({
   if (build.status === "delivered" && stage === null) {
     return (
       <Panel title="Nothing further owed">
-        {build.balanceWaived
-          ? `I missed the window, so the remaining ${money(build.balanceAmount)} is written off.`
-          : "The balance is settled. Your site is on the overview."}
+        {/* Waived-because-I-was-late and waived-because-I-chose-to are
+            different sentences. Saying the first about the second is untrue
+            and hands back the gesture. */}
+        {build.paymentSkipped
+          ? "There was nothing to pay on this one. Your site is on the overview."
+          : build.balanceWaived
+            ? `I missed the window, so the remaining ${money(build.balanceAmount)} is written off.`
+            : "The balance is settled. Your site is on the overview."}
       </Panel>
     );
   }
@@ -281,6 +288,18 @@ function DepositForm({
 
         const { error: submitError } = await stripe.confirmPayment({
           elements,
+          /*
+           * Card, Link and the card-backed wallets all confirm in place, so
+           * normally nothing redirects and the success state below runs.
+           *
+           * `return_url` is still supplied because Stripe REQUIRES one for
+           * any method that could redirect, and refuses the confirm outright
+           * without it — which is how the panel came to show "You must
+           * provide a `return_url`" and take no money at all. Belt and
+           * braces: the intent no longer offers a redirecting method, and if
+           * one is ever enabled it lands back here instead of failing.
+           */
+          confirmParams: { return_url: window.location.href },
           redirect: "if_required",
         });
 

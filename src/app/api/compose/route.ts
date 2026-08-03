@@ -22,7 +22,13 @@ import { api } from "@/lib/convex-api";
  * free text generator.
  */
 
-import { BASE_USD, CARE_ANNUAL_USD, GROWTH } from "@/lib/pricing";
+import {
+  BASE_USD,
+  CARE_ANNUAL_USD,
+  GROWTH,
+  PAGE_EXTRAS,
+  growthPriceUsd,
+} from "@/lib/pricing";
 import { SITE } from "@/lib/constants";
 
 const SITE_URL = SITE.url;
@@ -42,7 +48,7 @@ const MODEL = "llama-3.3-70b-versatile";
  */
 const PRICING_FACTS = [
   `- Launch, a one-page site: $${BASE_USD.launch}`,
-  `- Growth, a multi-page site: $${GROWTH.basePrice} up to three pages, $${GROWTH.extendedPrice} for four to nine`,
+  `- Growth, a multi-page site: $${GROWTH.basePrice} up to three pages, then $${PAGE_EXTRAS.nearRate} a page and $${PAGE_EXTRAS.farRate} from the ${PAGE_EXTRAS.farFrom}th (nine pages: $${growthPriceUsd(GROWTH.maxPages)})`,
   `- Web app or SaaS: from $${BASE_USD.app.toLocaleString("en-US")}`,
   `- iOS and macOS app: from $${BASE_USD.native.toLocaleString("en-US")}`,
   `- Enterprise: from $${BASE_USD.enterprise.toLocaleString("en-US")}, scoped on a call`,

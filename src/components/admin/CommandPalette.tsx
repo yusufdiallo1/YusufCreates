@@ -108,7 +108,7 @@ export function CommandPalette() {
       { id: "nav:content", label: "Content — portfolio, blog, testimonials", group: "Go to", keywords: "work portfolio posts writing quotes", run: () => go(`${ADMIN_PATH}/content`) },
       { id: "nav:feedback", label: "Feedback", group: "Go to", run: () => go(`${ADMIN_PATH}/feedback`) },
       { id: "nav:broadcasts", label: "Broadcasting", group: "Go to", keywords: "newsletter email send", run: () => go(`${ADMIN_PATH}/broadcasts`) },
-      { id: "nav:kb", label: "AI knowledge base", group: "Go to", keywords: "bot chat questions", run: () => go(`${ADMIN_PATH}/kb`) },
+      { id: "nav:kb", label: "AI assistant and chat logs", group: "Go to", keywords: "bot chat questions knowledge kb conversations", run: () => go(`${ADMIN_PATH}/kb`) },
       { id: "nav:invoices", label: "Proposals and invoices", group: "Go to", keywords: "money billing vat", run: () => go(`${ADMIN_PATH}/invoices`) },
       { id: "nav:promos", label: "Promotions", group: "Go to", keywords: "discount code sale offer", run: () => go(`${ADMIN_PATH}/promos`) },
       { id: "nav:clients", label: "Clients", group: "Go to", keywords: "portal access", run: () => go(`${ADMIN_PATH}/clients`) },

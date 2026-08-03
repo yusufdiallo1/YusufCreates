@@ -117,14 +117,53 @@ export async function POST(request: Request) {
   let recipients: { email: string; name?: string }[];
 
   if (audience === "custom") {
-    const to = typeof body.customEmail === "string" ? body.customEmail.trim() : "";
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) {
+    /*
+     * A list, not one address.
+     *
+     * This accepted exactly one recipient, so telling three people the same
+     * thing meant sending the same broadcast three times by hand. Split on
+     * commas, semicolons, newlines and spaces — whatever separator someone
+     * happens to paste from a mail client or a spreadsheet.
+     */
+    const raw = typeof body.customEmail === "string" ? body.customEmail : "";
+    const parts = raw
+      .split(/[,;\s\n]+/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+    const valid = parts.filter((p) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(p));
+    const invalid = parts.filter((p) => !valid.includes(p));
+
+    if (valid.length === 0) {
       return NextResponse.json(
-        { error: "That custom address does not look like an email." },
+        { error: "Enter at least one email address." },
         { status: 400 },
       );
     }
-    recipients = [{ email: to }];
+    /*
+     * One bad address fails the whole send rather than being dropped
+     * silently. A typo that quietly removes a recipient is indistinguishable
+     * from a successful send to everyone.
+     */
+    if (invalid.length > 0) {
+      return NextResponse.json(
+        {
+          error: `Not an email address: ${invalid.slice(0, 3).join(", ")}${invalid.length > 3 ? "…" : ""}`,
+        },
+        { status: 400 },
+      );
+    }
+
+    // Case-insensitive dedupe, so the same person pasted twice is mailed once.
+    const seen = new Set<string>();
+    recipients = valid
+      .filter((email) => {
+        const key = email.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .map((email) => ({ email }));
   } else {
     /*
      * A failure here is NOT an empty audience.

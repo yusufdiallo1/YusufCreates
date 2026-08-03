@@ -123,17 +123,30 @@ export function ExpressAdmin() {
                     <p className="mt-1 text-xs text-secondary">
                       {PLAN_LABEL[row.plan ?? "express"] ?? row.plan} ·{" "}
                       {row.pages} {row.pages === 1 ? "page" : "pages"} ·{" "}
-                      {/* "paid" only once it actually is. The deposit figure
-                          sat under the word "paid" from the moment a request
-                          arrived, which read as money already received. */}
-                      {row.depositPaidAt
-                        ? `${money(row.depositAmount, row.currency)} paid`
-                        : `${money(row.depositAmount, row.currency)} to start`}{" "}
-                      ·{" "}
-                      {row.balanceWaived
-                        ? "balance waived"
-                        : `${money(row.balanceAmount, row.currency)} due`}
-                      {row.manualPayment ? " · marked paid by hand" : ""}
+                      {/*
+                        A skipped build owes nothing, so it says that once
+                        rather than reciting two zeroes. Printing "$0.00 paid
+                        · balance waived" is technically true and reads like
+                        a bug.
+                      */}
+                      {row.paymentSkipped ? (
+                        "free — payment skipped"
+                      ) : (
+                        <>
+                          {/* "paid" only once it actually is. The deposit
+                              figure sat under the word "paid" from the moment
+                              a request arrived, which read as money already
+                              received. */}
+                          {row.depositPaidAt
+                            ? `${money(row.depositAmount, row.currency)} paid`
+                            : `${money(row.depositAmount, row.currency)} to start`}{" "}
+                          ·{" "}
+                          {row.balanceWaived
+                            ? "balance waived"
+                            : `${money(row.balanceAmount, row.currency)} due`}
+                          {row.manualPayment ? " · marked paid by hand" : ""}
+                        </>
+                      )}
                     </p>
                   </div>
 

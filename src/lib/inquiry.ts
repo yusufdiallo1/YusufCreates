@@ -222,13 +222,59 @@ export function planFromTier(tier: string | undefined): PlanId | undefined {
 export interface FieldDef {
   id: FieldId;
   label: string;
-  kind: "text" | "select" | "number" | "boolean" | "textarea";
+  /**
+   * `multiselect` is a checklist, not a dropdown with one answer.
+   *
+   * A stack is almost never one thing — WordPress on PHP behind Cloudflare,
+   * or React with a Node API — so asking someone to pick a single option
+   * forces them to misdescribe it. The value is stored as a comma-joined
+   * string, which is what the lead table and the notification email already
+   * expect, so nothing downstream needs a new shape.
+   */
+  kind: "text" | "select" | "number" | "boolean" | "textarea" | "multiselect";
   options?: string[];
   required?: boolean;
   /** Rendered under the input. */
   help?: string;
   placeholder?: string;
+  /** multiselect only: lets someone add something not on the list. */
+  allowOther?: boolean;
 }
+
+/**
+ * The stack checklist.
+ *
+ * Ordered by how often it actually comes up rather than alphabetically, so
+ * the common answers are the ones you see first. HTML is listed first and
+ * explicitly: plenty of small sites are hand-written HTML and CSS, and a list
+ * that jumps straight to frameworks tells those people they are in the wrong
+ * place.
+ */
+export const STACK_OPTIONS = [
+  "HTML, CSS and JavaScript",
+  "WordPress",
+  "Shopify",
+  "Wix",
+  "Squarespace",
+  "Webflow",
+  "React",
+  "Next.js",
+  "Vue or Nuxt",
+  "Angular",
+  "Svelte",
+  "Astro",
+  "Laravel or PHP",
+  "Django or Python",
+  "Ruby on Rails",
+  "Node and Express",
+  "Tailwind CSS",
+  "Bootstrap",
+  "Supabase",
+  "Firebase",
+  "Convex",
+  "Stripe",
+  "Not sure",
+] as const;
 
 /*
  * No budget question.

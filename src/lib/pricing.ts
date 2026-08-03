@@ -51,13 +51,15 @@ export const CURRENCIES: Currency[] = ["USD", "GBP", "EUR", "SAR", "AED"];
 /**
  * Growth tier.
  *
- * TWO prices, not a per-page formula. Three pages is one figure; four through
- * nine is another, flat.
+ * A base covering up to four pages, then a small per-page charge — see
+ * PAGE_EXTRAS for the ladder.
  *
- * The old model charged 450 for every page above three, so nine pages came to
- * 4,500 — more than the web-app tier, which is absurd. It also made the price
- * unpredictable: a client adding one page mid-project triggered a
- * conversation about money rather than a decision about the site.
+ * The original model charged 450 for every page above three, so nine pages
+ * came to 4,500 — more than the web-app tier, which is absurd. The correction
+ * was two flat steps, which overshot: four pages and nine cost the same, so
+ * the fifth page cost 200 and the ninth cost nothing. Now each page is priced
+ * for roughly what it adds, which keeps the figure predictable without either
+ * distortion.
  *
  * Flat pricing above four removes both problems. The honest reason it works
  * commercially is that most of the cost is design, build setup and deployment,
@@ -74,6 +76,53 @@ export const GROWTH = {
   /** Above which the flat price applies. */
   flatFrom: 4,
 } as const;
+
+/**
+ * What each page past the fourth adds.
+ *
+ * Two rates, because the pages are not the same work. Five and six are more
+ * of what is already there — another service, another location — and cost a
+ * little. Seven upward is where a site stops being a set of pages and starts
+ * needing navigation that holds together, so those cost more.
+ *
+ * Charged PER PAGE and cumulatively: a nine-page site pays 7+7 for five and
+ * six, then 17+17+17 for seven, eight and nine. Not a band, so adding one
+ * page never jumps the price by a step someone did not expect.
+ */
+export const PAGE_EXTRAS = {
+  /**
+   * Pages beyond this are charged. Three are included in the base.
+   *
+   * Was four, which left a 200 cliff between the three-page base and the
+   * four-page one: the fourth page cost 200 and the fifth cost 7. Starting
+   * the ladder at four removes the step, so every page past the base is
+   * priced the same way as the next.
+   */
+  includedUpTo: 3,
+  /** Rate for pages 5 and 6. */
+  nearRate: 7,
+  /** The first page charged at the higher rate. */
+  farFrom: 7,
+  /** Rate for pages 7 and up. */
+  farRate: 17,
+} as const;
+
+/**
+ * What the extra pages add to a base price, in USD.
+ *
+ * Returns 0 at or below the included count, so a caller can add this to any
+ * page-counted plan's base without checking first.
+ */
+export function pageExtrasUsd(pages: number): number {
+  const count = Math.round(pages);
+  if (!Number.isFinite(count) || count <= PAGE_EXTRAS.includedUpTo) return 0;
+
+  let extra = 0;
+  for (let page = PAGE_EXTRAS.includedUpTo + 1; page <= count; page++) {
+    extra += page >= PAGE_EXTRAS.farFrom ? PAGE_EXTRAS.farRate : PAGE_EXTRAS.nearRate;
+  }
+  return extra;
+}
 
 /**
  * USD base prices.
@@ -182,18 +231,31 @@ export function formatTierPrice(
 }
 
 /**
- * Growth price for a given page count: 1800 at 3 pages, +450 per page after.
- * The count is clamped so an out-of-range value cannot produce a nonsense
- * figure.
+ * Growth price for a given page count.
+ *
+ * Base covers up to four pages; PAGE_EXTRAS prices each one after that. The
+ * count is clamped so an out-of-range value cannot produce a nonsense figure.
  */
 export function growthPriceUsd(pages: number): number {
   const clamped = Math.min(
     GROWTH.maxPages,
     Math.max(GROWTH.minPages, Math.round(pages)),
   );
-  // Two steps, not a slope. Four pages and nine pages cost the same, so a
-  // client can add a page without it becoming a negotiation.
-  return clamped >= GROWTH.flatFrom ? GROWTH.extendedPrice : GROWTH.basePrice;
+
+  /*
+   * One base, then per-page extras. No step anywhere.
+   *
+   * There were two flat prices — 750 for three pages, 950 for four to nine.
+   * That made the fourth page cost 200 and the ninth cost nothing, which is
+   * backwards: the ninth page is the one that needs navigation holding
+   * together. Adding the ladder on top of the old two-step base kept the
+   * worst of it, a 200 jump at four followed by 7 at five.
+   *
+   * So the base covers three pages and every page after is priced by the
+   * ladder. extendedPrice is left in GROWTH for the tier copy that still
+   * quotes a "from" figure; nothing computes a price from it now.
+   */
+  return GROWTH.basePrice + pageExtrasUsd(clamped);
 }
 
 /**
@@ -316,7 +378,7 @@ export const BUILD_TIERS: BuildTier[] = [
       "Blog and pages you edit yourself",
       "Multi-page structure and navigation",
       "Analytics without a cookie banner",
-      "Same price from four pages to nine",
+      "Three pages included, then priced per page",
       ...EVERY_PLAN,
     ],
   },

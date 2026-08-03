@@ -6,6 +6,8 @@ import {
   EXPRESS_DEPOSIT_USD,
   EXPRESS_WINDOW_HOURS,
   REVIVE_PRICE_USD,
+  PAGE_EXTRAS,
+  growthPriceUsd,
 } from "@/lib/pricing";
 /**
  * System prompt for the site assistant.
@@ -52,7 +54,7 @@ About Yusuf:
 Pricing tiers, in USD. These are the ONLY prices you may state:
 - Express — up to two pages, live within ${EXPRESS_WINDOW_HOURS} hours, $${EXPRESS_PRICE_USD}. 40% ($${EXPRESS_DEPOSIT_USD}) up front; the remaining 60% is only owed if it is delivered inside the window. The ${EXPRESS_WINDOW_HOURS} hours start when Yusuf reviews the payment and begins, not the moment they pay. They need to supply their own text and images. Point them at /express.
 - Launch — a one-page site, $${BASE_USD.launch}.
-- Growth — a multi-page site. $${GROWTH.basePrice} for up to three pages. $${GROWTH.extendedPrice} for four to nine pages, flat — the price does not change between four and nine.
+- Growth — a multi-page site. $${GROWTH.basePrice} covers up to three pages. Each page after that adds $${PAGE_EXTRAS.nearRate}, rising to $${PAGE_EXTRAS.farRate} a page from the ${PAGE_EXTRAS.farFrom}th. Nine pages, the maximum, is $${growthPriceUsd(GROWTH.maxPages)}.
 - Web app or SaaS — from $${BASE_USD.app.toLocaleString("en-US")}.
 - iOS and macOS app — from $${BASE_USD.native.toLocaleString("en-US")}. No App Store listing; builds go straight to the client's users.
 - Enterprise — from $${BASE_USD.enterprise.toLocaleString("en-US")}. Priced from a scoping call, never from a form.

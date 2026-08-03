@@ -134,6 +134,13 @@ export const byToken = query({
       depositAmount: row.depositAmount,
       balanceAmount: row.balanceAmount,
       balanceWaived: row.balanceWaived ?? false,
+      /*
+       * Whether I waived the cost outright, as opposed to losing the balance
+       * by running late. Both settle the account, but they are not the same
+       * thing to say: telling someone "I missed the window" about a build I
+       * chose to do for nothing is both untrue and gives away the gesture.
+       */
+      paymentSkipped: row.paymentSkipped ?? false,
       depositPaidAt: row.depositPaidAt ?? null,
       balancePaidAt: row.balancePaidAt ?? null,
       acceptedAt: row.acceptedAt ?? null,
@@ -234,8 +241,24 @@ export const skipPaymentAndStart = mutation({
     await ctx.db.patch(args.id, {
       paymentSkipped: true,
       manualNote: args.note?.trim().slice(0, 200),
-      // No deposit is owed, so no balance can be withheld against it later.
+      /*
+       * Skipping payment skips ALL of it, not just the deposit.
+       *
+       * This used to zero the deposit alone, which left the balance intact
+       * and still due — so a build I had deliberately waived went on
+       * displaying "$27.60 paid · $41.40 due", chased the client for the
+       * balance on delivery, raised an invoice for it by cron, and counted
+       * it as outstanding on the dashboard. "Skip payment" that still asks
+       * for 60% of the money is not skipping payment.
+       *
+       * balanceWaived is the flag the whole file already reads as "settled,
+       * nothing owed" — the same one a missed express window sets — so
+       * setting it here makes every downstream check agree without adding a
+       * second notion of free.
+       */
       depositAmount: 0,
+      balanceAmount: 0,
+      balanceWaived: true,
     });
 
     const fresh = await ctx.db.get(args.id);

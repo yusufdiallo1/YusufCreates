@@ -367,7 +367,12 @@ function Overview({
 
       {build.status === "awaiting_payment" ? (
         <Card title="Accepted — ready when you are">
-          {isExpress
+          {/*
+            The percentage is only mentioned when there is a total to take it
+            of. 0/0 is NaN, and "The NaN% deposit is $0.00" is what a build
+            with nothing to pay would otherwise print.
+          */}
+          {isExpress && build.depositAmount + build.balanceAmount > 0
             ? `The ${Math.round((build.depositAmount / (build.depositAmount + build.balanceAmount)) * 100)}% deposit is ${money(build.depositAmount)}. The two hours start the moment it clears, not before, so pay when you are ready for me to begin.`
             : `The deposit is ${money(build.depositAmount)}. I start as soon as it clears.`}
         </Card>
@@ -482,14 +487,20 @@ function Overview({
       {build.status === "delivered" ? (
         <Card
           title={
-            build.balanceWaived
-              ? "Delivered late"
-              : build.deliveredLocked
-                ? "Ready for you"
-                : "Delivered"
+            /* Skipped comes first: a build I waived is not a build I was
+               late on, even though both leave nothing to pay. */
+            build.paymentSkipped
+              ? "Delivered"
+              : build.balanceWaived
+                ? "Delivered late"
+                : build.deliveredLocked
+                  ? "Ready for you"
+                  : "Delivered"
           }
         >
-          {build.balanceWaived
+          {build.paymentSkipped
+            ? "It is yours — there was nothing to pay on this one. The link is below."
+            : build.balanceWaived
             ? `I missed the window, so the remaining ${money(build.balanceAmount)} is written off. You owe nothing further.`
             : build.deliveredLocked
               ? `It is built and waiting. The remaining ${money(build.balanceAmount)} releases it — pay on the Payment tab and the link appears here straight away.`

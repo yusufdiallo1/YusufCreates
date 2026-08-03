@@ -1,5 +1,5 @@
 /**
- * Working hours, in Medinah time.
+ * Working hours, in my timezone.
  *
  * The site takes enquiries around the clock from every timezone, and the
  * promise attached to them ("I read it within 24 hours") was being made
@@ -18,6 +18,19 @@
  */
 export const TIMEZONE = "Asia/Riyadh";
 
+/**
+ * The zone as a visitor should read it.
+ *
+ * A timezone, not a city. "Medinah time" asks someone in London to know
+ * where that is and work out the offset; "AST (UTC+3)" is the same fact in
+ * the form every other site states it in, and converts on sight.
+ *
+ * Declared up here with the other constants because getWorkingHours below
+ * interpolates it — a `const` is not hoisted, so defining it after the
+ * function would only work by accident of call order.
+ */
+export const TIMEZONE_LABEL = "AST (UTC+3)";
+
 /** Work stops at 21:00. Enquiries arriving after this wait for morning. */
 export const CLOSES_AT_HOUR = 21;
 
@@ -34,13 +47,13 @@ export const OPENS_AT_HOUR = 9;
 export const CLOSED_WEEKDAY = 5;
 
 export type WorkingHours = {
-  /** True when it is currently a working hour in Medinah. */
+  /** True when it is currently a working hour where I am. */
   open: boolean;
   /** True when today is the day off, whatever the hour. */
   restDay: boolean;
-  /** Local hour in Medinah, 0-23. */
+  /** Local hour in my zone, 0-23. */
   hour: number;
-  /** Day of week in Medinah, 0 = Sunday. */
+  /** Day of week in my zone, 0 = Sunday. */
   weekday: number;
   /** One line, ready to print: why it is closed and when that changes. */
   message: string;
@@ -80,7 +93,7 @@ function nextWorkingDay(weekday: number): string {
 }
 
 /**
- * Where the clock in Medinah currently stands.
+ * Where my local clock currently stands.
  *
  * Takes an optional `now` so this is testable and so the server and client
  * can be handed the same instant — a component that called `new Date()` in
@@ -107,22 +120,22 @@ export function getWorkingHours(now: Date = new Date()): WorkingHours {
 
   let message: string;
   if (restDay) {
-    message = "It's Friday in Medinah — my day off. I'll pick this up Saturday morning.";
+    message = "It's Friday my end — my day off. I'll pick this up Saturday morning.";
   } else if (hour >= CLOSES_AT_HOUR) {
     /*
      * Thursday night is the one evening where "in the morning" would be
      * wrong — Friday intervenes, so the honest answer is Saturday.
      */
     const when = weekday === 4 ? "on Saturday" : "in the morning";
-    message = `It's past ${CLOSES_AT_HOUR}:00 in Medinah, so I've finished for the day. I'll read this ${when}.`;
+    message = `It's past ${CLOSES_AT_HOUR}:00 ${TIMEZONE_LABEL}, so I've finished for the day. I'll read this ${when}.`;
   } else if (hour < OPENS_AT_HOUR) {
-    message = `It's early in Medinah — I start at ${OPENS_AT_HOUR}:00. I'll read this once I'm at my desk.`;
+    message = `It's early my end — I start at ${OPENS_AT_HOUR}:00 ${TIMEZONE_LABEL}. I'll read this once I'm at my desk.`;
   } else {
-    message = "I'm at my desk in Medinah right now.";
+    message = "I'm at my desk right now.";
   }
 
   return { open, restDay, hour, weekday, message };
 }
 
 /** The standing hours, for places that state the policy rather than the moment. */
-export const HOURS_SUMMARY = `Saturday to Thursday, ${OPENS_AT_HOUR}:00–${CLOSES_AT_HOUR}:00 Medinah time. Closed Fridays.`;
+export const HOURS_SUMMARY = `Saturday to Thursday, ${OPENS_AT_HOUR}:00–${CLOSES_AT_HOUR}:00 ${TIMEZONE_LABEL}. Closed Fridays.`;

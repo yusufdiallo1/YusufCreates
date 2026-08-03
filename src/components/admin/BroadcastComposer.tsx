@@ -23,7 +23,7 @@ const AUDIENCES = [
   { id: "clients", label: "Clients", hint: "Everyone with a project" },
   { id: "enterprise", label: "Enterprise", hint: "Enterprise clients only" },
   { id: "all", label: "Everyone", hint: "Newsletter and clients" },
-  { id: "custom", label: "One address", hint: "Send to a single person" },
+  { id: "custom", label: "Custom", hint: "Type the addresses yourself" },
 ] as const;
 
 type AudienceId = (typeof AUDIENCES)[number]["id"];
@@ -40,12 +40,25 @@ export function BroadcastComposer() {
   const [customEmail, setCustomEmail] = useState("");
 
   const counts = useQuery(api.subscribers.audienceCounts, {});
+
+  /*
+   * The custom list, parsed the same way the send route parses it.
+   *
+   * Deliberately mirrors the server rather than trusting it: the header says
+   * "going to N people" before anything is sent, and that promise has to
+   * match what actually goes out. Same separators, same dedupe.
+   */
+  const customList = (() => {
+    const parts = customEmail
+      .split(/[,;\s\n]+/)
+      .map((p) => p.trim())
+      .filter((p) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(p));
+    return [...new Set(parts.map((p) => p.toLowerCase()))];
+  })();
+  const customCount = customList.length;
+
   const count =
-    audience === "custom"
-      ? customEmail.trim()
-        ? 1
-        : 0
-      : (counts?.[audience] ?? 0);
+    audience === "custom" ? customCount : (counts?.[audience] ?? 0);
 
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -112,9 +125,14 @@ export function BroadcastComposer() {
       <div>
         <h1 className="text-2xl">Broadcast</h1>
         <p className="mt-1 text-sm text-secondary">
-          {counts === undefined
-            ? "Loading recipients…"
-            : `Going to ${count} ${count === 1 ? "person" : "people"}. Unconfirmed and unsubscribed addresses are never included.`}
+          {/* The suppression note is about the mailing lists. A custom list is
+              exactly who you typed, so claiming addresses were filtered out of
+              it would be untrue. */}
+          {audience === "custom"
+            ? `Going to ${count} ${count === 1 ? "address" : "addresses"}, exactly as typed.`
+            : counts === undefined
+              ? "Loading recipients…"
+              : `Going to ${count} ${count === 1 ? "person" : "people"}. Unconfirmed and unsubscribed addresses are never included.`}
         </p>
 
         {/* Chosen before anything is written. Which list this goes to
@@ -162,15 +180,28 @@ export function BroadcastComposer() {
             <label htmlFor="bc-custom" className="text-xs text-secondary">
               Send to
             </label>
-            <input
+            {/*
+              A textarea, not type="email".
+
+              An email input validates its whole value as ONE address, so a
+              comma-separated list fails the browser's own check before it can
+              be sent. Several lines also read better than one long field once
+              there is more than a name or two in it.
+            */}
+            <textarea
               id="bc-custom"
-              type="email"
+              rows={3}
               autoComplete="off"
               value={customEmail}
               onChange={(e) => setCustomEmail(e.target.value)}
-              placeholder="someone@example.com"
+              placeholder={"someone@example.com\nanother@example.com"}
               className="hairline mt-1.5 w-full max-w-sm rounded-lg bg-surface-1 px-3.5 py-2.5 text-sm text-primary"
             />
+            <p className="mt-1.5 text-xs text-secondary">
+              {customCount > 0
+                ? `${customCount} ${customCount === 1 ? "address" : "addresses"}. Separate with commas or new lines.`
+                : "One per line, or separated by commas."}
+            </p>
           </div>
         ) : null}
       </div>

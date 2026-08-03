@@ -118,3 +118,82 @@ export const conversations = query({
       .take(args.limit ?? 200);
   },
 });
+
+/**
+ * Public conversations, grouped into threads rather than a flat message list.
+ *
+ * `conversations` above returns the newest 200 rows in insertion order, which
+ * interleaves every visitor talking at once — readable as a firehose, useless
+ * for answering "what did that person ask". Sessions are the unit worth
+ * reviewing, so they are assembled here rather than in the component: the
+ * grouping needs every row, and shipping all of them to the browser to fold
+ * them there would send the same data twice.
+ */
+export const threads = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    // Newest first, then grouped. take() bounds the read; the cap is on
+    // messages rather than threads because a single long conversation must
+    // not be able to push every other thread out of the page.
+    const rows = await ctx.db
+      .query("chatMessages")
+      .order("desc")
+      .take(args.limit ?? 600);
+
+    const bySession = new Map<
+      string,
+      {
+        sessionId: string;
+        messages: { role: string; content: string; ts: number }[];
+        lastTs: number;
+      }
+    >();
+
+    for (const row of rows) {
+      const entry = bySession.get(row.sessionId) ?? {
+        sessionId: row.sessionId,
+        messages: [],
+        lastTs: 0,
+      };
+      entry.messages.push({ role: row.role, content: row.content, ts: row.ts });
+      entry.lastTs = Math.max(entry.lastTs, row.ts);
+      bySession.set(row.sessionId, entry);
+    }
+
+    return [...bySession.values()]
+      .map((thread) => ({
+        ...thread,
+        // Read back in the order they were said. The scan above is newest
+        // first, so each thread arrives reversed.
+        messages: thread.messages.sort((a, b) => a.ts - b.ts),
+        turns: thread.messages.length,
+        /** First thing the visitor asked — the only useful thread label. */
+        opener:
+          thread.messages.find((m) => m.role === "user")?.content.slice(0, 120) ??
+          "",
+      }))
+      .sort((a, b) => b.lastTs - a.lastTs);
+  },
+});
+
+/** Headline numbers for the console, computed where the rows already are. */
+export const stats = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const rows = await ctx.db.query("chatMessages").take(2000);
+
+    const sessions = new Set(rows.map((r) => r.sessionId));
+    const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+
+    return {
+      messages: rows.length,
+      sessions: sessions.size,
+      last24h: rows.filter((r) => r.ts >= dayAgo).length,
+      /** Visitor questions only — the ones worth turning into KB entries. */
+      questions: rows.filter((r) => r.role === "user").length,
+    };
+  },
+});

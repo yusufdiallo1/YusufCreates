@@ -54,7 +54,7 @@ const GROUPS: { heading: string; items: { href: string; label: string }[] }[] = 
       { href: `${ADMIN_PATH}/broadcasts`, label: "Broadcast" },
       { href: `${ADMIN_PATH}/promos`, label: "Promotions" },
       { href: `${ADMIN_PATH}/analytics`, label: "Analytics" },
-      { href: `${ADMIN_PATH}/kb`, label: "AI knowledge" },
+      { href: `${ADMIN_PATH}/kb`, label: "AI" },
     ],
   },
 ];

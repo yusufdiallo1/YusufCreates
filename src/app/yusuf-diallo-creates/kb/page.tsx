@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { KbAdmin } from "@/components/admin/KbAdmin";
+import { AiConsole } from "@/components/admin/AiConsole";
 
-export const metadata: Metadata = { title: "Knowledge base" };
+export const metadata: Metadata = { title: "AI" };
 
 export default function AdminKbPage() {
-  return <KbAdmin />;
+  return <AiConsole />;
 }

@@ -23,7 +23,12 @@ import type { Doc } from "@convex/_generated/dataModel";
 
 const EMPTY = { question: "", answer: "", tags: [] as string[], priority: 5 };
 
-export function KbAdmin() {
+export function KbAdmin({
+  /** False when embedded under a page that already has an h1. */
+  heading = true,
+}: {
+  heading?: boolean;
+} = {}) {
   const entries = useQuery(api.kb.list, {});
   const create = useMutation(api.kb.create);
   const update = useMutation(api.kb.update);
@@ -49,7 +54,13 @@ export function KbAdmin() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl">Knowledge base</h1>
+          {/*
+            Suppressed when this sits inside the AI console, which supplies
+            the page's own h1. Two h1s is a real problem, not a cosmetic one:
+            a screen reader user navigating by heading finds the page titled
+            twice and cannot tell which is the page.
+          */}
+          {heading ? <h1 className="text-2xl">Knowledge base</h1> : null}
           <p className="mt-1 text-sm text-secondary">
             Question and answer pairs the assistant can draw on. Higher priority
             appears earlier and is offered as an opening suggestion.

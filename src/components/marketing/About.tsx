@@ -3,6 +3,7 @@ import { fetchQuery } from "convex/nextjs";
 import { Reveal } from "@/components/motion/Reveal";
 import { CountUp } from "@/components/motion/CountUp";
 import { Typewriter } from "@/components/motion/Typewriter";
+import { Motto } from "@/components/marketing/Motto";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 
 /**
@@ -86,6 +87,13 @@ export async function About() {
             else afterwards, nothing is holding you here.
           </p>
         </Reveal>
+
+        {/* The motto closes the prose and separates it from the figures.
+            Hairline above rather than a heading: it is a mark, not a section,
+            and labelling it would flatten it into another paragraph. */}
+        <div className="hairline-t mt-10 pt-8">
+          <Motto />
+        </div>
 
         <Reveal delay={0.32}>
           {/* Two figures, so two columns — a three-column grid left a third

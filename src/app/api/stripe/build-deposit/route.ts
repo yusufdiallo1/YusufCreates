@@ -92,7 +92,9 @@ export async function POST(request: Request) {
       const intent = await stripe.paymentIntents.create({
         amount: build.balanceAmount,
         currency: build.currency,
-        automatic_payment_methods: { enabled: true },
+        // Card, Link and the card-backed wallets. See the deposit branch
+        // below for why this is a fixed list rather than automatic.
+        payment_method_types: ["card", "link"],
         metadata: { buildToken: token, kind: "build_balance" },
       });
       return NextResponse.json({ clientSecret: intent.client_secret });
@@ -129,16 +131,23 @@ export async function POST(request: Request) {
       amount: build.depositAmount,
       currency: build.currency,
     /*
-     * Automatic methods rather than a fixed list.
+     * Card and Link only — which is what gets Apple Pay, not what blocks it.
      *
-     * Apple Pay and Google Pay have no value of their own in
-     * `payment_method_types` — they are card-backed and ride on "card", but
-     * only when Stripe is allowed to decide what to offer. Pinning the list
-     * suppressed them, so a phone that could have paid with one tap was
-     * shown a card form instead. On the cheapest, fastest thing on the site
-     * that is the wrong trade.
+     * The previous comment here had this backwards. Apple Pay and Google Pay
+     * are not payment method types of their own: they are tokenised CARDS,
+     * so they ride on "card" and appear on any device that can offer them.
+     * Listing card explicitly does not suppress them.
+     *
+     * What `automatic_payment_methods` actually did was let Stripe surface
+     * everything enabled on the account, so the panel offered Amazon Pay and
+     * Cash App Pay instead — and Amazon Pay then failed outright with "You
+     * must provide a `return_url`", because it redirects off-site and this
+     * flow confirms in place. The one screen that takes money was showing
+     * two methods I did not want and one that could not complete.
+     *
+     * The other two Stripe routes have always pinned this same list.
      */
-    automatic_payment_methods: { enabled: true },
+    payment_method_types: ["card", "link"],
     metadata: {
       // The webhook matches on this to mark the deposit paid and start the
       // clock. Without it a successful payment has nothing to attach to.
