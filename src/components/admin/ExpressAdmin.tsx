@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
 import type { Id } from "@convex/_generated/dataModel";
@@ -85,15 +86,22 @@ export function ExpressAdmin() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl">Requests</h1>
-        <p className="mt-1 text-sm text-secondary">
-          Every incoming request, whatever the plan. Approving creates the
-          client, their project and their portal, and emails them the link.
-          Paying does not start the clock — you do, once you have checked what
-          came in. A missed express window writes off the balance on its own.
-        </p>
-      </div>
+      {/*
+        Cards, not a DataTable, and deliberately.
+
+        Each row carries a live countdown, a different set of actions per
+        status, a preview URL field and its own message thread. That is
+        heterogeneous content per item — the case cards exist for. A table of
+        "client, plan, paid, due" would hide everything that makes this screen
+        usable and need a drawer to put it back.
+
+        The title is "Express" everywhere now. It used to be "Requests" here,
+        "Express" in the breadcrumb and "Express builds" in the sidebar.
+      */}
+      <PageHeader
+        title="Express"
+        description="Approving creates the client, their portal, and emails the link."
+      />
 
       {rows === undefined ? (
         <Skeleton />

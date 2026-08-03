@@ -34,7 +34,7 @@ export function AiConsole() {
       <div>
         <h1 className="text-2xl">AI</h1>
         <p className="mt-1 text-sm text-secondary">
-          Your assistant, what visitors have been asking it, and what it knows.
+          Your assistant, what visitors asked it, and what it knows.
         </p>
       </div>
 

@@ -59,7 +59,7 @@ export function ProjectsAdmin() {
         <div>
           <h1 className="text-2xl">Projects</h1>
           <p className="mt-1 text-sm text-secondary">
-            Drag to reorder. Order controls how they appear on the work page.
+            Drag to reorder. This is the order on the work page.
           </p>
         </div>
         <button

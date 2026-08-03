@@ -6,6 +6,18 @@ import { api } from "@/lib/convex-api";
 import { DeleteSlide } from "@/components/admin/shared/Fields";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
+import { PageHeader } from "@/components/admin/PageHeader";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import {
+  DataTable,
+  type Column,
+  type RowAction,
+} from "@/components/admin/DataTable";
+import {
+  TableToolbar,
+  downloadCsv,
+  useTableFilters,
+} from "@/components/admin/TableToolbar";
 import type { Doc } from "@convex/_generated/dataModel";
 
 /**
@@ -15,10 +27,12 @@ import type { Doc } from "@convex/_generated/dataModel";
  * project cannot exist. The deposit is issued immediately; the balance stays
  * draft until the work is delivered.
  *
- * Marking an invoice paid is deliberately a slide, not a button. It is the one
- * action here that is not cleanly reversible: it closes out the money record,
- * stops the chasing, and telling a client they still owe you after you already
- * marked it settled is a conversation nobody wants.
+ * Issuing, marking paid and voiding all still ask for a slide — each is a
+ * thing you cannot cleanly take back. But the gesture moved off the row and
+ * into the confirmation the overflow menu opens. On the row it made every
+ * line 135px tall and put the two least reversible actions in the most
+ * prominent position on the page; behind the menu it is met once, after you
+ * have already chosen.
  */
 
 const STATUSES = ["draft", "sent", "paid", "overdue", "void"] as const;
@@ -45,6 +59,19 @@ export function InvoicesBoard() {
   const setStatus = useMutation(api.invoices.setStatus);
   const [creating, setCreating] = useState(false);
   const [linking, setLinking] = useState(false);
+  /* One piece of state for all three confirmations, since only one modal can
+     be open at a time and three booleans could contradict each other. */
+  const [confirm, setConfirm] = useState<{
+    kind: "issue" | "paid" | "void";
+    invoice: Doc<"invoices">;
+  } | null>(null);
+
+  const { search, filters, setParam } = useTableFilters([
+    "status",
+    "stage",
+    "currency",
+    "overdue",
+  ]);
 
   const money = (n: number, currency: string) =>
     new Intl.NumberFormat("en-US", {
@@ -53,17 +80,126 @@ export function InvoicesBoard() {
       maximumFractionDigits: 0,
     }).format(n);
 
+  const day = (ts: number | undefined) =>
+    ts
+      ? new Date(ts).toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+        })
+      : "—";
+
+  const allRows = data?.rows ?? [];
+  const currencies = [...new Set(allRows.map((i) => i.currency))].sort();
+
+  const rows = allRows.filter((i) => {
+    if (filters.status && i.status !== filters.status) return false;
+    if (filters.stage && i.stage !== filters.stage) return false;
+    if (filters.currency && i.currency !== filters.currency) return false;
+    if (filters.overdue === "yes" && i.status !== "overdue") return false;
+    if (search) {
+      const hay =
+        `${i.clientName} ${i.clientEmail} ${i.reference}`.toLowerCase();
+      if (!hay.includes(search.toLowerCase())) return false;
+    }
+    return true;
+  });
+
+  const columns: Column<Doc<"invoices">>[] = [
+    {
+      id: "reference",
+      header: "Number",
+      alwaysVisible: true,
+      sortValue: (i) => i.reference,
+      cell: (i) => <span className="text-primary tabular-nums">{i.reference}</span>,
+    },
+    {
+      id: "client",
+      header: "Client",
+      sortValue: (i) => i.clientName,
+      cell: (i) => (
+        <div className="min-w-0">
+          <div className="truncate text-primary">{i.clientName}</div>
+          <div className="truncate text-xs text-secondary">{i.clientEmail}</div>
+        </div>
+      ),
+    },
+    {
+      id: "amount",
+      header: "Amount",
+      align: "right",
+      sortValue: (i) => i.amount,
+      cell: (i) => money(i.amount, i.currency),
+    },
+    {
+      id: "currency",
+      header: "Currency",
+      hideBelow: "lg",
+      sortValue: (i) => i.currency,
+      cell: (i) => <span className="text-secondary">{i.currency}</span>,
+    },
+    {
+      id: "stage",
+      header: "Type",
+      hideBelow: "md",
+      sortValue: (i) => i.stage,
+      cell: (i) => <span className="text-secondary">{i.stage}</span>,
+    },
+    {
+      id: "status",
+      header: "Status",
+      sortValue: (i) => i.status,
+      cell: (i) => <StatusCell invoice={i} />,
+    },
+    {
+      id: "due",
+      header: "Due",
+      hideBelow: "md",
+      sortValue: (i) => i.dueDate ?? null,
+      cell: (i) => <span className="text-secondary">{day(i.dueDate)}</span>,
+    },
+  ];
+
+  const actions: RowAction<Doc<"invoices">>[] = [
+    {
+      /* Only for an invoice not yet in Stripe. Issuing creates it there and
+         emails the client, which is the point of no return for this row. */
+      label: "Issue and email",
+      show: (i) => !i.stripeInvoiceId && i.status !== "void",
+      onSelect: (i) => setConfirm({ kind: "issue", invoice: i }),
+    },
+    {
+      label: "Mark as paid",
+      show: (i) => i.status !== "paid" && i.status !== "void",
+      onSelect: (i) => setConfirm({ kind: "paid", invoice: i }),
+    },
+    {
+      label: "Copy pay link",
+      onSelect: (i) => {
+        void navigator.clipboard.writeText(
+          `${window.location.origin}/invoice/${i.token}`,
+        );
+      },
+    },
+    {
+      label: "Open hosted invoice",
+      show: (i) => Boolean(i.stripeHostedUrl),
+      onSelect: (i) => window.open(i.stripeHostedUrl!, "_blank", "noopener"),
+    },
+    {
+      label: "Void",
+      destructive: true,
+      show: (i) => i.status !== "void" && i.status !== "paid",
+      onSelect: (i) => setConfirm({ kind: "void", invoice: i }),
+    },
+  ];
+
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl">Invoices</h1>
-          <p className="mt-1 text-sm text-secondary">
-            40% deposit, 60% on completion. Both instalments are created
-            together.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+      <PageHeader
+        title="Invoices"
+        description="40% deposit, 60% on completion, created together."
+        action={
+          <div className="flex flex-wrap gap-2">
           {/* For amounts that are not a project instalment — a deposit agreed
               on a call, an extra day, a small fixed piece. */}
           <button
@@ -73,15 +209,16 @@ export function InvoicesBoard() {
           >
             Custom payment link
           </button>
-          <button
-            type="button"
-            onClick={() => setCreating(true)}
-            className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
-          >
-            New invoice pair
-          </button>
-        </div>
-      </div>
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+            >
+              New invoice pair
+            </button>
+          </div>
+        }
+      />
 
       {data === undefined ? (
         <div className="space-y-2">
@@ -115,67 +252,146 @@ export function InvoicesBoard() {
 
           <PaymentLinksList />
 
-          {data.rows.length === 0 ? (
-            <p className="admin-card text-sm text-secondary">
-              No invoices yet. Create a pair from a won lead.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[46rem] border-collapse text-sm">
-                <thead>
-                  <tr className="border-b border-[color:var(--border-hairline)] text-left">
-                    <Th>Reference</Th>
-                    <Th>Client</Th>
-                    <Th>Stage</Th>
-                    <Th>Amount</Th>
-                    <Th>Status</Th>
-                    <Th>Link</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.rows.map((inv: Doc<"invoices">) => (
-                    <tr
-                      key={inv._id}
-                      className="border-b border-[color:var(--border-hairline)]"
-                    >
-                      <td className="py-3 pr-4 text-primary tabular-nums">
-                        {inv.reference}
-                      </td>
-                      <td className="py-3 pr-4">
-                        <div className="text-primary">{inv.clientName}</div>
-                        <div className="text-xs text-secondary">
-                          {inv.clientEmail}
-                        </div>
-                      </td>
-                      <td className="py-3 pr-4 text-secondary">{inv.stage}</td>
-                      <td className="py-3 pr-4 text-primary tabular-nums">
-                        {money(inv.amount, inv.currency)}
-                      </td>
-                      <td className="py-3 pr-4">
-                        <StatusCell
-                          invoice={inv}
-                          onSet={(status) =>
-                            setStatus({ id: inv._id, status })
-                          }
-                        />
-                      </td>
-                      <td className="py-3">
-                        {/* The token is the only credential on the invoice
-                            page, so this link is sensitive — copy it, never
-                            display it in full. */}
-                        <CopyButton
-                          value={`${typeof window !== "undefined" ? window.location.origin : ""}/invoice/${inv.token}`}
-                          label="Copy link"
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <TableToolbar
+            search={search}
+            onSearch={(v) => setParam("q", v || null)}
+            placeholder="Search client, email or reference"
+            filters={filters}
+            onFilter={setParam}
+            shown={rows.length}
+            total={data.rows.length}
+            facets={[
+              {
+                id: "status",
+                label: "Status",
+                options: STATUSES.map((s) => ({ value: s, label: s })),
+              },
+              {
+                id: "stage",
+                label: "Stage",
+                options: [
+                  { value: "deposit", label: "Deposit" },
+                  { value: "balance", label: "Balance" },
+                ],
+              },
+              {
+                id: "currency",
+                label: "Currency",
+                options: currencies.map((c) => ({ value: c, label: c })),
+              },
+              {
+                id: "overdue",
+                label: "Overdue",
+                options: [{ value: "yes", label: "Overdue only" }],
+              },
+            ]}
+            onExport={() =>
+              downloadCsv(
+                "invoices.csv",
+                [
+                  "Reference",
+                  "Client",
+                  "Email",
+                  "Amount",
+                  "Currency",
+                  "Stage",
+                  "Status",
+                  "Due",
+                ],
+                rows.map((i) => [
+                  i.reference,
+                  i.clientName,
+                  i.clientEmail,
+                  i.amount,
+                  i.currency,
+                  i.stage,
+                  i.status,
+                  i.dueDate ? new Date(i.dueDate).toISOString() : "",
+                ]),
+              )
+            }
+          />
+
+          <DataTable
+            rows={rows}
+            columns={columns}
+            rowKey={(i) => i._id}
+            actions={actions}
+            caption="Invoices"
+            empty={
+              <div className="space-y-3">
+                <p className="admin-section-title">No invoices yet</p>
+                <p className="text-[13px] text-secondary">
+                  Create a pair from a won lead — deposit and balance together.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setCreating(true)}
+                  className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+                >
+                  New invoice pair
+                </button>
+              </div>
+            }
+          />
         </>
       )}
+
+      {/*
+        The gesture lives here now, not on the row. Each of these is a thing
+        you cannot cleanly take back — a client emailed, a money record
+        closed, an invoice cancelled — so each still asks for a slide. The
+        difference is that you meet it once, after choosing the action, rather
+        than on every row every time you open the page.
+      */}
+      {confirm ? (
+        <ConfirmDialog
+          title={
+            confirm.kind === "issue"
+              ? "Issue and email this invoice?"
+              : confirm.kind === "paid"
+                ? "Mark this invoice as paid?"
+                : "Void this invoice?"
+          }
+          body={
+            confirm.kind === "issue"
+              ? `${confirm.invoice.clientName} gets an email with a payment link. This cannot be sent again from here.`
+              : confirm.kind === "paid"
+                ? "This closes the money record and stops the chasing. Telling a client they still owe you afterwards is a conversation nobody wants."
+                : "The invoice stops being payable. Redemption and history are kept."
+          }
+          what={`invoice ${confirm.invoice.reference}`}
+          onConfirm={async () => {
+            if (confirm.kind === "paid") {
+              await setStatus({ id: confirm.invoice._id, status: "paid" });
+              return;
+            }
+            if (confirm.kind === "void") {
+              await setStatus({ id: confirm.invoice._id, status: "void" });
+              return;
+            }
+            const res = await fetch("/api/stripe/issue", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: confirm.invoice._id }),
+            });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(body.error ?? "Could not issue that.");
+            /*
+             * Raised but possibly not emailed. The route cannot run again for
+             * this invoice, so a failed send has to surface now rather than a
+             * fortnight later when nobody has paid.
+             */
+            if (body.emailed === false) {
+              window.alert(
+                body.warning ??
+                  "Issued, but the email did not send. Send the link by hand.",
+              );
+            }
+          }}
+          onClose={() => setConfirm(null)}
+        />
+      ) : null}
 
       {creating ? <CreatePairDialog onClose={() => setCreating(false)} /> : null}
       {linking ? <PaymentLinkDialog onClose={() => setLinking(false)} /> : null}
@@ -187,114 +403,43 @@ export function InvoicesBoard() {
  * Status control. Everything except "paid" is an ordinary select, because
  * those transitions are reversible. Marking paid gets the gesture.
  */
-function StatusCell({
-  invoice,
-  onSet,
-}: {
-  invoice: Doc<"invoices">;
-  onSet: (status: Status) => Promise<unknown>;
-}) {
-  const [issuing, setIssuing] = useState(false);
-  const [issueError, setIssueError] = useState<string | null>(null);
-
-  // Not yet in Stripe: the only meaningful action is to issue it, which
-  // creates the Stripe invoice and emails the client a payment link.
-  if (!invoice.stripeInvoiceId && invoice.status !== "void") {
-    return (
-      <div className="w-44">
-        <SlideToConfirm
-          purpose="send-invoice"
-          disabled={issuing}
-          ariaLabel={`Slide to issue invoice ${invoice.reference} and email it`}
-          onConfirm={async () => {
-            setIssuing(true);
-            setIssueError(null);
-            const res = await fetch("/api/stripe/issue", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ id: invoice._id }),
-            });
-            const body = await res.json().catch(() => ({}));
-            if (!res.ok) {
-              setIssueError(body.error ?? "Could not issue that.");
-              setIssuing(false);
-              // Throwing rolls the thumb back — nothing was issued.
-              throw new Error("issue failed");
-            }
-            /*
-             * Issued, but the email may not have gone.
-             *
-             * The invoice exists at this point, so the slider is allowed to
-             * complete — rolling it back would claim nothing happened. But
-             * the route cannot be run again for this invoice, so if the send
-             * failed I have to know now, while I still have the client in
-             * mind, rather than a fortnight later when nobody has paid.
-             */
-            if (body.emailed === false) {
-              setIssueError(
-                body.warning ??
-                  "Issued, but the email did not send. Send the link by hand.",
-              );
-            }
-            setIssuing(false);
-          }}
-        />
-        {issueError ? (
-          <p
-            role="alert"
-            className="mt-1 text-[11px] text-[color:var(--text-notice)]"
-          >
-            {issueError}
-          </p>
-        ) : null}
-      </div>
-    );
-  }
-
-  if (invoice.status === "paid") {
-    return (
-      <span className="badge badge-warm">
-        paid
-        {invoice.paidAt ? (
-          <span className="text-secondary">
-            {new Date(invoice.paidAt).toLocaleDateString("en-GB", {
-              day: "numeric",
-              month: "short",
-            })}
-          </span>
-        ) : null}
-      </span>
-    );
-  }
+/**
+ * The status, as a badge. No controls.
+ *
+ * This cell used to hold a SlideToConfirm — 44px of gesture inside a table
+ * row, which pushed every row to about 135px tall and made a list of six
+ * invoices a full screen of scrolling. It also put the two least reversible
+ * actions on the page (issue this, mark it settled) in the most prominent
+ * position on every row.
+ *
+ * Both moved into the row's overflow menu, where each opens a confirmation
+ * that still carries the gesture. Same friction, spent once you have already
+ * said what you want rather than every time you look at the table.
+ */
+function StatusCell({ invoice }: { invoice: Doc<"invoices"> }) {
+  const tone =
+    invoice.status === "paid"
+      ? "badge-live"
+      : invoice.status === "overdue"
+        ? "badge-hot"
+        : invoice.status === "void"
+          ? "badge-cold"
+          : "";
 
   return (
-    <div className="flex items-center gap-2">
-      <select
-        value={invoice.status}
-        aria-label={`Status for ${invoice.reference}`}
-        onChange={(e) => void onSet(e.target.value as Status)}
-        className="hairline rounded-md bg-surface-1 px-2 py-1 text-xs text-secondary"
-      >
-        {STATUSES.filter((s) => s !== "paid").map((s) => (
-          <option key={s} value={s}>
-            {s}
-          </option>
-        ))}
-      </select>
-
-      <div className="w-40">
-        <SlideToConfirm
-          purpose="mark-paid"
-          ariaLabel={`Slide to mark invoice ${invoice.reference} as paid`}
-          onConfirm={async () => {
-            await onSet("paid");
-          }}
-        />
-      </div>
-    </div>
+    <span className={`badge ${tone}`}>
+      {invoice.status}
+      {invoice.status === "paid" && invoice.paidAt ? (
+        <span className="text-secondary">
+          {new Date(invoice.paidAt).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+          })}
+        </span>
+      ) : null}
+    </span>
   );
 }
-
 function CreatePairDialog({ onClose }: { onClose: () => void }) {
   const createPair = useMutation(api.invoices.createPair);
   const [values, setValues] = useState({

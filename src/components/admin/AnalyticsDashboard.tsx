@@ -37,7 +37,7 @@ export function AnalyticsDashboard() {
         <div>
           <h1 className="text-2xl">Analytics</h1>
           <p className="mt-1 text-sm text-secondary">
-            First-party. No third-party tracker and no personal data.
+            First-party. No tracker, no personal data.
           </p>
         </div>
 

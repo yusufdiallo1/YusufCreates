@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { Field, TextArea } from "@/components/admin/shared/Fields";
 import { Empty, Skeleton } from "@/components/admin/ProjectsAdmin";
 import { CopyButton } from "@/components/ui/CopyButton";
@@ -50,22 +51,19 @@ export function ClientsAdmin() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl">Clients</h1>
-          <p className="mt-1 text-sm text-secondary">
-            Each client gets their own project, a portal link, and a direct
-            chat with me.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setAdding(true)}
-          className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
-        >
-          Add client
-        </button>
-      </div>
+      <PageHeader
+        title="Clients"
+        description="Each client gets a project, a portal link and a direct chat."
+        action={
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+          >
+            Add client
+          </button>
+        }
+      />
 
       {clients === undefined ? (
         <Skeleton />

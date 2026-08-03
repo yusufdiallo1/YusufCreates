@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { DeleteSlide } from "@/components/admin/shared/Fields";
 import { Empty, Skeleton } from "@/components/admin/ProjectsAdmin";
 
@@ -38,11 +39,10 @@ export function WaitlistAdmin() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl">Waitlist</h1>
-        <p className="mt-1 text-sm text-secondary">
-          Two builds and two care plans at a time. Capacity is worked out from
-          live projects, so it is always current.
-        </p>
+        <PageHeader
+            title="Waitlist"
+            description="Capacity is derived from live projects, so it is always current."
+          />
       </div>
 
       {data === undefined ? (

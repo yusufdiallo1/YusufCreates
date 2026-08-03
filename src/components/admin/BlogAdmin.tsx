@@ -68,7 +68,7 @@ export function BlogAdmin() {
         <div>
           <h1 className="text-2xl">Blog</h1>
           <p className="mt-1 text-sm text-secondary">
-            Markdown. Set a future date to schedule.
+            Markdown. A future date schedules it.
           </p>
         </div>
         <button

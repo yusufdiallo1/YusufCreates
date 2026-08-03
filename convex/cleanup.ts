@@ -286,3 +286,30 @@ export const purgeTestRecords = internalMutation({
     return counts;
   },
 });
+
+/**
+ * Seeds a couple of throwaway rows so a table can be looked at with data in
+ * it. Internal only, and everything it writes is removed by
+ * purgeTestRecords.
+ */
+export const seedForUiCheck = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    for (let i = 1; i <= 3; i++) {
+      await ctx.db.insert("invoices", {
+        clientName: `UI Check ${i}`,
+        clientEmail: `ui-check-${i}@example.com`,
+        description: "Layout verification",
+        amount: 1200 * i,
+        currency: "USD",
+        stage: i % 2 === 0 ? "balance" : "deposit",
+        status: i === 3 ? "overdue" : "sent",
+        token: `uicheck${i}${now}`,
+        reference: `UI-00${i}`,
+        dueDate: now + i * 86_400_000,
+      });
+    }
+    return { seeded: 3 };
+  },
+});

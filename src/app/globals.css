@@ -1053,13 +1053,27 @@
   }
 
   /* Page title. 24px flat — NOT --text-3xl, which clamps to 32 on a wide
-     viewport and is what made the admin read as marketing. */
-  .admin-title {
+     viewport and is what made the admin read as marketing.
+
+     Applied to the class AND to any bare h1 inside the admin, because this
+     header was copy-pasted into fifteen screens before PageHeader existed.
+     Converting them all by hand would be fifteen chances to miss one and
+     leave a single page rendering at the old size; the element selector means
+     any screen still using a raw <h1> gets the right type for free, and the
+     PageHeader component is then a convenience rather than a requirement. */
+  .admin-title,
+  .admin-scope h1 {
     font-size: 1.5rem;
     font-weight: 600;
     letter-spacing: -0.02em;
     line-height: 1.2;
     color: var(--text-primary);
+  }
+
+  /* Same reasoning for the description line under it. */
+  .admin-scope h1 + p {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
   }
 
   /* One line. If it needs two, it belongs in the empty state or a tooltip. */

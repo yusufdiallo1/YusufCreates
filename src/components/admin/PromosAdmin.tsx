@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { Field, TextArea } from "@/components/admin/shared/Fields";
 import { DateTimePicker } from "@/components/admin/shared/DateTimePicker";
 import { Empty, Skeleton } from "@/components/admin/ProjectsAdmin";
@@ -30,22 +31,19 @@ export function PromosAdmin() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl">Promotions</h1>
-          <p className="mt-1 text-sm text-secondary">
-            Status is worked out from the window and the redemption count on
-            every read, so a promo stops the second it should.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setCreating(true)}
-          className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
-        >
-          New promotion
-        </button>
-      </div>
+      <PageHeader
+        title="Promotions"
+        description="Status is derived on every read, so a promo stops when it should."
+        action={
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+          >
+            New promotion
+          </button>
+        }
+      />
 
       {promos === undefined ? (
         <Skeleton />
