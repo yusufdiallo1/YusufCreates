@@ -297,10 +297,37 @@ export const invoices = query({
 export const paletteData = query({
   args: {},
   handler: async (ctx) => {
-    if (!(await isAdmin(ctx))) return { leads: [], projects: [] };
+    /* Same shape when signed out, so the palette renders an empty result
+       rather than throwing on a missing key. */
+    if (!(await isAdmin(ctx))) {
+      return {
+        leads: [],
+        projects: [],
+        clients: [],
+        invoices: [],
+        proposals: [],
+      };
+    }
 
-    const leads = await ctx.db.query("leads").order("desc").take(100);
-    const projects = await ctx.db.query("projects").order("desc").take(50);
+    /*
+     * Five entity types, not two.
+     *
+     * The palette searched leads and portfolio projects, which meant finding
+     * a client, an invoice or a proposal required knowing which screen it
+     * lived on and going there first. Searching across all of them is the
+     * difference between a shortcut and the way you navigate.
+     *
+     * Capped per type rather than overall so one busy table cannot crowd the
+     * others out of the results — 300 rows is well under what the client can
+     * filter instantly, and the palette only fetches while it is open.
+     */
+    const [leads, projects, clients, invoices, proposals] = await Promise.all([
+      ctx.db.query("leads").order("desc").take(100),
+      ctx.db.query("projects").order("desc").take(50),
+      ctx.db.query("clients").order("desc").take(60),
+      ctx.db.query("invoices").order("desc").take(60),
+      ctx.db.query("proposals").order("desc").take(60),
+    ]);
 
     return {
       leads: leads.map((l) => ({
@@ -314,6 +341,27 @@ export const paletteData = query({
         _id: p._id,
         title: p.title,
         slug: p.slug,
+        status: p.status,
+      })),
+      clients: clients.map((c) => ({
+        _id: c._id,
+        name: c.name,
+        email: c.email,
+        company: c.company,
+      })),
+      invoices: invoices.map((i) => ({
+        _id: i._id,
+        reference: i.reference,
+        clientName: i.clientName,
+        amount: i.amount,
+        currency: i.currency,
+        status: i.status,
+      })),
+      proposals: proposals.map((p) => ({
+        _id: p._id,
+        clientName: p.clientName,
+        amount: p.amount,
+        currency: p.currency,
         status: p.status,
       })),
     };

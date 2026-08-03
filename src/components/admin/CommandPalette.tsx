@@ -144,7 +144,69 @@ export function CommandPalette() {
         run: () => go(`${ADMIN_PATH}/content`),
       })) ?? [];
 
-    return [...nav, ...quick, ...leadActions, ...projectActions];
+    /*
+     * Clients, invoices and proposals joined the palette.
+     *
+     * Before this, finding an invoice meant knowing it was on the invoices
+     * screen, going there, and reading the list. Searching across every
+     * entity from one box is the difference between a shortcut and the way
+     * you actually move around the admin.
+     *
+     * Each group carries the fields you would search BY as keywords — an
+     * invoice by client name as well as its reference, a client by email —
+     * because nobody remembers a reference number.
+     */
+    const clientActions: Action[] =
+      data?.clients.map((c) => ({
+        id: `client:${c._id}`,
+        label: c.name || c.email,
+        hint: [c.company, c.email].filter(Boolean).join(" · "),
+        group: "Clients",
+        keywords: `${c.company ?? ""} ${c.email}`,
+        run: () => go(`${ADMIN_PATH}/clients`),
+      })) ?? [];
+
+    const money = (n: number, currency: string) =>
+      new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: currency || "USD",
+        maximumFractionDigits: 0,
+      }).format(n);
+
+    const invoiceActions: Action[] =
+      data?.invoices.map((i) => ({
+        id: `invoice:${i._id}`,
+        label: `${i.reference} · ${i.clientName}`,
+        hint: `${money(i.amount, i.currency)} · ${i.status}`,
+        group: "Invoices",
+        keywords: `${i.clientName} ${i.status}`,
+        run: () => go(`${ADMIN_PATH}/invoices?q=${encodeURIComponent(i.reference)}`),
+      })) ?? [];
+
+    const proposalActions: Action[] =
+      data?.proposals.map((p) => ({
+        id: `proposal:${p._id}`,
+        label: p.clientName ?? "Untitled proposal",
+        hint: `${money(p.amount, p.currency)} · ${p.status}`,
+        group: "Proposals",
+        keywords: p.status,
+        run: () =>
+          go(
+            `${ADMIN_PATH}/proposals${
+              p.clientName ? `?q=${encodeURIComponent(p.clientName)}` : ""
+            }`,
+          ),
+      })) ?? [];
+
+    return [
+      ...nav,
+      ...quick,
+      ...leadActions,
+      ...clientActions,
+      ...invoiceActions,
+      ...proposalActions,
+      ...projectActions,
+    ];
   }, [data, go]);
 
   const byId = useMemo(
