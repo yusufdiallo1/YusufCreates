@@ -36,6 +36,7 @@ export const submit = mutation({
     supportUrl: v.optional(v.string()),
     supportIssues: v.optional(v.string()),
     supportStack: v.optional(v.string()),
+    preferredStack: v.optional(v.string()),
     supportAccess: v.optional(v.string()),
     promoCode: v.optional(v.string()),
     source: v.optional(v.string()),

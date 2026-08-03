@@ -67,6 +67,7 @@ interface Payload {
   supportUrl?: string;
   supportIssues?: string;
   supportStack?: string;
+  preferredStack?: string;
   supportAccess?: string;
   promoCode?: string;
   tier?: string;
@@ -190,6 +191,7 @@ export async function POST(request: Request) {
       supportUrl: trim(payload.supportUrl),
       supportIssues: trim(payload.supportIssues),
       supportStack: trim(payload.supportStack),
+      preferredStack: trim(payload.preferredStack),
       supportAccess: trim(payload.supportAccess),
       // Uppercased to match how codes are issued, so a lead typed in lower
       // case still lines up with the promo when the invoice is raised.
@@ -245,6 +247,7 @@ export async function POST(request: Request) {
         label("Site", trim(payload.supportUrl) ?? trim(payload.existingUrl)),
         label("Needs", trim(payload.supportScope)),
         label("Built with", trim(payload.supportStack)),
+        label("Preferred stack", trim(payload.preferredStack)),
         label("Access", trim(payload.supportAccess)),
         label("Platforms", trim(payload.platforms)),
         label("Where they are", trim(payload.currentState)),
@@ -374,6 +377,7 @@ function buildSummary(p: Payload): { label: string; value: string }[] {
     ["Site to look after", p.supportUrl],
     ["Current issues", p.supportIssues],
     ["Built with", p.supportStack],
+    ["Preferred stack", p.preferredStack],
     ["Access", p.supportAccess],
     ["Discount code", p.promoCode],
     ["Procurement", p.procurementProcess],

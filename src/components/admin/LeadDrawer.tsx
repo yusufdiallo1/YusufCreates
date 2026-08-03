@@ -96,6 +96,18 @@ export function LeadDrawer({
         ["Budget", lead.budget],
         ["Timeline", lead.timeline],
         ["Support scope", lead.supportScope],
+        /*
+         * The care-plan answers were collected and then never shown here —
+         * the questions that decide whether a plan can be taken on at all
+         * were only visible in the notification email. Two stack fields,
+         * because "built with" and "would like it built with" are different
+         * answers to different questions.
+         */
+        ["Site to look after", lead.supportUrl],
+        ["Known issues", lead.supportIssues],
+        ["Built with", lead.supportStack],
+        ["Preferred stack", lead.preferredStack],
+        ["Access", lead.supportAccess],
         // As typed. Whether it is still valid is decided when the invoice is
         // raised, not here — a code can expire between inquiry and quote.
         ["Discount code", lead.promoCode],

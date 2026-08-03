@@ -40,6 +40,7 @@ export type FieldId =
   | "supportUrl"
   | "supportIssues"
   | "supportStack"
+  | "preferredStack"
   | "supportAccess"
   | "company"
   | "role";
@@ -75,6 +76,7 @@ export const PLANS: Plan[] = [
       "projectPurpose",
       "audience",
       "currentState",
+      "preferredStack",
       "timeline",
     ],
     messagePrompt:
@@ -91,6 +93,7 @@ export const PLANS: Plan[] = [
       "pageCount",
       "currentState",
       "existingUrl",
+      "preferredStack",
       "timeline",
     ],
     messagePrompt:
@@ -106,6 +109,7 @@ export const PLANS: Plan[] = [
       "audience",
       "currentState",
       "existingUrl",
+      "preferredStack",
       "timeline",
     ],
     messagePrompt:
@@ -122,6 +126,7 @@ export const PLANS: Plan[] = [
       "platforms",
       "currentState",
       "existingUrl",
+      "preferredStack",
       "timeline",
     ],
     messagePrompt:
@@ -152,7 +157,19 @@ export const PLANS: Plan[] = [
     id: "revive",
     label: "Fix an existing site",
     hint: "You have one already. It needs to work.",
-    fields: ["existingUrl", "currentState", "projectPurpose", "timeline"],
+    /*
+     * supportStack, not preferredStack. This is a site that already exists,
+     * so what it is built with now is a fact about the job rather than a
+     * preference — and it decides whether a rescue is an afternoon or a
+     * rebuild.
+     */
+    fields: [
+      "existingUrl",
+      "supportStack",
+      "currentState",
+      "projectPurpose",
+      "timeline",
+    ],
     messagePrompt:
       "What is going wrong with it, and is there anything you already know needs doing?",
     // Priced from the audit: what a rescue costs depends entirely on what is
@@ -435,9 +452,33 @@ export const FIELDS: Record<FieldId, FieldDef> = {
   supportStack: {
     id: "supportStack",
     label: "What is it built with?",
-    kind: "text",
-    help: "WordPress, Shopify, Webflow, custom — a guess is fine if you are not sure.",
-    placeholder: "WordPress with a bought theme, hosted on Bluehost",
+    /*
+     * A checklist, because a stack is almost never one thing — WordPress on
+     * PHP behind Cloudflare, or React with a Node API. Asked as free text it
+     * came back as "not sure" or a single word, neither of which tells me
+     * whether I can take the site on.
+     */
+    kind: "multiselect",
+    options: [...STACK_OPTIONS],
+    allowOther: true,
+    help: "Tick everything you know it uses. A guess is fine — and 'Not sure' is a real answer.",
+  },
+  /**
+   * The same question for a NEW build, where there is nothing to inspect.
+   *
+   * Optional and phrased as a preference, not a requirement: most people have
+   * no view and should not be made to feel they need one. But someone whose
+   * team already runs React, or who has been told to avoid WordPress, has
+   * given me a genuine constraint — and finding that out after quoting is
+   * finding it out too late.
+   */
+  preferredStack: {
+    id: "preferredStack",
+    label: "Anything it should be built with?",
+    kind: "multiselect",
+    options: [...STACK_OPTIONS],
+    allowOther: true,
+    help: "Only if you have a preference or something you have to stay compatible with. Skip it otherwise — I will choose what fits.",
   },
   /**
    * Access is a go/no-go, not a nicety.

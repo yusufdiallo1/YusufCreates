@@ -68,6 +68,21 @@ const byTitle = new Map(ALL.map((icon) => [icon.title.toLowerCase(), icon]));
  * as everything else, so it needs no special handling.
  */
 const EXTRA: Record<string, IconRecord> = {
+  /*
+   * Conductor is in neither simple-icons nor @lobehub/icons, so the path was
+   * traced from the official mark rather than drawn from memory — the blocks
+   * were detected programmatically from the source image and mapped onto the
+   * same 24 grid as everything else. Drawing it by eye is what produced a
+   * Swift blob and a Netlify plus sign the first time this file existed.
+   *
+   * No hex: the brand mark is white on a dark badge, and on this canvas that
+   * means currentColor is already right. brandColor() falls back to the ink
+   * colour when hex is absent, which is exactly the wanted behaviour.
+   */
+  conductor: {
+    title: "Conductor",
+    path: "M8.38 1.0h9.58a0.97 0.97 0 0 1 0.97 0.97v1.51a0.97 0.97 0 0 1 -0.97 0.97h-9.58a0.97 0.97 0 0 1 -0.97 -0.97v-1.51a0.97 0.97 0 0 1 0.97 -0.97zM6.02 5.69h2.72a0.95 0.95 0 0 1 0.95 0.95v1.48a0.95 0.95 0 0 1 -0.95 0.95h-2.72a0.95 0.95 0 0 1 -0.95 -0.95v-1.48a0.95 0.95 0 0 1 0.95 -0.95zM15.33 5.69h2.65a0.95 0.95 0 0 1 0.95 0.95v1.48a0.95 0.95 0 0 1 -0.95 0.95h-2.65a0.95 0.95 0 0 1 -0.95 -0.95v-1.48a0.95 0.95 0 0 1 0.95 -0.95zM6.02 10.31h2.72a0.95 0.95 0 0 1 0.95 0.95v1.48a0.95 0.95 0 0 1 -0.95 0.95h-2.72a0.95 0.95 0 0 1 -0.95 -0.95v-1.48a0.95 0.95 0 0 1 0.95 -0.95zM6.04 14.93h2.68a0.97 0.97 0 0 1 0.97 0.97v1.51a0.97 0.97 0 0 1 -0.97 0.97h-2.68a0.97 0.97 0 0 1 -0.97 -0.97v-1.51a0.97 0.97 0 0 1 0.97 -0.97zM15.35 14.93h2.61a0.97 0.97 0 0 1 0.97 0.97v1.51a0.97 0.97 0 0 1 -0.97 0.97h-2.61a0.97 0.97 0 0 1 -0.97 -0.97v-1.51a0.97 0.97 0 0 1 0.97 -0.97zM8.36 19.62h7.34a0.95 0.95 0 0 1 0.95 0.95v1.48a0.95 0.95 0 0 1 -0.95 0.95h-7.34a0.95 0.95 0 0 1 -0.95 -0.95v-1.48a0.95 0.95 0 0 1 0.95 -0.95z",
+  },
   groq: {
     title: "Groq",
     path: "M12.036 2c-3.853-.035-7 3-7.036 6.781-.035 3.782 3.055 6.872 6.908 6.907h2.42v-2.566h-2.292c-2.407.028-4.38-1.866-4.408-4.23-.029-2.362 1.901-4.298 4.308-4.326h.1c2.407 0 4.358 1.915 4.365 4.278v6.305c0 2.342-1.944 4.25-4.323 4.279a4.375 4.375 0 01-3.033-1.252l-1.851 1.818A7 7 0 0012.029 22h.092c3.803-.056 6.858-3.083 6.879-6.816v-6.5C18.907 4.963 15.817 2 12.036 2z",
@@ -84,15 +99,17 @@ const TITLE_FOR: Record<string, string> = {
   "Framer Motion": "Framer",
   "Google SEO": "Google",
   "Claude Code": "Claude",
+  // The brand is registered as HTML5; the skill is listed as HTML, because
+  // that is what it is called when you are writing it.
+  HTML: "HTML5",
 };
 
 /**
- * Two skills still have no mark, and both are correct.
+ * One skill still has no mark, and that is correct.
  *
  * "Responsive design" is a practice rather than a product, so a logo would be
- * an invention. Conductor is in neither simple-icons nor @lobehub/icons, and
- * drawing it from memory is exactly what produced a Swift blob and a Netlify
- * plus sign the first time round.
+ * an invention. Conductor now has one — traced from the official mark, see
+ * EXTRA above.
  */
 function lookup(name: string): IconRecord | null {
   const title = (TITLE_FOR[name] ?? name).toLowerCase();

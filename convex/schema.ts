@@ -110,6 +110,13 @@ export default defineSchema({
     supportUrl: v.optional(v.string()),
     supportIssues: v.optional(v.string()),
     supportStack: v.optional(v.string()),
+    /**
+     * Preferred stack for a NEW build, where supportStack describes an
+     * existing one. Two columns rather than one, because "what it is built
+     * with" and "what you would like it built with" are different facts and
+     * collapsing them loses which was meant.
+     */
+    preferredStack: v.optional(v.string()),
     /** Whether they can actually hand over the logins. A go/no-go. */
     supportAccess: v.optional(v.string()),
 

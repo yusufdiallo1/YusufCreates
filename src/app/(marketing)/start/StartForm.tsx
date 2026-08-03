@@ -520,6 +520,20 @@ function PlanField({
     );
   }
 
+  if (def.kind === "multiselect") {
+    return (
+      <MultiSelect
+        id={id}
+        label={def.label}
+        value={value}
+        onChange={onChange}
+        options={def.options ?? []}
+        help={def.help}
+        allowOther={def.allowOther}
+      />
+    );
+  }
+
   if (def.kind === "boolean") {
     return (
       <div className="flex items-center gap-3">
@@ -635,6 +649,129 @@ function Field({
         </p>
       ) : null}
       <FieldError id={`${id}-error`}>{error}</FieldError>
+    </div>
+  );
+}
+
+/**
+ * A checklist of technologies, stored as one comma-joined string.
+ *
+ * A string rather than an array because that is what the `leads` column, the
+ * notification email and the admin table already read — a new shape would
+ * mean touching all three to answer a question none of them ask differently.
+ *
+ * Collapsed by default. Twenty-three checkboxes open on a form that is mostly
+ * optional reads as work; a summary line that expands reads as a choice. The
+ * panel is plain checkboxes rather than a custom listbox so keyboard and
+ * screen-reader behaviour is the browser's, which is better than mine.
+ */
+function MultiSelect({
+  id,
+  label,
+  value,
+  onChange,
+  options,
+  help,
+  allowOther,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  help?: string;
+  allowOther?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  // The stored string is the source of truth, so the checkboxes always agree
+  // with what will actually be submitted.
+  const selected = value
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const listed = selected.filter((s) => options.includes(s));
+  /* Anything not in the list came from the "something else" box. Kept
+     separate so ticking a checkbox cannot silently drop it. */
+  const other = selected.filter((s) => !options.includes(s)).join(", ");
+
+  const toggle = (option: string) => {
+    const next = listed.includes(option)
+      ? listed.filter((s) => s !== option)
+      : [...listed, option];
+    onChange([...next, ...(other ? [other] : [])].join(", "));
+  };
+
+  const setOther = (text: string) => {
+    const trimmed = text.trim();
+    onChange([...listed, ...(trimmed ? [trimmed] : [])].join(", "));
+  };
+
+  return (
+    <div>
+      <span className="text-sm text-secondary">{label}</span>
+
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls={`${id}-panel`}
+        className="hairline mt-2 flex w-full items-center justify-between gap-3 rounded-lg bg-surface-1 px-4 py-3 text-left text-base text-primary sm:text-sm"
+      >
+        <span className={selected.length === 0 ? "text-secondary" : undefined}>
+          {selected.length === 0
+            ? "Choose any that apply"
+            : selected.join(", ")}
+        </span>
+        <span aria-hidden="true" className="shrink-0 text-secondary">
+          {open ? "−" : "+"}
+        </span>
+      </button>
+
+      {open ? (
+        <div
+          id={`${id}-panel`}
+          className="hairline mt-2 rounded-lg bg-surface-1 p-4"
+        >
+          <div className="grid gap-x-4 gap-y-2.5 sm:grid-cols-2">
+            {options.map((option) => (
+              <label
+                key={option}
+                className="flex items-start gap-2.5 text-sm text-secondary"
+              >
+                <input
+                  type="checkbox"
+                  checked={listed.includes(option)}
+                  onChange={() => toggle(option)}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-[color:var(--border-hairline)] bg-surface-1"
+                />
+                {option}
+              </label>
+            ))}
+          </div>
+
+          {allowOther ? (
+            <div className="hairline-t mt-4 pt-4">
+              <label
+                htmlFor={`${id}-other`}
+                className="text-xs text-secondary"
+              >
+                Something else
+              </label>
+              <input
+                id={`${id}-other`}
+                value={other}
+                onChange={(e) => setOther(e.target.value)}
+                placeholder="Anything not listed"
+                className="hairline mt-1.5 w-full rounded-lg bg-surface-1 px-3.5 py-2.5 text-base text-primary sm:text-sm"
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {help ? <p className="mt-2 text-xs text-secondary">{help}</p> : null}
     </div>
   );
 }

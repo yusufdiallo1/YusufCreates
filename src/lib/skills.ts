@@ -21,6 +21,17 @@ export const SKILL_GROUPS: SkillGroup[] = [
   {
     heading: "Frontend",
     items: [
+      /*
+       * The three the rest is built on, listed first and by name.
+       *
+       * A stack list that opens with Next.js tells someone with a plain
+       * hand-written site that they are in the wrong place. Plenty of the
+       * work here is exactly that, and semantic markup and real CSS are the
+       * part most framework-first developers get wrong.
+       */
+      { name: "HTML", use: "Semantic markup, landmarks and correct document structure" },
+      { name: "CSS", use: "Cascade layers, container queries, custom properties" },
+      { name: "JavaScript", use: "The language underneath, not just the framework" },
       { name: "Next.js", use: "App Router, server components, route handlers" },
       { name: "TypeScript", use: "Strict types from database through to UI" },
       { name: "Tailwind CSS", use: "Design tokens wired into utility classes" },

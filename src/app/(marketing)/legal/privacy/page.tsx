@@ -32,8 +32,14 @@ export default function PrivacyPage() {
         This site is run by Yusuf Diallo, trading as Yusuf Creates. It collects
         as little as it can get away with, and this page says exactly what that
         is. If anything here is unclear, write to{" "}
-        <a href="mailto:hello@yusufcreates.com">hello@yusufcreates.com</a> and
-        I&apos;ll answer plainly.
+        {/*
+          Explicit {" "} rather than a plain space before the newline. JSX
+          drops whitespace that sits between a tag and a line break, so
+          "…yusufcreates.com and I'll" rendered as "…yusufcreates.comand
+          I'll" — the space is in the source and not in the output.
+        */}
+        <a href="mailto:hello@yusufcreates.com">hello@yusufcreates.com</a>{" "}
+        and I&apos;ll answer plainly.
       </p>
 
       <h2>What is collected, and why</h2>
@@ -56,8 +62,8 @@ export default function PrivacyPage() {
       </p>
 
       <p>
-        <strong className="text-primary">When you browse.</strong> Page views,
-        the page you came from, and which buttons are clicked. These are tied
+        <strong className="text-primary">When you browse.</strong>{" "}
+        Page views, the page you came from, and which buttons are clicked. These are tied
         to a random identifier held in your browser&apos;s session storage,
         which is cleared when you close the tab. It is not a cookie, it is not
         shared with anyone, and it cannot identify you.
@@ -129,8 +135,8 @@ export default function PrivacyPage() {
 
       <ul>
         <li>
-          <strong className="text-primary">Enquiries:</strong> kept while
-          there&apos;s an active conversation, and for two years afterwards in
+          <strong className="text-primary">Enquiries:</strong>{" "}
+          kept while there&apos;s an active conversation, and for two years afterwards in
           case you come back. Ask and I&apos;ll delete yours sooner.
         </li>
         <li>
