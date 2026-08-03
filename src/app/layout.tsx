@@ -6,6 +6,8 @@ import { inter } from "@/lib/fonts";
 import { isConvexConfigured } from "@/lib/convex-api";
 import { SITE } from "@/lib/constants";
 import { Watermark } from "@/components/ui/Watermark";
+import { CapabilityProvider } from "@/components/providers/CapabilityProvider";
+import { MotionDebug } from "@/components/dev/MotionDebug";
 
 export const metadata: Metadata = {
   // Required for opengraph-image to emit an absolute URL. Scrapers reject a
@@ -86,6 +88,10 @@ export default function RootLayout({
     <html
       lang="en"
       data-theme="dark"
+      // Must match SSR_TIER in lib/capability.ts. Rendered by the server so the
+      // tier clamps in globals.css apply on first paint; CapabilityProvider
+      // replaces it one frame after hydration once the device is known.
+      data-capability-tier="reduced"
       className={`${inter.variable} min-h-full antialiased`}
     >
       {/* min-h-dvh, not min-h-full. `min-height: 100%` resolves against the
@@ -98,11 +104,20 @@ export default function RootLayout({
         <a href="#main" className="skip-link">
           Skip to content
         </a>
-        <ConvexClientProvider>{children}</ConvexClientProvider>
+        {/* Site-wide, not marketing-only: the tier attribute drives the blur
+            clamps in globals.css, which the admin and portal glass surfaces
+            read too. Renders children unconditionally — gating on detection
+            would leave the payload blank and cost the LCP. */}
+        <CapabilityProvider>
+          <ConvexClientProvider>{children}</ConvexClientProvider>
+        </CapabilityProvider>
 
         {/* Every page, including the portal and the token-authed pages that
             sit outside the marketing layout. */}
         <Watermark />
+
+        {/* ?debug=motion. Compiled out of production builds. */}
+        <MotionDebug />
       </body>
     </html>
   );

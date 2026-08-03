@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 import { Reveal } from "@/components/motion/Reveal";
 import { CountUp } from "@/components/motion/CountUp";
+import { SpotlightGroup } from "@/components/motion/Spotlight";
+import { BorderBeam } from "@/components/motion/BorderBeam";
+import { Magnetic } from "@/components/motion/Magnetic";
 import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
 import { useCurrency } from "@/lib/useCurrency";
 import { api, isConvexConfigured } from "@/lib/convex-api";
@@ -276,7 +279,11 @@ export function PricingTables() {
           card is always clipped at the edge — that sliver is the only honest
           signal that there is more to swipe to.
         */}
-        <div
+        {/* The spotlight listener binds to this existing row rather than a
+            wrapper, so no element is added between the scroll container and
+            its snap children — a div here would break both the flex row and
+            the lg grid. */}
+        <SpotlightGroup
           className="scroll-row flex snap-x snap-mandatory gap-6 overflow-x-auto px-6 pb-4 lg:grid lg:grid-cols-3 lg:overflow-visible lg:pb-0"
           style={{ touchAction: "pan-x pan-y" }}
         >
@@ -297,12 +304,26 @@ export function PricingTables() {
                 className="w-[82vw] shrink-0 snap-start sm:w-[min(24rem,70vw)] lg:w-auto lg:shrink"
               >
                 <div
-                  className={`flex h-full flex-col rounded-xl border p-6 ${
+                  data-spotlight=""
+                  /* Depth as hierarchy. The popular tier sits nearest the
+                     viewer — lifted, brighter light catch, longer shadow —
+                     and the others fall back behind it. That gradient is what
+                     makes three cards read as depth rather than as three flat
+                     panels with one outlined differently.
+
+                     Depth is expressed through the existing --glass-*-shadow
+                     ladder rather than new values, so it stays consistent with
+                     every other glass surface on the site. */
+                  data-tier-depth={tier.popular ? "near" : "far"}
+                  className={`pricing-tier relative flex h-full flex-col rounded-xl border p-6 ${
                     tier.popular
                       ? "border-[color:var(--accent)] bg-surface-2"
                       : "border-[color:var(--border-hairline)] bg-surface-1"
                   }`}
                 >
+                  {/* One of exactly two beams on the site. See BorderBeam. */}
+                  {tier.popular ? <BorderBeam duration={7} /> : null}
+
                   {tier.popular ? (
                     <span className="mb-4 w-fit rounded-full bg-accent px-3 py-1 text-xs font-medium text-primary">
                       Most popular
@@ -390,21 +411,28 @@ export function PricingTables() {
                     ))}
                   </ul>
 
-                  <Link
-                    href={`/start?tier=${tier.id}${isGrowth ? `&pages=${pages}` : ""}`}
-                    className={`mt-8 rounded-full px-5 py-2.5 text-center text-sm font-medium transition-opacity duration-fast hover:opacity-90 ${
-                      tier.popular
-                        ? "bg-primary text-canvas"
-                        : "border border-[color:var(--border-hairline)] text-primary"
-                    }`}
+                  {/* Magnetic on the popular tier only. The pull is a
+                      hierarchy signal, so giving it to all three would say
+                      nothing. */}
+                  <Magnetic
+                    className={tier.popular ? "mt-8 self-stretch" : "contents"}
                   >
-                    Get started
-                  </Link>
+                    <Link
+                      href={`/start?tier=${tier.id}${isGrowth ? `&pages=${pages}` : ""}`}
+                      className={`${tier.popular ? "w-full" : "mt-8"} rounded-full px-5 py-2.5 text-center text-sm font-medium transition-opacity duration-fast hover:opacity-90 ${
+                        tier.popular
+                          ? "bg-primary text-canvas"
+                          : "border border-[color:var(--border-hairline)] text-primary"
+                      }`}
+                    >
+                      Get started
+                    </Link>
+                  </Magnetic>
                 </div>
               </Reveal>
             );
           })}
-        </div>
+        </SpotlightGroup>
       </div>
 
       {/* BAND 2 — quoted-from work and aftercare, below the comparison row */}
@@ -417,12 +445,15 @@ export function PricingTables() {
         {/* Four now, so two-up rather than three — three columns would leave
             the fourth stranded on its own row, which is the exact problem the
             build tiers had. */}
-        <div className="grid gap-6 sm:grid-cols-2">
+        <SpotlightGroup className="grid gap-6 sm:grid-cols-2">
           <Reveal>
             {/* Same treatment as Enterprise: both are "from this figure,
                 scoped on a call" rather than a fixed price you can buy off
                 the page. */}
-            <div className="enterprise-band flex h-full flex-col rounded-xl p-6">
+            <div
+              data-spotlight=""
+              className="enterprise-band relative flex h-full flex-col rounded-xl p-6"
+            >
               <h2 className="text-xl">{NATIVE_TIER.name}</h2>
               <p className="mt-1 text-sm text-secondary">
                 {NATIVE_TIER.blurb}
@@ -475,7 +506,18 @@ export function PricingTables() {
           </Reveal>
 
           <Reveal delay={0.07}>
-            <div className="enterprise-band flex h-full flex-col rounded-xl p-6">
+            <div
+              data-spotlight=""
+              /* The travelling specular sweep. Two overlapping passes at
+                 different speeds and angles, with a dark gap between them —
+                 see .specular-sweep for why all three of those matter. */
+              data-specular-sweep=""
+              className="enterprise-band relative flex h-full flex-col rounded-xl p-6"
+            >
+              {/* The second and last beam on the site. Offset from the pricing
+                  tier's 7s so the two never peak together. */}
+              <BorderBeam duration={9} delay={2} />
+
               <h2 className="text-xl">Enterprise</h2>
               <p className="mt-1 text-sm text-secondary">
                 Scoped on a call, priced in the proposal.
@@ -526,7 +568,10 @@ export function PricingTables() {
                 immediately before Care because that is where it leads —
                 a rescue with no maintenance behind it is back where it
                 started within a year. */}
-            <div className="flex h-full flex-col rounded-xl border border-[color:var(--border-hairline)] bg-surface-1 p-6">
+            <div
+              data-spotlight=""
+              className="relative flex h-full flex-col rounded-xl border border-[color:var(--border-hairline)] bg-surface-1 p-6"
+            >
               <h2 className="text-xl">Revive</h2>
               <p className="mt-1 text-sm text-secondary">
                 You already have a site. Make it work.
@@ -569,7 +614,10 @@ export function PricingTables() {
           </Reveal>
 
           <Reveal delay={0.21}>
-            <div className="flex h-full flex-col rounded-xl border border-[color:var(--border-hairline)] bg-surface-1 p-6">
+            <div
+              data-spotlight=""
+              className="relative flex h-full flex-col rounded-xl border border-[color:var(--border-hairline)] bg-surface-1 p-6"
+            >
               <h2 className="text-xl">Care Plan</h2>
               <p className="mt-1 text-sm text-secondary">
                 Aftercare, not a build tier. Add it to any project.
@@ -651,7 +699,7 @@ export function PricingTables() {
               </div>
             </div>
           </Reveal>
-        </div>
+        </SpotlightGroup>
       </div>
     </>
   );

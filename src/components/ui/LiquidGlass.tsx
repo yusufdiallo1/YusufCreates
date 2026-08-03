@@ -2,6 +2,8 @@
 
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
+import { useBlurBudget } from "@/components/motion/BlurBudget";
+import { useCapability } from "@/components/providers/CapabilityProvider";
 
 /* ---------------------------------------------------------------------------
    Feature detection
@@ -50,17 +52,15 @@ export function useSvgBackdropSupport(): boolean {
 /* ---------------------------------------------------------------------------
    Blur budget
 
-   Each backdrop-filtered element forces the compositor to snapshot and blur the
-   region behind it. Past a handful on screen this drops frames badly on
-   integrated GPUs, so we cap how many instances get the real blur; the rest
-   fall back to an opaque surface that looks identical in stillness.
-   --------------------------------------------------------------------------- */
+   The counter now lives in lib/blur-budget.ts, shared with every other blurred
+   surface and keyed to the viewport rather than to mount order. See that file
+   for the determinism and anti-thrash requirements.
 
-/* Four is the budget for a screen: three hero slabs plus the nav. Past that,
-   instances fall back to an opaque surface that looks identical in stillness
-   and costs nothing to composite. */
-const MAX_BLURRED = 4;
-let activeBlurCount = 0;
+   Note for capacity planning: this budget covers only components that render
+   <LiquidGlass>, which today is Hero and Testimonials. Nav and PromoBanner
+   apply `glass-depth glass-near` as raw CSS classes and never enter the budget
+   at all — an earlier comment here claimed otherwise and was wrong.
+   --------------------------------------------------------------------------- */
 
 /**
  * How big a refracted panel may be, in square pixels.
@@ -77,34 +77,6 @@ let activeBlurCount = 0;
  * exactly where it is affordable and drops it where it is not.
  */
 const MAX_REFRACT_AREA = 40_000;
-
-function useBlurBudget(): boolean {
-  // Claimed in an effect so mount order decides who gets the budget, but the
-  // claim is recorded in a ref and surfaced via a single state flip — never a
-  // synchronous setState in the effect body.
-  const claimed = useRef(false);
-  const [withinBudget, setWithinBudget] = useState(false);
-
-  useEffect(() => {
-    if (claimed.current || activeBlurCount >= MAX_BLURRED) return;
-    activeBlurCount += 1;
-    claimed.current = true;
-
-    // Deferred to a microtask: keeps the state update out of the effect body,
-    // so it batches into the next commit instead of cascading this one.
-    const id = requestAnimationFrame(() => setWithinBudget(true));
-
-    return () => {
-      cancelAnimationFrame(id);
-      if (claimed.current) {
-        activeBlurCount -= 1;
-        claimed.current = false;
-      }
-    };
-  }, []);
-
-  return withinBudget;
-}
 
 /* ------------------------------------------------------------------------- */
 
@@ -159,7 +131,7 @@ export function LiquidGlass({
 }: LiquidGlassProps) {
   const filterId = useId().replace(/:/g, "");
   const svgSupported = useSvgBackdropSupport();
-  const withinBudget = useBlurBudget();
+  const { tier } = useCapability();
 
   /*
    * Refraction is for small panels only — see MAX_REFRACT_AREA.
@@ -203,11 +175,29 @@ export function LiquidGlass({
     return () => observer.disconnect();
   }, []);
 
+  /*
+   * The area check gates registration rather than filtering afterwards: an
+   * over-area panel can never use a slot, so it must not consume one that a
+   * smaller panel could have had.
+   */
+  const withinBudget = useBlurBudget(hostRef, { enabled: smallEnough });
+
   const { blur, displacement, frequency } = REFRACTION[depth];
   // Progressive enhancement only: Safari and Firefox get blur plus shadow and
   // must still look complete, which they do — the specular inset and the
   // shadow stack carry the material on their own.
-  const useRefraction = refract && svgSupported && withinBudget && smallEnough;
+  /*
+   * Refraction is gated on the tier as well as the budget.
+   *
+   * The SVG path sets backdrop-filter inline as url(#id), which bypasses the
+   * CSS variables entirely — so the tier blur clamps in globals.css cannot
+   * reach a refracting panel. Below `full`, refraction is dropped so the CSS
+   * path takes over and the clamp applies. Displacement is also the most
+   * expensive part of this effect, which is exactly what a lower tier means to
+   * give up.
+   */
+  const useRefraction =
+    refract && tier === "full" && svgSupported && withinBudget && smallEnough;
 
   // Only set when refracting. Otherwise the depth class in globals.css owns
   // backdrop-filter entirely, which keeps the mobile blur reduction and the

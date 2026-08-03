@@ -293,7 +293,8 @@ export function ProjectCard({ project }: { project: Project }) {
     <Link
       href={`/work/${project.slug}`}
       data-cursor="view"
-      className="project-card group block h-full overflow-hidden rounded-xl"
+      data-spotlight=""
+      className="project-card group relative block h-full overflow-hidden rounded-xl"
     >
       <div /* transform-gpu on the clipping box as well as the image: the
                 clip and the thing being clipped have to composite on the

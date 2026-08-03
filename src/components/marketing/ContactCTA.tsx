@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { TextReveal } from "@/components/motion/TextReveal";
 import { Reveal } from "@/components/motion/Reveal";
+import { AmbientLight } from "@/components/motion/AmbientLight";
+import { Magnetic } from "@/components/motion/Magnetic";
 import { FieldError } from "@/components/ui/FieldError";
 import { validateEmail } from "@/lib/validate";
 
@@ -57,14 +59,12 @@ export function ContactCTA() {
   }
 
   return (
-    <section className="relative overflow-hidden px-6 py-32">
-      {/* A single soft accent wash behind the headline — no gradient mesh. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-64 w-[min(42rem,90vw)] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-40 blur-[100px]"
-        style={{ background: "var(--accent-glow)" }}
-      />
-
+    /* AmbientLight replaces the static wash that used to sit here. It is the
+       site's ONE light source — a second would give the glass surfaces two
+       directions to agree with, which is the specific thing that reads as
+       wrong. Below `full` it renders a centred static glow, which is exactly
+       what the old wash was. */
+    <AmbientLight asSection className="relative overflow-hidden px-6 py-32">
       <div className="mx-auto max-w-3xl text-center">
         <TextReveal as="h2" by="word" className="block text-4xl">
           Let&apos;s build the thing.
@@ -78,12 +78,14 @@ export function ContactCTA() {
 
         <Reveal delay={0.18}>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-            <Link
-              href="/pricing"
-              className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
-            >
-              Start a project
-            </Link>
+            <Magnetic>
+              <Link
+                href="/pricing"
+                className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+              >
+                Start a project
+              </Link>
+            </Magnetic>
             <span className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-hairline)] px-3 py-1.5 text-xs text-secondary">
               <span
                 aria-hidden="true"
@@ -160,6 +162,6 @@ export function ContactCTA() {
           </p>
         </Reveal>
       </div>
-    </section>
+    </AmbientLight>
   );
 }

@@ -1,0 +1,226 @@
+/* ==========================================================================
+   Scroll-driven entrance reveals
+
+   These run entirely on the compositor: no JavaScript, no IntersectionObserver,
+   no per-frame React work. That is the whole point — every entrance the site
+   makes with CSS is JS budget left over for the sequences that genuinely need
+   it, and reveals keep working with scripting disabled.
+
+   Progressive enhancement, strictly one path at a time. Where
+   animation-timeline is unsupported, .reveal does nothing at all and the
+   `no-scroll-timeline` class handed down from <html> lets the Motion Reveal
+   primitive take over instead. Both would double-animate, so never both.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Keyframes
+
+   Every one of these ends at the element's natural resting state, so a browser
+   that ignores the timeline and simply runs the animation still finishes
+   correct. `both` fill then holds the start state before entry.
+   -------------------------------------------------------------------------- */
+
+@keyframes reveal-rise {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes reveal-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes reveal-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Content blur, not backdrop blur. This filters the element's own pixels,
+   which the compositor handles cheaply — a backdrop-filter here would sample
+   everything behind it on every frame of every reveal on the page. */
+@keyframes reveal-blur-in {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes reveal-clip-up {
+  from {
+    opacity: 0;
+    clip-path: inset(100% 0 0 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   The reveal classes
+   -------------------------------------------------------------------------- */
+
+@supports (animation-timeline: view()) {
+  .reveal,
+  .reveal-rise,
+  .reveal-fade,
+  .reveal-scale,
+  .reveal-blur-in,
+  .reveal-clip-up {
+    animation: reveal-rise linear both;
+    animation-timeline: view();
+    /* Fully resolved by 30% of the way up the viewport. Later than that and
+       the element is still fading while the reader has reached it. */
+    animation-range: entry 0% cover 30%;
+  }
+
+  .reveal-fade {
+    animation-name: reveal-fade;
+  }
+  .reveal-scale {
+    animation-name: reveal-scale;
+  }
+  .reveal-blur-in {
+    animation-name: reveal-blur-in;
+  }
+  .reveal-clip-up {
+    animation-name: reveal-clip-up;
+  }
+
+  /* Stagger for lists. Applied to the CHILDREN of a marked container so a grid
+     resolves in sequence rather than as one block.
+
+     Capped at six: past that the last item waits long enough to read as broken
+     rather than as choreography. Everything beyond the sixth shares its delay. */
+  .reveal-stagger > * {
+    animation: reveal-rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 30%;
+  }
+
+  /* The stagger is a later START, not a delay: animation-delay is a time
+     offset and means nothing on a scroll timeline. Each item begins its
+     resolve a little further up the viewport than the one before. */
+  .reveal-stagger > *:nth-child(2) {
+    animation-range: entry 4% cover 34%;
+  }
+  .reveal-stagger > *:nth-child(3) {
+    animation-range: entry 8% cover 38%;
+  }
+  .reveal-stagger > *:nth-child(4) {
+    animation-range: entry 12% cover 42%;
+  }
+  .reveal-stagger > *:nth-child(5) {
+    animation-range: entry 16% cover 46%;
+  }
+  .reveal-stagger > *:nth-child(n + 6) {
+    animation-range: entry 20% cover 50%;
+  }
+
+  /* ------------------------------------------------------------------------
+     Page-level progress
+
+     scroll() rather than view(): these track the document, not their own
+     position in it.
+     ------------------------------------------------------------------------ */
+
+  @keyframes progress-grow {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+
+  .scroll-progress-bar {
+    transform-origin: 0 50%;
+    animation: progress-grow linear both;
+    animation-timeline: scroll(root block);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Fallback signal
+
+   Set on <html> where view() is unavailable, so the Motion Reveal primitive
+   knows to run. Written as a :not() on the supports query rather than in JS,
+   so it is correct on the very first paint.
+   -------------------------------------------------------------------------- */
+
+@supports not (animation-timeline: view()) {
+  :root {
+    --scroll-timeline-supported: 0;
+  }
+}
+
+@supports (animation-timeline: view()) {
+  :root {
+    --scroll-timeline-supported: 1;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Tier and preference overrides
+
+   At minimal, nothing animates: elements render at their resting state
+   directly. `animation: none` rather than a zero duration, so no compositor
+   layer is created at all.
+
+   prefers-reduced-motion is handled globally in globals.css, but these need
+   the explicit `animation: none` too — the global rule only collapses
+   durations, and a scroll-driven animation with a collapsed duration still
+   holds its `from` state, which would leave content invisible.
+   -------------------------------------------------------------------------- */
+
+[data-capability-tier="minimal"] .reveal,
+[data-capability-tier="minimal"] .reveal-rise,
+[data-capability-tier="minimal"] .reveal-fade,
+[data-capability-tier="minimal"] .reveal-scale,
+[data-capability-tier="minimal"] .reveal-blur-in,
+[data-capability-tier="minimal"] .reveal-clip-up,
+[data-capability-tier="minimal"] .reveal-stagger > *,
+[data-capability-tier="minimal"] .scroll-progress-bar {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+  clip-path: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal-rise,
+  .reveal-fade,
+  .reveal-scale,
+  .reveal-blur-in,
+  .reveal-clip-up,
+  .reveal-stagger > *,
+  .scroll-progress-bar {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    clip-path: none !important;
+  }
+}

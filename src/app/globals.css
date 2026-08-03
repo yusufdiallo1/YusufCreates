@@ -1,4 +1,9 @@
 @import "tailwindcss";
+/* Compositor-driven entrance reveals. Imported after Tailwind so the tier
+   overrides at the end of that file win over utility classes. */
+@import "../styles/scroll-animations.css";
+/* Spotlight, border beam, ambient light. */
+@import "../styles/glass-effects.css";
 
 /* ==========================================================================
    YusufCreates design system
@@ -48,6 +53,28 @@
      alarm colour on it leaves nothing louder for the cases that are. Verified
      8.62:1 on --bg-surface-1, so it clears AA at the 12px these render at. */
   --text-notice: #dba463;
+
+  /* Developer palette -------------------------------------------------------
+     A splash of colour on a site that is otherwise monochrome plus one accent.
+
+     PUNCTUATION, NOT PAINT. These are for signal only: the travelling dot on
+     the process connector, step nodes filling as a line reaches them, form
+     validity, syntax highlights in the code carousels, and the ambient
+     temperature shift. They are never used for body text, for borders at rest,
+     or for backgrounds. --accent remains the primary and is unchanged.
+
+     Hues are spaced far enough apart to stay distinguishable for the common
+     forms of colour blindness, and each is tuned to clear 4.5:1 on
+     --bg-canvas so it can carry small text where it has to. The -glow pairs
+     are for radial bleeds and shadows, where alpha does the work. */
+  --dev-cyan: #4cc4d6;
+  --dev-cyan-glow: rgba(76, 196, 214, 0.3);
+  --dev-violet: #a78bfa;
+  --dev-violet-glow: rgba(167, 139, 250, 0.3);
+  --dev-amber: #e0a458;
+  --dev-amber-glow: rgba(224, 164, 88, 0.3);
+  --dev-lime: #9ccf5a;
+  --dev-lime-glow: rgba(156, 207, 90, 0.3);
 
   /* Typography ------------------------------------------------------------
      SF Pro resolves from the copy already installed on Apple operating
@@ -210,6 +237,19 @@
      theme's value would sit near 1.6:1 here. Verified 5.40:1 on --bg-surface-1. */
   --text-notice: #8a5a00;
 
+  /* Developer palette, darkened for a light canvas. The dark-theme values are
+     tuned against near-black and sit around 1.5–2:1 here, which is unusable.
+     Each of these clears 4.5:1 on --bg-surface-1. Hue is preserved so the
+     signal each colour carries stays the same across themes. */
+  --dev-cyan: #0f7c8c;
+  --dev-cyan-glow: rgba(15, 124, 140, 0.22);
+  --dev-violet: #6d4bc4;
+  --dev-violet-glow: rgba(109, 75, 196, 0.22);
+  --dev-amber: #8a5a00;
+  --dev-amber-glow: rgba(138, 90, 0, 0.22);
+  --dev-lime: #4a7a15;
+  --dev-lime-glow: rgba(74, 122, 21, 0.22);
+
   /* On light, glass is a white scrim: the bright inset highlight that reads as
      a bevel on dark would wash out, so it is dropped in favour of a soft
      ambient shadow and a darker seam. */
@@ -240,6 +280,16 @@
   --color-danger: var(--danger);
   --color-danger-solid: var(--danger-solid);
   --color-notice: var(--text-notice);
+
+  /* Developer palette → text-dev-cyan, bg-dev-violet, … */
+  --color-dev-cyan: var(--dev-cyan);
+  --color-dev-cyan-glow: var(--dev-cyan-glow);
+  --color-dev-violet: var(--dev-violet);
+  --color-dev-violet-glow: var(--dev-violet-glow);
+  --color-dev-amber: var(--dev-amber);
+  --color-dev-amber-glow: var(--dev-amber-glow);
+  --color-dev-lime: var(--dev-lime);
+  --color-dev-lime-glow: var(--dev-lime-glow);
 
   /* Fonts → font-sans, font-mono */
   --font-sans: var(--font-sans);
@@ -702,6 +752,14 @@
     --glass-bg: rgba(14, 14, 22, 0.82);
     --focus-ring-width: 3px;
     --text-notice: #f0c184;
+
+    /* Developer palette, lifted. These carry signal, so under a stated
+       contrast preference they move well clear of the 4.5:1 floor rather than
+       sitting on it. */
+    --dev-cyan: #8ee0ed;
+    --dev-violet: #c9b6ff;
+    --dev-amber: #f0c184;
+    --dev-lime: #c2e894;
   }
 
   [data-theme="light"] {
@@ -710,6 +768,12 @@
     --text-secondary: #3d4046;
     --glass-bg: rgba(255, 255, 255, 0.92);
     --text-notice: #6b4600;
+
+    /* Darkened further for the same reason, against a light canvas. */
+    --dev-cyan: #0a5c68;
+    --dev-violet: #533a96;
+    --dev-amber: #6b4600;
+    --dev-lime: #375c10;
   }
 
   .glass,
@@ -901,9 +965,12 @@
     padding: 0.5rem 0.75rem;
     font-size: 0.8125rem;
     color: var(--text-secondary);
+    /* --duration-fast and --ease-out do not exist; the tokens are --dur-fast
+       and --ease-out-expo. An undefined var makes the whole transition
+       invalid at computed-value time, so this silently did nothing. */
     transition:
-      color var(--duration-fast) var(--ease-out),
-      background-color var(--duration-fast) var(--ease-out);
+      color var(--dur-fast) var(--ease-out-expo),
+      background-color var(--dur-fast) var(--ease-out-expo);
   }
 
   .admin-nav-link:hover {
@@ -1040,6 +1107,8 @@
     backdrop-filter: blur(var(--glass-far-blur)) saturate(160%);
     box-shadow: var(--glass-far-shadow);
   }
+
+  /* Tier clamps live OUTSIDE this layer — see below the closing brace. */
 
   .glass-panel {
     border-radius: var(--glass-radius-panel);
@@ -1238,6 +1307,44 @@
         inset 0 1px 0 rgba(255, 252, 248, 0.6);
     }
   }
+}
+
+/* --------------------------------------------------------------------------
+   Capability tier clamps
+
+   Set from CapabilityProvider as data-capability-tier on <html>, and rendered
+   by the server at "reduced" so first paint is already correct.
+
+   DELIBERATELY UNLAYERED. The blur variables are declared in an unlayered
+   :root, and an unlayered declaration beats any layered one no matter how
+   specific — so a clamp written inside @layer components silently did nothing.
+   Keep these outside every layer.
+
+   These override the blur VARIABLES rather than backdrop-filter itself. The
+   depth classes own that property outright, which is what keeps the mobile
+   reduction and the reduced-transparency override working from one place.
+   Change the input, not the rule.
+
+   `full` is absent on purpose: it is the values already in :root, so a capable
+   device gets exactly the glass this site shipped with, untouched.
+   -------------------------------------------------------------------------- */
+
+[data-capability-tier="reduced"] {
+  --glass-near-blur: 12px;
+  --glass-mid-blur: 10px;
+  --glass-far-blur: 8px;
+  /* Legacy glass system, same reasoning. */
+  --glass-blur: 8px;
+}
+
+/* No blur at all. The fill carries the separation on its own, exactly as it
+   does for .glass-static and for prefers-reduced-transparency. */
+[data-capability-tier="minimal"] .glass-depth,
+[data-capability-tier="minimal"] .glass,
+[data-capability-tier="minimal"] .liquid-glass {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background-color: var(--bg-surface-2);
 }
 
 /* --------------------------------------------------------------------------

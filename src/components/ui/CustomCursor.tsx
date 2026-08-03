@@ -93,9 +93,31 @@ export function CustomCursor() {
 
     const onMove = (event: PointerEvent) => {
       setVisible(true);
-      x.set(event.clientX);
-      y.set(event.clientY);
-      setVariant(resolveVariant(document.elementFromPoint(event.clientX, event.clientY)));
+      const under = document.elementFromPoint(event.clientX, event.clientY);
+
+      /*
+       * Mutual attraction. Over a magnetic control the cursor is drawn toward
+       * its centre while the control leans back toward the cursor — the two
+       * meeting in the middle is what makes the pair feel connected rather
+       * than the button chasing a cursor that ignores it.
+       *
+       * Kept well under half, or the cursor detaches from the pointer far
+       * enough to feel broken rather than attracted.
+       */
+      const magnet = under?.closest<HTMLElement>("[data-cursor-magnetic]");
+      if (magnet) {
+        const rect = magnet.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const pull = 0.28;
+        x.set(event.clientX + (cx - event.clientX) * pull);
+        y.set(event.clientY + (cy - event.clientY) * pull);
+      } else {
+        x.set(event.clientX);
+        y.set(event.clientY);
+      }
+
+      setVariant(resolveVariant(under));
     };
 
     // Fade out where it stands — moving it off-screen would make it streak.

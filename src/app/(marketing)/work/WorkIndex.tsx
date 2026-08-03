@@ -8,6 +8,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { TextReveal } from "@/components/motion/TextReveal";
 import { Typewriter } from "@/components/motion/Typewriter";
 import { Parallax } from "@/components/motion/Parallax";
+import { SpotlightGroup } from "@/components/motion/Spotlight";
 import { ScrollProgress } from "@/components/motion/ScrollProgress";
 
 /**
@@ -80,7 +81,7 @@ export function WorkIndex({
             </p>
           </Reveal>
         ) : (
-          <div className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2">
+          <SpotlightGroup className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2">
             {projects.map((project: Project, index: number) => (
               /* Alternating columns drift at different rates as you scroll,
                  so the grid reads as depth rather than a table of pictures.
@@ -92,7 +93,7 @@ export function WorkIndex({
                 </Reveal>
               </Parallax>
             ))}
-          </div>
+          </SpotlightGroup>
         )}
 
         {/* Placed after the work rather than before it, so it reads as what

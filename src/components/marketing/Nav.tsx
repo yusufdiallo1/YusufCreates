@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { AnimatedLogo } from "@/components/ui/AnimatedLogo";
+import { Magnetic } from "@/components/motion/Magnetic";
 import { cn } from "@/lib/utils";
 
 /**
@@ -122,12 +123,14 @@ export function Nav() {
           </ul>
 
           <div className="flex items-center gap-2">
-            <Link
-              href="/pricing"
-              className="hidden rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90 sm:block"
-            >
-              Start a project
-            </Link>
+            <Magnetic className="hidden sm:inline-flex">
+              <Link
+                href="/pricing"
+                className="rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+              >
+                Start a project
+              </Link>
+            </Magnetic>
 
             {/*
               onPointerDown, not onClick.

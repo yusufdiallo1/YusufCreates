@@ -1,0 +1,356 @@
+/* ==========================================================================
+   Cursor-reactive glass
+
+   Spotlight, border beam and ambient light. All three are pseudo-elements
+   positioned by custom properties written from JS, so the JS only ever sets
+   two numbers and the compositor does the rest — no layout, no paint of the
+   element itself.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Registered properties
+
+   An unregistered custom property is a string, and CSS cannot interpolate
+   between two strings — an angle animation on an unregistered property snaps
+   from start to end with nothing in between. Registering gives the property a
+   type, which is what makes the beam travel rather than teleport.
+   -------------------------------------------------------------------------- */
+
+@property --beam-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@property --spot-opacity {
+  syntax: "<number>";
+  initial-value: 0;
+  inherits: false;
+}
+
+/* --------------------------------------------------------------------------
+   Spotlight
+   -------------------------------------------------------------------------- */
+
+[data-spotlight] {
+  position: relative;
+  /* Seeded so the gradient has somewhere to be before the first pointermove. */
+  --mx: 50%;
+  --my: 50%;
+}
+
+[data-spotlight]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: var(--spot-opacity, 0);
+  transition: opacity var(--dur-base) var(--ease-out-expo);
+  background: radial-gradient(
+    400px circle at var(--mx) var(--my),
+    rgba(255, 252, 248, 0.08),
+    transparent 60%
+  );
+}
+
+/* The group only lights up where a real pointer exists. Without this, a card
+   tapped on a phone keeps a gradient stuck wherever the finger last was. */
+[data-spotlight-group="on"] [data-spotlight]::after {
+  display: block;
+}
+
+@media (hover: none) {
+  [data-spotlight]::after {
+    display: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Border beam
+
+   Masked to the border by compositing two fills: one clipped to the content
+   box, one to the padding box, with the inner one excluded. What remains is
+   exactly the border ring.
+   -------------------------------------------------------------------------- */
+
+.border-beam {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  pointer-events: none;
+  padding: var(--beam-thickness, 1px);
+
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+@supports (background: conic-gradient(from 0deg, red, blue)) {
+  .border-beam {
+    background: conic-gradient(
+      from var(--beam-angle),
+      transparent 0 70%,
+      var(--beam-colour, var(--accent)) 85%,
+      transparent 100%
+    );
+  }
+
+  [data-border-beam="animated"] {
+    animation: beam-travel var(--beam-duration, 6s) linear infinite;
+    animation-delay: var(--beam-delay, 0s);
+  }
+}
+
+/* No conic gradient: a plain accent ring. The card still reads as marked,
+   which is the job — the travel is the flourish, not the message. */
+@supports not (background: conic-gradient(from 0deg, red, blue)) {
+  .border-beam {
+    background: var(--beam-colour, var(--accent));
+    opacity: 0.4;
+  }
+}
+
+@keyframes beam-travel {
+  to {
+    --beam-angle: 360deg;
+  }
+}
+
+/* Static: the beam parks at a fixed angle so the edge still catches colour. */
+[data-border-beam="static"] {
+  --beam-angle: 135deg;
+  opacity: 0.5;
+}
+
+/* --------------------------------------------------------------------------
+   Ambient light
+
+   The glow itself, plus the shared --light-x / --light-y that every glass
+   surface in the section reads so their highlights agree about the source.
+   -------------------------------------------------------------------------- */
+
+.ambient-light {
+  position: relative;
+  isolation: isolate;
+  --light-x: 50%;
+  --light-y: 50%;
+  --light-opacity: 0.35;
+}
+
+.ambient-light::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--light-opacity);
+  transition: opacity var(--dur-slow) var(--ease-out-expo);
+  background: radial-gradient(
+    900px circle at var(--light-x) var(--light-y),
+    var(--accent-glow),
+    transparent 65%
+  );
+}
+
+/* Glass inside an ambient section places its specular catch to agree with the
+   light, rather than along a fixed top edge. */
+.ambient-light [data-depth]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    600px circle at var(--light-x) var(--light-y),
+    rgba(255, 252, 248, 0.06),
+    transparent 55%
+  );
+}
+
+/* --------------------------------------------------------------------------
+   Travelling specular highlight
+
+   Light catching a pane as it turns. Three details separate this from a
+   loading shimmer, and dropping any one of them puts it straight back:
+
+   1. TWO sweeps, at different speeds and angles. A single repeating band is
+      the universal visual language for "still loading".
+   2. mix-blend-mode: overlay, so it reads as light on the material rather
+      than a white bar sliding over it.
+   3. A DARK GAP. The sweep is invisible for most of its cycle and catches
+      only occasionally. A continuous pass is a beacon; an occasional one is
+      a reflection.
+   -------------------------------------------------------------------------- */
+
+[data-specular-sweep] {
+  position: relative;
+  overflow: hidden;
+}
+
+[data-specular-sweep]::before,
+[data-specular-sweep]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  background-size: 200% 100%;
+}
+
+[data-specular-sweep]::before {
+  background-image: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 252, 248, 0.13) 50%,
+    transparent 60%
+  );
+  animation: specular-sweep 7s var(--ease-in-out) infinite;
+}
+
+/* Slower, dimmer, a different angle, offset in time. The two are never in
+   phase, which is what stops the pair reading as one repeating band. */
+[data-specular-sweep]::after {
+  background-image: linear-gradient(
+    75deg,
+    transparent 42%,
+    rgba(255, 252, 248, 0.07) 50%,
+    transparent 58%
+  );
+  animation: specular-sweep 11s var(--ease-in-out) 3s infinite;
+}
+
+/* The pass occupies only the first third of the cycle; the rest is the dark
+   gap that makes it an occasional catch rather than a pulse. */
+@keyframes specular-sweep {
+  0% {
+    background-position: 200% 0;
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  30% {
+    background-position: -100% 0;
+    opacity: 1;
+  }
+  38% {
+    opacity: 0;
+  }
+  100% {
+    background-position: -100% 0;
+    opacity: 0;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Pricing depth
+
+   Depth as hierarchy: the recommended tier sits nearest the viewer and the
+   others fall back behind it. Expressed with the existing --glass-*-shadow
+   ladder so it stays consistent with every other glass surface.
+
+   The lift is a transform, never a change of size or margin — those would
+   reflow the row on hover.
+   -------------------------------------------------------------------------- */
+
+.pricing-tier {
+  transition:
+    transform var(--dur-base) var(--ease-out-expo),
+    box-shadow var(--dur-base) var(--ease-out-expo);
+}
+
+.pricing-tier[data-tier-depth="far"] {
+  box-shadow: var(--glass-far-shadow);
+}
+
+.pricing-tier[data-tier-depth="near"] {
+  box-shadow: var(--glass-near-shadow);
+}
+
+@media (min-width: 1024px) {
+  /* Only lifted where the three sit side by side. In the mobile swipe row
+     each card is alone on screen, so there is no hierarchy to express. */
+  .pricing-tier[data-tier-depth="near"] {
+    transform: translateY(-12px);
+  }
+
+  .pricing-tier:hover {
+    transform: translateY(-8px);
+  }
+
+  .pricing-tier[data-tier-depth="near"]:hover {
+    transform: translateY(-20px);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Tier and preference overrides
+   -------------------------------------------------------------------------- */
+
+/* Solid surfaces at three levels of the ladder, shadows only. */
+[data-capability-tier="minimal"] [data-specular-sweep]::before,
+[data-capability-tier="minimal"] [data-specular-sweep]::after {
+  display: none;
+}
+
+[data-capability-tier="reduced"] [data-specular-sweep]::before,
+[data-capability-tier="reduced"] [data-specular-sweep]::after {
+  animation: none;
+  opacity: 0.5;
+  background-position: 50% 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-specular-sweep]::before,
+  [data-specular-sweep]::after {
+    animation: none;
+    opacity: 0.5;
+    background-position: 50% 0;
+  }
+
+  .pricing-tier {
+    transition: none;
+  }
+}
+
+[data-capability-tier="minimal"] [data-spotlight]::after,
+[data-capability-tier="minimal"] .ambient-light::before,
+[data-capability-tier="minimal"] .ambient-light [data-depth]::before {
+  display: none;
+}
+
+[data-capability-tier="minimal"] .border-beam {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-border-beam="animated"] {
+    animation: none;
+    --beam-angle: 135deg;
+    opacity: 0.5;
+  }
+
+  [data-spotlight]::after {
+    transition: none;
+  }
+}
+
+/* The glow is a large translucent fill; under a stated transparency
+   preference it is exactly the kind of thing to drop. */
+@media (prefers-reduced-transparency: reduce) {
+  .ambient-light::before,
+  .ambient-light [data-depth]::before,
+  [data-spotlight]::after {
+    display: none;
+  }
+}
