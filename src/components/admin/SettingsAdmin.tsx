@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
+import { PageHeader } from "@/components/admin/PageHeader";
 import { Skeleton } from "@/components/admin/ProjectsAdmin";
 
 /**
@@ -13,6 +14,18 @@ import { Skeleton } from "@/components/admin/ProjectsAdmin";
  * any query that forgets its auth check, and one missing requireAdmin should
  * never be able to leak a Stripe key. The integrations panel therefore reports
  * whether each key is configured, and never what it is.
+ *
+ * Two things changed in the rebuild.
+ *
+ * There is no longer a Save button per field. There were seventeen of them,
+ * which meant changing three values was three separate saves and forgetting
+ * one left the page looking finished when it was not. Fields go dirty on
+ * change and one sticky bar saves the lot.
+ *
+ * And it is no longer one long scroll. Sections became a sub-navigation, so
+ * the page is a set of places rather than a column to hunt through — and on a
+ * phone that nav is a horizontal scroller rather than eight headings to swipe
+ * past.
  */
 
 type Integration = {
@@ -22,6 +35,38 @@ type Integration = {
   configured: boolean;
 };
 
+const SECTIONS = [
+  { id: "general", label: "General" },
+  { id: "capacity", label: "Capacity" },
+  { id: "pricing", label: "Pricing" },
+  { id: "integrations", label: "Integrations" },
+] as const;
+
+type SectionId = (typeof SECTIONS)[number]["id"];
+
+/** Every key this screen owns, with the default the site falls back to. */
+const DEFAULTS: Record<string, string> = {
+  availability: "open",
+  "reply.window": "24 hours",
+  "hours.window": "9:00 – 21:00",
+  "hours.timezone": "AST (UTC+3)",
+  "notice.text": "",
+  "slots.build": "2",
+  "slots.care": "2",
+  "rate.GBP": "0.79",
+  "rate.EUR": "0.92",
+};
+
+/**
+ * How stale a currency rate may be before it is worth flagging.
+ *
+ * A drifted rate quotes the wrong price and nothing else would tell you — the
+ * figure still renders, it is just wrong. Thirty days is roughly where
+ * GBP/EUR movement stops being rounding and starts being real money on a
+ * four-figure invoice.
+ */
+const RATE_STALE_DAYS = 30;
+
 export function SettingsAdmin({
   integrations,
 }: {
@@ -30,311 +75,387 @@ export function SettingsAdmin({
   const rows = useQuery(api.settings.getAll, {});
   const set = useMutation(api.settings.set);
 
-  const value = (key: string, fallback: string) =>
-    (rows?.find((r) => r.key === key)?.value as string | undefined) ?? fallback;
+  const [section, setSection] = useState<SectionId>("general");
+  /** Only the keys actually touched. Absent means unchanged. */
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const stored = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const row of rows ?? []) map[row.key] = String(row.value ?? "");
+    return map;
+  }, [rows]);
+
+  const value = (key: string) =>
+    draft[key] ?? stored[key] ?? DEFAULTS[key] ?? "";
+
+  const edit = (key: string, next: string) => {
+    setSaved(false);
+    setDraft((prev) => {
+      const committed = stored[key] ?? DEFAULTS[key] ?? "";
+      /* Typing a value back to what it already was clears the dirty flag,
+         rather than leaving a phantom "1 unsaved change" that saves nothing. */
+      if (next === committed) {
+        const copy = { ...prev };
+        delete copy[key];
+        return copy;
+      }
+      return { ...prev, [key]: next };
+    });
+  };
+
+  const dirty = Object.keys(draft);
+
+  const save = useCallback(async () => {
+    if (dirty.length === 0 || saving) return;
+    setSaving(true);
+    try {
+      // Sequential: nine keys at most, and a partial failure is easier to
+      // reason about when the order is known.
+      for (const key of dirty) await set({ key, value: draft[key] });
+      setDraft({});
+      setSaved(true);
+    } finally {
+      setSaving(false);
+    }
+  }, [dirty, draft, saving, set]);
+
+  /* ⌘S. The browser's own save dialog is useless here, and intercepting it is
+     what anyone expects from an editor-shaped screen. */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === "s" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        void save();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [save]);
+
+  /* Registered only while dirty, so a clean page never prompts on the way
+     out — a confirmation you see when you have changed nothing is one you
+     learn to dismiss without reading. */
+  useEffect(() => {
+    if (dirty.length === 0) return;
+    const onLeave = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", onLeave);
+    return () => window.removeEventListener("beforeunload", onLeave);
+  }, [dirty.length]);
+
+  /** Inline and fading, rather than a toast that covers something. */
+  useEffect(() => {
+    if (!saved) return;
+    const id = setTimeout(() => setSaved(false), 2500);
+    return () => clearTimeout(id);
+  }, [saved]);
+
+  if (rows === undefined) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Settings"
+          description="Runtime values. Secrets live in env vars."
+        />
+        <Skeleton />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-10">
-      <div>
-        <h1 className="text-2xl">Settings</h1>
-        <p className="mt-1 text-sm text-secondary">
-          Values the site reads at runtime. Secrets stay in environment
-          variables.
-        </p>
-      </div>
+    <div className="space-y-6 pb-24">
+      <PageHeader
+        title="Settings"
+        description="Runtime values. Secrets live in env vars."
+      />
 
-      {rows === undefined ? (
-        <Skeleton />
-      ) : (
-        <>
-          <Section
-            title="Availability"
-            body="Shown in the hero and the how-I-work section."
-          >
-            <Toggle
-              label="Available for new projects"
-              checked={value("availability", "open") === "open"}
-              onChange={(next) =>
-                void set({ key: "availability", value: next ? "open" : "busy" })
-              }
-            />
-          </Section>
-
-          <Section
-            title="Currency rates"
-            body="Per US dollar. SAR and AED are pegged and set in code; GBP and EUR float, so these are entered by hand — the pricing page reads them live, and a stale rate quotes the wrong number."
-          >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <RateField
-                label="GBP per USD"
-                current={value("rate.GBP", "0.79")}
-                onSave={(v) => void set({ key: "rate.GBP", value: v })}
-              />
-              <RateField
-                label="EUR per USD"
-                current={value("rate.EUR", "0.92")}
-                onSave={(v) => void set({ key: "rate.EUR", value: v })}
-              />
-            </div>
-          </Section>
-          <Section
-            title="Capacity"
-            body="How many projects you take at once. The availability badge, the slot picker and the waitlist all read these — turning work down for a month is a decision made on a Tuesday, not one worth shipping code for."
-          >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <NumberField
-                label="Build slots per month"
-                current={value("slots.build", "2")}
-                onSave={(v) => void set({ key: "slots.build", value: v })}
-              />
-              <NumberField
-                label="Care slots per month"
-                current={value("slots.care", "2")}
-                onSave={(v) => void set({ key: "slots.care", value: v })}
-              />
-            </div>
-          </Section>
-
-          <Section
-            title="Response time"
-            body="Shown on the contact form and after a lead is sent. Say what is true — a promise you miss costs more than a longer one you keep."
-          >
-            <TextField
-              label="Reply within"
-              placeholder="24 hours"
-              current={value("reply.window", "24 hours")}
-              onSave={(v) => void set({ key: "reply.window", value: v })}
-            />
-          </Section>
-
-          <Section
-            title="Working hours"
-            body="Shown beside the availability badge, in the visitor's own timezone."
-          >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <TextField
-                label="Hours"
-                placeholder="9:00 AM – 6:00 PM"
-                current={value("hours.window", "9:00 AM – 6:00 PM")}
-                onSave={(v) => void set({ key: "hours.window", value: v })}
-              />
-              <TextField
-                label="Timezone"
-                placeholder="GMT+3"
-                current={value("hours.timezone", "GMT+3")}
-                onSave={(v) => void set({ key: "hours.timezone", value: v })}
-              />
-            </div>
-          </Section>
-
-          <Section
-            title="Announcement"
-            body="A single line shown site-wide, above the nav. Leave blank for none — this is separate from a promo, which carries a discount."
-          >
-            <TextField
-              label="Message"
-              placeholder="Booking for March. Two slots left."
-              current={value("notice.text", "")}
-              onSave={(v) => void set({ key: "notice.text", value: v })}
-            />
-          </Section>
-
-          <Section
-            title="Integrations"
-            body="Configured or not. The values themselves are never sent to the browser."
-          >
-            <ul className="divide-y divide-[color:var(--border-hairline)]">
-              {integrations.map((item) => (
-                <li
-                  key={item.env}
-                  className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0"
+      <div className="flex flex-col gap-6 lg:flex-row lg:gap-10">
+        {/* Horizontal scroller on a phone, a column from lg. The negative
+            margin lets it bleed to the screen edge so the last item does not
+            look clipped mid-word. */}
+        <nav
+          aria-label="Settings sections"
+          className="-mx-4 shrink-0 overflow-x-auto px-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:w-44 lg:overflow-visible lg:px-0"
+        >
+          <ul className="flex gap-1 lg:flex-col">
+            {SECTIONS.map((s) => (
+              <li key={s.id}>
+                <button
+                  type="button"
+                  onClick={() => setSection(s.id)}
+                  aria-current={section === s.id ? "page" : undefined}
+                  className={`w-full rounded-lg px-3 py-2 text-left text-[13px] whitespace-nowrap transition-colors duration-fast ${
+                    section === s.id
+                      ? "bg-surface-2 text-primary"
+                      : "text-secondary hover:text-primary"
+                  }`}
                 >
-                  <div className="min-w-0">
-                    <p className="text-sm text-primary">{item.name}</p>
-                    <p className="mt-0.5 text-xs text-secondary">{item.what}</p>
-                    <code className="mt-1 block font-mono text-[11px] text-secondary">
-                      {item.env}
-                    </code>
-                  </div>
+                  {s.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div className="min-w-0 flex-1 space-y-6">
+          {section === "general" ? (
+            <>
+              <Row
+                label="Available for new projects"
+                help="Shown in the hero and the how-I-work section."
+              >
+                <Toggle
+                  checked={value("availability") === "open"}
+                  onChange={(on) => edit("availability", on ? "open" : "busy")}
+                />
+              </Row>
+              <Row
+                label="Reply window"
+                help="The promise made on the enquiry form."
+              >
+                <Text
+                  value={value("reply.window")}
+                  onChange={(v) => edit("reply.window", v)}
+                />
+              </Row>
+              <Row label="Working hours" help="Printed beside the reply window.">
+                <Text
+                  value={value("hours.window")}
+                  onChange={(v) => edit("hours.window", v)}
+                />
+              </Row>
+              <Row label="Timezone" help="As a visitor should read it.">
+                <Text
+                  value={value("hours.timezone")}
+                  onChange={(v) => edit("hours.timezone", v)}
+                />
+              </Row>
+              <Row label="Site notice" help="Empty hides the banner entirely.">
+                <Text
+                  value={value("notice.text")}
+                  onChange={(v) => edit("notice.text", v)}
+                />
+              </Row>
+            </>
+          ) : null}
+
+          {section === "capacity" ? (
+            <>
+              <Row
+                label="Build slots"
+                help="Projects taken at once. The booking grid reads this."
+              >
+                <Text
+                  value={value("slots.build")}
+                  onChange={(v) => edit("slots.build", v)}
+                  inputMode="numeric"
+                />
+              </Row>
+              <Row label="Care slots" help="Care plans running at once.">
+                <Text
+                  value={value("slots.care")}
+                  onChange={(v) => edit("slots.care", v)}
+                  inputMode="numeric"
+                />
+              </Row>
+            </>
+          ) : null}
+
+          {section === "pricing" ? (
+            <>
+              {(["GBP", "EUR"] as const).map((code) => (
+                <Row
+                  key={code}
+                  label={`${code} rate`}
+                  help={`How many ${code} to one USD.`}
+                  badge={
+                    <RateAge
+                      updatedAt={
+                        rows.find((r) => r.key === `rate.${code}`)?._creationTime
+                      }
+                    />
+                  }
+                >
+                  <Text
+                    value={value(`rate.${code}`)}
+                    onChange={(v) => edit(`rate.${code}`, v)}
+                    inputMode="decimal"
+                  />
+                </Row>
+              ))}
+            </>
+          ) : null}
+
+          {section === "integrations" ? (
+            <ul className="space-y-1.5">
+              {integrations.map((it) => (
+                <li
+                  key={it.env}
+                  className="hairline flex items-center gap-3 rounded-lg px-3 py-2.5"
+                >
                   <span
-                    className={`badge shrink-0 ${
-                      item.configured ? "badge-warm" : "badge-cold"
+                    aria-hidden="true"
+                    className={`size-1.5 shrink-0 rounded-full ${
+                      it.configured
+                        ? "bg-[color:var(--success)]"
+                        : "bg-[color:var(--text-notice)]"
                     }`}
-                  >
-                    {item.configured ? "configured" : "not set"}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] text-primary">{it.name}</p>
+                    <p className="text-xs text-secondary">{it.what}</p>
+                    <code className="admin-meta mt-0.5 block">{it.env}</code>
+                  </div>
+                  <span className="admin-meta shrink-0">
+                    {it.configured ? "set" : "missing"}
                   </span>
                 </li>
               ))}
             </ul>
-          </Section>
-        </>
-      )}
+          ) : null}
+        </div>
+      </div>
+
+      {/* Appears only when there is something to save, so it never becomes
+          chrome you learn to ignore. Offset by the sidebar on lg. */}
+      {dirty.length > 0 || saved ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[color:var(--border-hairline)] bg-[color:var(--bg-surface-1)]/95 backdrop-blur-md lg:left-60">
+          <div className="flex items-center gap-3 px-4 py-3 sm:px-6">
+            <span className="text-[13px] text-secondary" role="status">
+              {saved && dirty.length === 0
+                ? "Saved"
+                : `${dirty.length} unsaved ${dirty.length === 1 ? "change" : "changes"}`}
+            </span>
+
+            {dirty.length > 0 ? (
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDraft({})}
+                  className="px-3 py-2 text-[13px] text-secondary transition-colors duration-fast hover:text-primary"
+                >
+                  Discard
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void save()}
+                  disabled={saving}
+                  className="rounded-full bg-primary px-4 py-2 text-[13px] font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+                >
+                  {saving ? "Saving…" : "Save"}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function Section({
-  title,
-  body,
+/* ------------------------------------------------------------------ bits --- */
+
+/**
+ * One setting: label and help left, control right.
+ *
+ * Was stacked full-width, which spent an entire row on a checkbox. Two
+ * columns from md; single column below, where there is no width to trade.
+ */
+function Row({
+  label,
+  help,
+  badge,
   children,
 }: {
-  title: string;
-  body: string;
+  label: string;
+  help?: string;
+  badge?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <section>
-      <h2 className="text-lg">{title}</h2>
-      <p className="mt-1 max-w-xl text-xs text-secondary">{body}</p>
-      <div className="admin-card mt-4">{children}</div>
-    </section>
+    <div className="grid gap-2 md:grid-cols-[1fr_16rem] md:items-start md:gap-6">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[13px] text-primary">{label}</span>
+          {badge}
+        </div>
+        {help ? <p className="mt-0.5 text-xs text-secondary">{help}</p> : null}
+      </div>
+      <div className="md:w-full md:justify-self-end">{children}</div>
+    </div>
+  );
+}
+
+function Text({
+  value,
+  onChange,
+  inputMode,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  inputMode?: "numeric" | "decimal";
+}) {
+  return (
+    <input
+      value={value}
+      inputMode={inputMode}
+      onChange={(e) => onChange(e.target.value)}
+      /* text-base on mobile so iOS does not zoom the page on focus. */
+      className="hairline w-full rounded-lg bg-surface-1 px-3 py-2 text-base text-primary sm:text-[13px]"
+    />
   );
 }
 
 function Toggle({
-  label,
   checked,
   onChange,
 }: {
-  label: string;
   checked: boolean;
   onChange: (next: boolean) => void;
 }) {
   return (
-    <label className="flex items-center gap-3 text-sm text-primary">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="size-4 rounded"
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={`relative h-6 w-10 shrink-0 rounded-full transition-colors duration-fast ${
+        checked ? "bg-[color:var(--accent-solid)]" : "bg-surface-3"
+      }`}
+    >
+      <span
+        className={`absolute top-1 size-4 rounded-full bg-white transition-transform duration-fast ${
+          checked ? "translate-x-5" : "translate-x-1"
+        }`}
       />
-      {label}
-    </label>
+    </button>
   );
 }
 
+/**
+ * How old a currency rate is.
+ *
+ * A stale rate is silently wrong — the pricing page renders a figure either
+ * way — so this is the only place its age is visible at all.
+ *
+ * _creationTime is when the ROW was created, and `set` patches rather than
+ * replaces, so for a rate that has been edited this over-reports the age. It
+ * is a ceiling, not an exact answer, which is the safe direction for a
+ * staleness warning: it can nag early, never late.
+ */
+function RateAge({ updatedAt }: { updatedAt?: number }) {
+  const [now, setNow] = useState<number | null>(null);
 
-function RateField({
-  label,
-  current,
-  onSave,
-}: {
-  label: string;
-  current: string;
-  onSave: (value: string) => void;
-}) {
-  const [draft, setDraft] = useState(current);
-  const id = `rate-${label.replace(/\W+/g, "-")}`;
-  const dirty = draft !== current;
+  // Read the clock in an effect: comparing against Date.now() during render
+  // differs between the server and the first client paint.
+  useEffect(() => setNow(Date.now()), []);
 
-  return (
-    <div>
-      <label htmlFor={id} className="text-sm text-secondary">
-        {label}
-      </label>
-      <div className="mt-2 flex gap-2">
-        <input
-          id={id}
-          type="number"
-          step="0.001"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          className="hairline min-w-0 flex-1 rounded-lg bg-surface-1 px-3.5 py-2 text-sm text-primary"
-        />
-        <button
-          type="button"
-          disabled={!dirty}
-          onClick={() => onSave(draft)}
-          className="shrink-0 rounded-lg bg-primary px-3.5 py-2 text-xs font-medium text-canvas disabled:opacity-40"
-        >
-          Save
-        </button>
-      </div>
-    </div>
-  );
-}
+  if (!updatedAt || now === null) return null;
 
-/** A whole number setting. Saves only when changed. */
-function NumberField({
-  label,
-  current,
-  onSave,
-}: {
-  label: string;
-  current: string;
-  onSave: (value: string) => void;
-}) {
-  const [draft, setDraft] = useState(current);
-  const id = `num-${label.replace(/\W+/g, "-")}`;
-  const dirty = draft !== current;
-
-  return (
-    <div>
-      <label htmlFor={id} className="text-sm text-secondary">
-        {label}
-      </label>
-      <div className="mt-2 flex gap-2">
-        <input
-          id={id}
-          type="number"
-          min="0"
-          step="1"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          className="hairline min-w-0 flex-1 rounded-lg bg-surface-1 px-3.5 py-2 text-sm text-primary"
-        />
-        <button
-          type="button"
-          disabled={!dirty}
-          onClick={() => onSave(draft)}
-          className="shrink-0 rounded-lg bg-primary px-3.5 py-2 text-xs font-medium text-canvas disabled:opacity-40"
-        >
-          Save
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/** A free-text setting. Same shape as NumberField, different input. */
-function TextField({
-  label,
-  current,
-  placeholder,
-  onSave,
-}: {
-  label: string;
-  current: string;
-  placeholder?: string;
-  onSave: (value: string) => void;
-}) {
-  const [draft, setDraft] = useState(current);
-  const id = `txt-${label.replace(/\W+/g, "-")}`;
-  const dirty = draft !== current;
-
-  return (
-    <div>
-      <label htmlFor={id} className="text-sm text-secondary">
-        {label}
-      </label>
-      <div className="mt-2 flex gap-2">
-        <input
-          id={id}
-          type="text"
-          value={draft}
-          placeholder={placeholder}
-          onChange={(e) => setDraft(e.target.value)}
-          className="hairline min-w-0 flex-1 rounded-lg bg-surface-1 px-3.5 py-2 text-sm text-primary placeholder:text-secondary"
-        />
-        <button
-          type="button"
-          disabled={!dirty}
-          onClick={() => onSave(draft)}
-          className="shrink-0 rounded-lg bg-primary px-3.5 py-2 text-xs font-medium text-canvas disabled:opacity-40"
-        >
-          Save
-        </button>
-      </div>
-    </div>
-  );
+  const days = Math.floor((now - updatedAt) / 86_400_000);
+  if (days < RATE_STALE_DAYS) {
+    return <span className="admin-meta">{days}d</span>;
+  }
+  return <span className="badge badge-hot">over {RATE_STALE_DAYS}d old</span>;
 }

@@ -319,3 +319,262 @@ export const paletteData = query({
     };
   },
 });
+
+/**
+ * The operator dashboard.
+ *
+ * `overview` above answers "how is the business doing". This answers a
+ * different and more urgent question: what needs me today. They are separate
+ * queries because they have different shapes and different costs, and folding
+ * the second into the first would make every page that wants a lead count pay
+ * for a scan of six more tables.
+ *
+ * The single merged action list is the point. Before this, "needs attention"
+ * meant unanswered new leads and nothing else — a proposal viewed and ignored
+ * for a week, an overdue invoice and an unread client message were each
+ * visible only on their own screen, which means each was visible only if you
+ * thought to go and look. One prioritised list is the reason to open the
+ * admin at all.
+ */
+export const dashboard = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+
+    const now = Date.now();
+    const hour = 60 * 60 * 1000;
+    const day = 24 * hour;
+
+    const [leads, invoices, proposals, builds, testimonials, feedback] =
+      await Promise.all([
+        ctx.db.query("leads").order("desc").take(400),
+        ctx.db.query("invoices").order("desc").take(300),
+        ctx.db.query("proposals").order("desc").take(200),
+        ctx.db.query("expressBuilds").order("desc").take(100),
+        ctx.db.query("testimonials").collect(),
+        ctx.db.query("siteFeedback").order("desc").take(100),
+      ]);
+
+    /*
+     * Everything that wants a human, in one list.
+     *
+     * `priority` is a sort key, not a label — lower is more urgent. Money
+     * already owed outranks money that might arrive, and anything with a
+     * clock on it outranks anything without.
+     */
+    type Item = {
+      id: string;
+      priority: number;
+      kind: string;
+      label: string;
+      detail: string;
+      href: string;
+      /** How long it has been waiting, in hours. */
+      waited: number;
+    };
+    const needsYou: Item[] = [];
+
+    // 1. An express build whose window is running. Nothing else has a
+    //    two-hour promise attached to it.
+    for (const b of builds) {
+      if (b.status === "pending_approval") {
+        needsYou.push({
+          id: b._id,
+          priority: 0,
+          kind: "express",
+          label: `${b.name} is waiting on approval`,
+          detail: "Nothing is running until you accept it.",
+          href: "/express",
+          waited: Math.round((now - b.createdAt) / hour),
+        });
+      }
+    }
+
+    // 2. Overdue money. Already late, and it does not chase itself.
+    for (const inv of invoices) {
+      if (inv.status === "overdue") {
+        needsYou.push({
+          id: inv._id,
+          priority: 1,
+          kind: "invoice",
+          label: `${inv.clientName} — ${inv.reference} is overdue`,
+          detail: `${inv.currency} ${inv.amount.toLocaleString("en-US")} outstanding.`,
+          href: "/invoices",
+          waited: Math.round((now - (inv.dueDate ?? inv._creationTime)) / hour),
+        });
+      }
+    }
+
+    // 3. A proposal read and not answered. They know what it says; silence
+    //    now means something, and three days is where it starts to.
+    for (const p of proposals) {
+      if (p.status === "sent" && p.viewedAt && now - p.viewedAt > 3 * day) {
+        needsYou.push({
+          id: p._id,
+          priority: 2,
+          kind: "proposal",
+          label: `${p.clientName ?? "A proposal"} opened it and went quiet`,
+          detail: "Read, not answered. Worth a nudge.",
+          href: "/proposals",
+          waited: Math.round((now - p.viewedAt) / hour),
+        });
+      }
+      if (p.changeRequest) {
+        needsYou.push({
+          id: `${p._id}-changes`,
+          priority: 1,
+          kind: "proposal",
+          label: `${p.clientName ?? "A client"} asked for changes`,
+          detail: p.changeRequest.slice(0, 90),
+          href: "/proposals",
+          waited: Math.round((now - p._creationTime) / hour),
+        });
+      }
+    }
+
+    // 4. A hot lead nobody has replied to. Scored leads decay fast.
+    for (const l of leads) {
+      if (l.status !== "new") continue;
+      const waited = now - l._creationTime;
+      if (waited < day) continue;
+      needsYou.push({
+        id: l._id,
+        priority: (l.score ?? 0) >= 60 ? 2 : 4,
+        kind: "lead",
+        label: `${l.name || l.email} has waited ${Math.round(waited / day)} days`,
+        detail: l.projectType ?? l.plan ?? "New enquiry",
+        href: "/leads",
+        waited: Math.round(waited / hour),
+      });
+    }
+
+    // 5. A testimonial someone wrote that is not published yet.
+    for (const t of testimonials) {
+      if (t.approved === false) {
+        needsYou.push({
+          id: t._id,
+          priority: 5,
+          kind: "testimonial",
+          label: `${t.author} left a testimonial`,
+          detail: "Waiting for approval.",
+          href: "/content",
+          waited: Math.round((now - t._creationTime) / hour),
+        });
+      }
+    }
+
+    // 6. Unread feedback from the site.
+    for (const f of feedback) {
+      if (!f.read) {
+        needsYou.push({
+          id: f._id,
+          priority: 5,
+          kind: "feedback",
+          label: `${f.name} sent feedback`,
+          detail: f.message.slice(0, 90),
+          href: "/feedback",
+          waited: Math.round((now - f.createdAt) / hour),
+        });
+      }
+    }
+
+    needsYou.sort((a, b) => a.priority - b.priority || b.waited - a.waited);
+
+    /* ----------------------------------------------------------- metrics */
+
+    const monthStart = new Date(new Date(now).setDate(1)).setHours(0, 0, 0, 0);
+    const thirtyDays = now - 30 * day;
+    const sixtyDays = now - 60 * day;
+
+    const paid = invoices.filter((i) => i.status === "paid");
+
+    /*
+     * Net of fees where Stripe told us, gross where it did not.
+     *
+     * netReceived is only populated for invoices paid through Stripe; one
+     * marked paid by hand has no fee to subtract. Falling back to `amount`
+     * keeps the figure honest rather than silently reporting zero for it.
+     */
+    const net = (i: (typeof invoices)[number]) => i.netReceived ?? i.amount;
+
+    const revenueThisMonth = paid
+      .filter((i) => (i.paidAt ?? 0) >= monthStart)
+      .reduce((sum, i) => sum + net(i), 0);
+
+    const revenuePrevMonth = paid
+      .filter((i) => {
+        const at = i.paidAt ?? 0;
+        const prevStart = new Date(monthStart);
+        prevStart.setMonth(prevStart.getMonth() - 1);
+        return at >= prevStart.getTime() && at < monthStart;
+      })
+      .reduce((sum, i) => sum + net(i), 0);
+
+    const fees = paid.reduce((sum, i) => sum + (i.stripeFee ?? 0), 0);
+
+    const openLeads = leads.filter(
+      (l) => l.status !== "won" && l.status !== "lost",
+    );
+
+    const pipelineValue = invoices
+      .filter((i) => i.status === "sent" || i.status === "overdue")
+      .reduce((sum, i) => sum + i.amount, 0);
+
+    const leads30 = leads.filter((l) => l._creationTime >= thirtyDays).length;
+    const leadsPrev30 = leads.filter(
+      (l) => l._creationTime >= sixtyDays && l._creationTime < thirtyDays,
+    ).length;
+
+    const activeBuilds = builds.filter(
+      (b) => b.status === "building" || b.status === "queued",
+    ).length;
+
+    /* Thirty daily buckets for the sparklines. Built from the same rows
+       already in memory rather than a second pass over the tables. */
+    const dailyLeads: number[] = [];
+    for (let i = 29; i >= 0; i--) {
+      const from = now - (i + 1) * day;
+      const to = now - i * day;
+      dailyLeads.push(
+        leads.filter((l) => l._creationTime >= from && l._creationTime < to)
+          .length,
+      );
+    }
+
+    /* Funnel. Counted from the lead's CURRENT status, so it is monotonic by
+       construction: reaching "won" means having passed every prior stage. */
+    const rank: Record<string, number> = {
+      new: 0,
+      contacted: 1,
+      qualified: 1,
+      proposal: 2,
+      won: 3,
+      lost: -1,
+    };
+    const atLeast = (n: number) =>
+      leads.filter((l) => (rank[l.status] ?? -1) >= n).length;
+
+    return {
+      needsYou: needsYou.slice(0, 12),
+      needsYouTotal: needsYou.length,
+      metrics: {
+        revenueThisMonth,
+        revenuePrevMonth,
+        fees,
+        pipelineValue,
+        openLeads: openLeads.length,
+        leads30,
+        leadsPrev30,
+        activeBuilds,
+        currency: paid[0]?.currency ?? "USD",
+      },
+      dailyLeads,
+      funnel: [
+        { step: "Enquiries", count: leads.length },
+        { step: "Contacted", count: atLeast(1) },
+        { step: "Proposal", count: atLeast(2) },
+        { step: "Won", count: atLeast(3) },
+      ],
+    };
+  },
+});

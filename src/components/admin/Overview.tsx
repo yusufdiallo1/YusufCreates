@@ -3,30 +3,47 @@
 import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
-import { ScoreBadge } from "@/components/admin/ScoreBadge";
 import { ADMIN_PATH } from "@/lib/constants";
+import { PageHeader } from "@/components/admin/PageHeader";
 
 /**
- * Overview.
+ * The operator dashboard.
  *
- * Ordered by what actually needs a decision: unanswered leads first, money
- * second, everything else after. A dashboard that opens on a traffic chart
- * teaches you to ignore it.
+ * It answers one question — what needs me today — and it should answer it in
+ * under five seconds. Everything else on this page is context for that.
  *
- * One query for the whole page. Five separate ones would waterfall on load
- * and could disagree with each other if they resolved at different moments.
+ * The old version was four stat tiles and a list of unanswered leads. The
+ * leads were the only thing it treated as urgent, so a proposal read and
+ * ignored for a week, an overdue invoice and an express build waiting on
+ * approval were each visible only on their own screen — which means visible
+ * only if you thought to go and look. They are one list now, sorted by
+ * urgency rather than by which table they came from.
  */
+
+const KIND_MARK: Record<string, string> = {
+  express: "▲",
+  invoice: "$",
+  proposal: "§",
+  lead: "●",
+  testimonial: "★",
+  feedback: "✉",
+};
+
 export function Overview() {
-  const data = useQuery(api.admin.overview, {});
-  // Separate from overview so a blog with no engagement cannot make the whole
-  // dashboard wait on two extra table scans.
-  const engagement = useQuery(api.engagement.stats, {});
+  const data = useQuery(api.admin.dashboard, {});
+
+  const money = (n: number, currency: string) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currency || "USD",
+      maximumFractionDigits: 0,
+    }).format(n);
 
   if (data === undefined) {
     return (
       <div className="space-y-6">
-        <div className="h-8 w-40 animate-pulse rounded bg-surface-2" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <PageHeader title="Overview" description="Loading…" />
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="h-24 animate-pulse rounded-xl bg-surface-1" />
           ))}
@@ -35,197 +52,222 @@ export function Overview() {
     );
   }
 
-  const { counts, revenue, pipeline, needsAttention } = data;
-  const money = (n: number, currency = revenue.currency || "USD") =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    }).format(n);
-
-  /*
-   * The headline figures are one currency — the primary one. Any others are
-   * named underneath rather than added in, because summing dollars and
-   * dirhams produces a number that is not an amount of money.
-   *
-   * Normally this is empty: one currency, one figure, no extra line.
-   */
-  const others = (totals: { currency: string; amount: number }[]) =>
-    totals
-      .filter((t) => t.currency !== revenue.currency && t.amount !== 0)
-      .map((t) => money(t.amount, t.currency))
-      .join(" · ");
+  const { needsYou, needsYouTotal, metrics, dailyLeads, funnel } = data;
 
   return (
-    <div className="space-y-10">
-      <div>
-        <h1 className="text-2xl">Overview</h1>
-        <p className="mt-1 text-sm text-secondary">
-          {counts.leadsNew > 0
-            ? `${counts.leadsNew} ${counts.leadsNew === 1 ? "enquiry needs" : "enquiries need"} a reply.`
-            : "Nothing waiting. All caught up."}
-        </p>
+    <div className="space-y-6">
+      <PageHeader
+        title="Overview"
+        description={
+          needsYouTotal === 0
+            ? "Nothing waiting. All caught up."
+            : `${needsYouTotal} ${needsYouTotal === 1 ? "thing needs" : "things need"} you.`
+        }
+      />
+
+      {/* Metrics. One column on a phone rather than four squeezed tiles. */}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Metric
+          label="Revenue this month"
+          value={money(metrics.revenueThisMonth, metrics.currency)}
+          delta={delta(metrics.revenueThisMonth, metrics.revenuePrevMonth)}
+          hint={
+            metrics.fees > 0
+              ? `net of ${money(metrics.fees, metrics.currency)} fees`
+              : undefined
+          }
+        />
+        <Metric
+          label="Outstanding"
+          value={money(metrics.pipelineValue, metrics.currency)}
+          hint="issued, not yet paid"
+        />
+        <Metric
+          label="New leads, 30 days"
+          value={String(metrics.leads30)}
+          delta={delta(metrics.leads30, metrics.leadsPrev30)}
+          spark={dailyLeads}
+        />
+        <Metric
+          label="Active builds"
+          value={String(metrics.activeBuilds)}
+          hint={`${metrics.openLeads} open leads`}
+        />
       </div>
 
-      <section aria-labelledby="stats-heading">
-        <h2 id="stats-heading" className="sr-only">
-          Key numbers
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat label="Needs a reply" value={counts.leadsNew} emphasis={counts.leadsNew > 0} />
-          <Stat label="Hot leads open" value={counts.leadsHot} />
-          <Stat
-            label="Paid this month"
-            value={money(revenue.paidThisMonth)}
-            note={others(revenue.paidByCurrency)}
-          />
-          <Stat
-            label="Outstanding"
-            value={money(revenue.outstanding)}
-            note={others(revenue.outstandingByCurrency)}
-          />
-        </div>
-      </section>
-
-      {/* The whole point of the page. Kept first and kept short. */}
-      <section aria-labelledby="attention-heading">
-        <div className="flex items-baseline justify-between">
-          <h2 id="attention-heading" className="text-lg">
-            Needs your attention
+      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+        {/* Needs you — the reason to open the admin. */}
+        <section aria-labelledby="needs-you" className="min-w-0">
+          <h2 id="needs-you" className="admin-section-title">
+            Needs you
           </h2>
-          <Link
-            href={`${ADMIN_PATH}/leads`}
-            className="text-xs text-secondary transition-colors duration-fast hover:text-primary"
-          >
-            All leads
-          </Link>
-        </div>
 
-        {needsAttention.length === 0 ? (
-          <p className="admin-card mt-4 text-sm text-secondary">
-            No unanswered enquiries.
-          </p>
-        ) : (
-          <ul className="mt-4 space-y-2">
-            {needsAttention.map((lead) => (
-              <li key={lead._id}>
-                <Link
-                  href={`${ADMIN_PATH}/leads?id=${lead._id}`}
-                  className="admin-card flex items-center justify-between gap-4 transition-colors duration-fast hover:bg-surface-2"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2.5">
-                      <span className="truncate text-sm text-primary">
-                        {lead.name || lead.email}
+          {needsYou.length === 0 ? (
+            <p className="hairline mt-3 rounded-xl px-4 py-8 text-center text-[13px] text-secondary">
+              Nothing waiting. Everything that could need you has been answered.
+            </p>
+          ) : (
+            <ul className="hairline mt-3 divide-y divide-[color:var(--border-hairline)] overflow-hidden rounded-xl">
+              {needsYou.map((item) => (
+                <li key={item.id}>
+                  <Link
+                    href={`${ADMIN_PATH}${item.href}`}
+                    className="flex items-start gap-3 px-3 py-2.5 transition-colors duration-fast hover:bg-surface-2"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="mt-0.5 w-4 shrink-0 text-center text-xs text-secondary"
+                    >
+                      {KIND_MARK[item.kind] ?? "·"}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13px] text-primary">
+                        {item.label}
                       </span>
-                      <ScoreBadge score={lead.score} />
-                    </div>
-                    <p className="mt-1 truncate text-xs text-secondary">
-                      {[lead.company, lead.projectType].filter(Boolean).join(" · ") ||
-                        lead.email}
-                    </p>
+                      <span className="block truncate text-xs text-secondary">
+                        {item.detail}
+                      </span>
+                    </span>
+                    <span className="admin-meta shrink-0 whitespace-nowrap">
+                      {age(item.waited)}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/* Funnel. Counted from each lead's current status, so it cannot
+            widen — reaching "won" means having passed every prior stage. */}
+        <section aria-labelledby="funnel" className="min-w-0">
+          <h2 id="funnel" className="admin-section-title">
+            Pipeline
+          </h2>
+          <div className="admin-card mt-3 space-y-2.5">
+            {funnel.map((step, i) => {
+              const first = funnel[0].count || 1;
+              const prev = i === 0 ? null : funnel[i - 1].count;
+              const pct = Math.round((step.count / first) * 100);
+              return (
+                <div key={step.step}>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-[13px] text-primary">
+                      {step.step}
+                    </span>
+                    <span className="text-[13px] text-primary tabular-nums">
+                      {step.count}
+                      {prev !== null && prev > 0 ? (
+                        <span className="ml-2 text-xs text-secondary">
+                          {Math.round((step.count / prev) * 100)}%
+                        </span>
+                      ) : null}
+                    </span>
                   </div>
-                  <span className="shrink-0 text-xs text-secondary tabular-nums">
-                    {formatWait(lead.waitingHours)}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section aria-labelledby="pipeline-heading">
-        <h2 id="pipeline-heading" className="text-lg">
-          Pipeline by type
-        </h2>
-        <p className="mt-1 text-xs text-secondary">
-          From the published price of each plan. Open leads only.
-        </p>
-
-        {pipeline.length === 0 ? (
-          <p className="admin-card mt-4 text-sm text-secondary">
-            Nothing open right now.
-          </p>
-        ) : (
-          <div className="admin-card mt-4 divide-y divide-[color:var(--border-hairline)]">
-            {pipeline.map((row) => (
-              <div
-                key={row.tier}
-                className="flex items-center justify-between gap-4 py-2.5 first:pt-0 last:pb-0"
-              >
-                <span className="truncate text-sm text-primary">{row.tier}</span>
-                <span className="flex shrink-0 items-center gap-4 text-xs text-secondary tabular-nums">
-                  <span>
-                    {row.count} {row.count === 1 ? "lead" : "leads"}
-                  </span>
-                  <span className="text-primary">{money(row.value)}</span>
-                </span>
-              </div>
-            ))}
+                  <div className="mt-1 h-1 overflow-hidden rounded-full bg-surface-2">
+                    <div
+                      className="h-full rounded-full bg-[color:var(--accent)]"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        )}
-      </section>
-
-      <section aria-labelledby="content-heading">
-        <h2 id="content-heading" className="text-lg">
-          Content
-        </h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          <Stat label="Published projects" value={counts.projectsPublished} />
-          <Stat label="Drafts" value={counts.projectsDraft} />
-          <Stat label="Leads in last 7 days" value={counts.leadsLast7} />
-        </div>
-
-        {/* Reader response. Held comments are emphasised because they are the
-            only number here that is waiting on me. */}
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          <Stat label="Post likes" value={engagement?.likes ?? 0} />
-          <Stat label="Comments" value={engagement?.comments ?? 0} />
-          <Stat
-            label="Comments held"
-            value={engagement?.pendingComments ?? 0}
-            emphasis={(engagement?.pendingComments ?? 0) > 0}
-          />
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }
 
-function Stat({
+/* ------------------------------------------------------------------ bits --- */
+
+function Metric({
   label,
   value,
-  emphasis = false,
-  note,
+  delta,
+  hint,
+  spark,
 }: {
   label: string;
-  value: string | number;
-  emphasis?: boolean;
-  /** Secondary line — used for totals held in another currency. */
-  note?: string;
+  value: string;
+  delta?: { pct: number; up: boolean } | null;
+  hint?: string;
+  spark?: number[];
 }) {
   return (
     <div className="admin-card">
-      <p className="text-xs text-secondary">{label}</p>
-      <p
-        className={`mt-2 text-2xl tabular-nums ${
-          emphasis ? "text-[color:var(--text-notice)]" : "text-primary"
-        }`}
-      >
-        {value}
-      </p>
-      {note ? (
-        <p className="mt-1 text-xs text-secondary tabular-nums">plus {note}</p>
-      ) : null}
+      <p className="admin-meta">{label}</p>
+      <div className="mt-1.5 flex items-baseline gap-2">
+        <span className="text-xl text-primary tabular-nums">{value}</span>
+        {delta ? (
+          <span
+            className={`text-xs tabular-nums ${
+              delta.up
+                ? "text-[color:var(--success)]"
+                : "text-[color:var(--danger)]"
+            }`}
+          >
+            {delta.up ? "↑" : "↓"}
+            {Math.abs(delta.pct)}%
+          </span>
+        ) : null}
+      </div>
+      {spark && spark.some((n) => n > 0) ? <Spark values={spark} /> : null}
+      {hint ? <p className="mt-1 text-xs text-secondary">{hint}</p> : null}
     </div>
   );
 }
 
-/** Hours are unreadable past a day or two. */
-function formatWait(hours: number): string {
-  if (hours < 1) return "just now";
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return days === 1 ? "yesterday" : `${days}d ago`;
+/**
+ * A 30-day sparkline, drawn as an inline SVG.
+ *
+ * Not recharts: this is a polyline with no axes, no tooltip and no legend,
+ * and pulling a charting library into the dashboard to draw it would cost
+ * more than the whole widget is worth. The real charts on the analytics page
+ * still use recharts, where the interaction earns it.
+ */
+function Spark({ values }: { values: number[] }) {
+  const max = Math.max(...values, 1);
+  const points = values
+    .map((v, i) => {
+      const x = (i / Math.max(values.length - 1, 1)) * 100;
+      const y = 100 - (v / max) * 100;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      className="mt-2 h-6 w-full"
+    >
+      <polyline
+        points={points}
+        fill="none"
+        stroke="var(--accent)"
+        strokeWidth="3"
+        vectorEffect="non-scaling-stroke"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Period-over-period. Null when there is no prior period to compare to —
+    "up 100%" from a base of zero is not information. */
+function delta(now: number, prev: number): { pct: number; up: boolean } | null {
+  if (!prev) return null;
+  const pct = Math.round(((now - prev) / prev) * 100);
+  if (pct === 0) return null;
+  return { pct, up: pct > 0 };
+}
+
+/** Hours into something readable at a glance. */
+function age(hours: number): string {
+  if (hours < 1) return "now";
+  if (hours < 24) return `${hours}h`;
+  return `${Math.round(hours / 24)}d`;
 }
