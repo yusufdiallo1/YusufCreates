@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { CustomCursor } from "@/components/ui/CustomCursor";
 import { SmoothScroll } from "@/components/motion/SmoothScroll";
 import { ScrollTriggerProvider } from "@/components/motion/ScrollTriggerProvider";
+import { AmbientTemperature } from "@/components/motion/AmbientTemperature";
 import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { Nav } from "@/components/marketing/Nav";
 import { Footer } from "@/components/marketing/Footer";
@@ -27,6 +28,10 @@ export default function MarketingLayout({
           scrolls natively — smoothing a data table is hostile. */}
       <SmoothScroll>
         <div className="flex min-h-full flex-col">
+          {/* One layer for the whole page, behind everything. Per-section
+              backgrounds would band at their boundaries. */}
+          <AmbientTemperature />
+
           {/* First-party, cookieless. See src/lib/track.ts. */}
           <Tracker />
           <ScrollProgress />

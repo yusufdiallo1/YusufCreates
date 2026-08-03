@@ -294,6 +294,155 @@
 }
 
 /* --------------------------------------------------------------------------
+   Form micro-interactions
+
+   Focus catches light along the top edge, once. Errors shake and use colour;
+   valid states draw a mark and deliberately do NOT change the border colour —
+   colour is reserved for things that need attention, and spending it on
+   success leaves nothing louder for failure.
+   -------------------------------------------------------------------------- */
+
+.field-glass {
+  position: relative;
+}
+
+/* A single sweep on focus, not a loop. It acknowledges the focus and stops. */
+.field-glass:focus-within::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image: linear-gradient(
+    100deg,
+    transparent 42%,
+    rgba(255, 252, 248, 0.14) 50%,
+    transparent 58%
+  );
+  background-size: 220% 100%;
+  animation: field-focus-sweep 400ms var(--ease-out-expo) 1;
+}
+
+@keyframes field-focus-sweep {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -60% 0;
+  }
+}
+
+/* Three oscillations, 8px, 300ms. Enough to read as a rejection without
+   throwing the field around. */
+@keyframes field-shake {
+  0%, 100% { transform: translateX(0); }
+  16% { transform: translateX(-8px); }
+  33% { transform: translateX(8px); }
+  50% { transform: translateX(-5px); }
+  66% { transform: translateX(5px); }
+  83% { transform: translateX(-2px); }
+}
+
+[data-field-error="true"] {
+  animation: field-shake 300ms var(--ease-in-out) 1;
+}
+
+/*
+ * Autofill.
+ *
+ * A field the browser has already filled must not animate in. Animating
+ * something the user did not touch — and which was populated before the page
+ * settled — reads as a glitch rather than as feedback.
+ */
+input:-webkit-autofill,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  animation: none !important;
+  transition: none !important;
+}
+
+.field-glass:has(input:-webkit-autofill)::after {
+  display: none;
+}
+
+[data-capability-tier="minimal"] .field-glass:focus-within::after {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field-glass:focus-within::after {
+    display: none;
+  }
+  [data-field-error="true"] {
+    animation: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Glass skeletons
+
+   The same material as the rest of the interface, with a faster sweep than
+   the Enterprise band's so it reads as active rather than ambient. A grey
+   pulsing block belongs to a different design language and says the loading
+   state was an afterthought.
+   -------------------------------------------------------------------------- */
+
+.glass-skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--glass-far-bg);
+  box-shadow: var(--glass-far-shadow);
+}
+
+.glass-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 252, 248, 0.10) 50%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-sweep 1.4s var(--ease-in-out) infinite;
+}
+
+@keyframes skeleton-sweep {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+/* Still a surface, just no motion — the shape alone communicates the wait. */
+[data-capability-tier="minimal"] .glass-skeleton::after {
+  animation: none;
+  opacity: 0.4;
+  background-position: 50% 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-skeleton::after {
+    animation: none;
+    opacity: 0.4;
+    background-position: 50% 0;
+  }
+}
+
+/* A single neutral wash where the scroll-linked version is not affordable. */
+.ambient-temperature-static {
+  background: radial-gradient(
+    120% 80% at 50% 30%,
+    rgba(140, 130, 190, 0.035),
+    transparent 70%
+  );
+}
+
+/* --------------------------------------------------------------------------
    View transitions
 
    The morph works without any CSS; this only tunes it. 400ms is slow enough

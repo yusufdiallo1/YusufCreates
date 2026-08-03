@@ -31,6 +31,8 @@ export function Nav() {
   const pathname = usePathname();
   const [condensed, setCondensed] = useState(false);
   const [open, setOpen] = useState(false);
+  /** Which nav item the pointer or focus is on, for the sliding indicator. */
+  const [hovered, setHovered] = useState<string | null>(null);
   // Set when pointerdown has already toggled the menu, so the click that
   // follows on a mouse does not toggle it straight back.
   const pointerHandled = useRef(false);
@@ -111,22 +113,59 @@ export function Nav() {
             <AnimatedLogo className="h-5 w-auto sm:h-6" />
           </Link>
 
-          <ul className="hidden items-center gap-7 md:flex">
-            {NAV_ITEMS.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={cn(
-                    "text-sm transition-colors duration-fast",
-                    pathname.startsWith(item.href)
-                      ? "text-primary"
-                      : "text-secondary hover:text-primary",
-                  )}
-                >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
+          {/*
+            The hover indicator physically slides between items rather than
+            fading out here and in there. One element with a shared layoutId
+            is what produces that: Motion sees the same node in a new place
+            and animates the gap. Fading two separate underlines reads as two
+            things blinking; this reads as one thing moving.
+          */}
+          <ul
+            className="hidden items-center gap-7 md:flex"
+            onPointerLeave={() => setHovered(null)}
+          >
+            {NAV_ITEMS.map((item) => {
+              const active = pathname.startsWith(item.href);
+              return (
+                <li key={item.href} className="relative">
+                  <Link
+                    href={item.href}
+                    onPointerEnter={() => setHovered(item.href)}
+                    onFocus={() => setHovered(item.href)}
+                    className={cn(
+                      "relative block py-1 text-sm transition-colors duration-fast",
+                      active ? "text-primary" : "text-secondary hover:text-primary",
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+
+                  {hovered === item.href && !reduceMotion ? (
+                    <motion.span
+                      layoutId="nav-indicator"
+                      aria-hidden="true"
+                      className="absolute inset-x-0 -bottom-0.5 h-px"
+                      style={{ background: "var(--accent)" }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 420,
+                        damping: 34,
+                      }}
+                    />
+                  ) : null}
+
+                  {/* The current route keeps a static marker, so the page you
+                      are on is still legible while the pointer is elsewhere. */}
+                  {active && hovered !== item.href ? (
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-x-0 -bottom-0.5 h-px opacity-40"
+                      style={{ background: "var(--text-secondary)" }}
+                    />
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
 
           <div className="flex items-center gap-2">
