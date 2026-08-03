@@ -62,6 +62,22 @@ export function useSvgBackdropSupport(): boolean {
 const MAX_BLURRED = 4;
 let activeBlurCount = 0;
 
+/**
+ * How big a refracted panel may be, in square pixels.
+ *
+ * Counting instances was not enough. The cost of a backdrop filter is the
+ * AREA it re-samples, and the budget was being spent on the largest elements
+ * on the page — panels of 80,000 to 160,000 px² that scroll, so the whole
+ * region is re-blurred every frame. Measured on this page: refraction on
+ * those cost 11fps, and dropping the filter from everything that scrolls took
+ * a 40fps scroll to 57.
+ *
+ * Small fixed furniture — the chat pill, the promo card — is cheap at any
+ * radius because the compositor can cache it. This threshold keeps the effect
+ * exactly where it is affordable and drops it where it is not.
+ */
+const MAX_REFRACT_AREA = 40_000;
+
 function useBlurBudget(): boolean {
   // Claimed in an effect so mount order decides who gets the budget, but the
   // claim is recorded in a ref and surfaced via a single state flip — never a
@@ -145,11 +161,53 @@ export function LiquidGlass({
   const svgSupported = useSvgBackdropSupport();
   const withinBudget = useBlurBudget();
 
+  /*
+   * Refraction is for small panels only — see MAX_REFRACT_AREA.
+   *
+   * Measured after mount rather than guessed from props, because the size
+   * that matters is the laid-out one: the same component is a 6,000px² pill
+   * in the corner and a 160,000px² card in a grid, and only the second is
+   * expensive.
+   *
+   * Starts false so the server and the first client render agree; a panel
+   * that qualifies gains refraction on the next frame, which is invisible
+   * against an effect that is itself a subtle distortion.
+   */
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [smallEnough, setSmallEnough] = useState(false);
+  /*
+   * True for a panel that is both large AND scrolls, which is the expensive
+   * combination — see .glass-static. A fixed element is cheap however big it
+   * is, because nothing behind it moves and the compositor caches the blur.
+   */
+  const [dropBlur, setDropBlur] = useState(false);
+
+  useEffect(() => {
+    const node = hostRef.current;
+    if (!node) return;
+
+    const measure = () => {
+      const { width, height } = node.getBoundingClientRect();
+      const area = width * height;
+      const fixed = getComputedStyle(node).position === "fixed";
+
+      setSmallEnough(area <= MAX_REFRACT_AREA);
+      setDropBlur(!fixed && area > MAX_REFRACT_AREA);
+    };
+    measure();
+
+    // Re-checked on resize: a panel that is narrow on a phone can cross the
+    // threshold when the same page is opened on a desktop.
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
   const { blur, displacement, frequency } = REFRACTION[depth];
   // Progressive enhancement only: Safari and Firefox get blur plus shadow and
   // must still look complete, which they do — the specular inset and the
   // shadow stack carry the material on their own.
-  const useRefraction = refract && svgSupported && withinBudget;
+  const useRefraction = refract && svgSupported && withinBudget && smallEnough;
 
   // Only set when refracting. Otherwise the depth class in globals.css owns
   // backdrop-filter entirely, which keeps the mobile blur reduction and the
@@ -197,6 +255,7 @@ export function LiquidGlass({
       ) : null}
 
       <div
+        ref={hostRef}
         data-depth={depth}
         data-shape={shape}
         data-refracting={useRefraction ? "true" : undefined}
@@ -204,6 +263,9 @@ export function LiquidGlass({
           "glass-depth",
           DEPTH_CLASS[depth],
           SHAPE_CLASS[shape],
+          // Applied after the depth class so it wins the backdrop-filter it
+          // is there to cancel.
+          dropBlur && "glass-static",
           className,
         )}
         style={

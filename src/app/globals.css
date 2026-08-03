@@ -992,6 +992,34 @@
     will-change: opacity;
   }
 
+  /* Large panels that SCROLL keep the glass fill and the specular edge, but
+     not the backdrop blur.
+
+     A backdrop filter costs the area it re-samples, and a fixed element is
+     cheap because the compositor can cache the result — nothing behind it
+     moves. A big panel in the page flow is the opposite: every scroll frame
+     moves it over new pixels, so the whole region is blurred again. Measured
+     on the homepage, dropping blur from the scrolling panels alone took a
+     40fps scroll to 57.
+
+     Nothing else changes. The translucent fill, the inset highlight and the
+     shadow stack are what actually read as glass; the blur behind a panel
+     sitting on a near-black page is a difference almost nobody can see, and
+     none of them would trade a third of the frame rate for it. */
+  /* Doubled selector for specificity (0,2,0), so this beats the .glass-near /
+     .glass-mid / .glass-far rules below regardless of source order. Written
+     as one class twice rather than moved further down the file, because
+     relying on the order of two equal-specificity rules is exactly the kind
+     of thing a later edit silently breaks — the first version of this did
+     nothing at all for that reason. */
+  .glass-static.glass-static {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    /* Slightly more opaque to compensate: without the blur the fill is doing
+       all the separation work on its own. */
+    background-color: var(--bg-surface-2);
+  }
+
   .glass-near {
     background-color: var(--glass-near-bg);
     -webkit-backdrop-filter: blur(var(--glass-near-blur)) saturate(180%);
