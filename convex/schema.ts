@@ -738,15 +738,13 @@ export default defineSchema({
     /** "deposit" is the first 40%, "balance" the 60% on completion. */
     stage: v.union(v.literal("deposit"), v.literal("balance")),
     /*
-     * Which plan this invoice is for.
+     * Which plan this invoice is for. Reporting and revenue-by-tier.
      *
-     * Drives wallet availability: Apple Pay and Google Pay are Enterprise
-     * only. Stored rather than inferred from the amount, because a discounted
-     * Enterprise deposit can land below a full-price web app and the payment
-     * methods offered must not depend on a coincidence of figures.
-     *
-     * Optional: invoices raised before this field existed have no tier, and
-     * those correctly fall through to card and Link.
+     * It NO LONGER drives wallet availability. That rule — Apple Pay and
+     * Google Pay for Enterprise only — was backwards: a large enterprise
+     * invoice goes through procurement and is never paid by phone, while a
+     * small deposit is exactly the payment a wallet is for. Wallets are now
+     * offered on every tier; see the `wallets` hash in PayPanel.
      */
     tier: v.optional(v.string()),
     status: v.union(

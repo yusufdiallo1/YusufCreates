@@ -69,6 +69,21 @@ export const claim = mutation({
     const ref = args.ref.trim().slice(0, 64);
     if (!ref) return { ok: false as const };
 
+    /*
+     * This name is an IDEMPOTENCY KEY, not a label.
+     *
+     * It is looked up through the by_name index below so that reloading the
+     * page returns the same code instead of minting a new one, which means
+     * its exact bytes are load-bearing: changing the format here would make
+     * every existing referral fail its own dedupe check and issue a second
+     * code to someone who already has one.
+     *
+     * It reads terribly — "Referral ncs785vycdaq:d6yv9k2tv2ru" — and it used
+     * to be printed straight into the promos list. That is fixed in the
+     * admin, which derives a display label from the discount instead and
+     * keeps the raw value only as a tooltip. See displayName() in
+     * PromosAdmin.tsx. Do not "tidy" this string.
+     */
     const visitor = args.visitor?.trim().slice(0, 64);
     const name = visitor ? `Referral ${ref}:${visitor}` : `Referral ${ref}`;
 

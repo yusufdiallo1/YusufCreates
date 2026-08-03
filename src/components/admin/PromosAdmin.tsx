@@ -61,7 +61,10 @@ export function PromosAdmin() {
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm text-primary">{promo.name}</span>
+                    {/* The derived label leads. See displayName(). */}
+                    <span className="text-sm text-primary">
+                      {displayName(promo)}
+                    </span>
                     <StatusBadge status={promo.status} />
                     {promo.code ? (
                       <code className="font-mono text-xs text-secondary">
@@ -72,16 +75,27 @@ export function PromosAdmin() {
                     )}
                   </div>
                   <p className="mt-1.5 text-xs text-secondary">
-                    {describe(promo)} ·{" "}
+                    {/* "0 / 1 redeemed" as one value. The count and the limit
+                        used to be assembled from three separate expressions
+                        and a bare "Redemptions" label sat elsewhere with no
+                        figure beside it at all. */}
                     {promo.redemptionCount}
-                    {promo.maxRedemptions
-                      ? ` / ${promo.maxRedemptions}`
-                      : ""}{" "}
-                    redeemed
+                    {promo.maxRedemptions ? ` / ${promo.maxRedemptions}` : ""}
+                    {" redeemed"}
                     {promo.endsAt
                       ? ` · ends ${new Date(promo.endsAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
                       : ""}
                   </p>
+                  {/* The typed name, demoted to what it actually is: a note to
+                      myself about why this promo exists. */}
+                  {internalNote(promo) ? (
+                    <p
+                      className="admin-meta mt-1 truncate"
+                      title={promo.name}
+                    >
+                      {internalNote(promo)}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="flex shrink-0 items-center gap-2">
@@ -155,6 +169,41 @@ function describe(promo: Doc<"promos">): string {
   if (promo.discountType === "percentage") return `${promo.discountValue}% off`;
   if (promo.discountType === "fixed") return `$${promo.discountValue} off`;
   return `set to $${promo.discountValue}`;
+}
+
+/**
+ * What to call a promo on screen.
+ *
+ * DERIVED from the discount, never from the free-text name. The two used to
+ * be shown together and drifted apart the moment either changed: a promo
+ * typed as "20% off 10 days" sat directly above a computed "14% off". Both
+ * lines were on screen, one of them was wrong, and nothing in the UI said
+ * which. The discount field is the one the checkout actually charges, so it
+ * is the one that gets to name the promo.
+ *
+ * The typed name survives as an internal note beside it — it is often a
+ * reminder of WHY a promo exists ("Black Friday", "for Sarah"), which the
+ * derived label cannot express and which is worth keeping.
+ */
+function displayName(promo: Doc<"promos">): string {
+  /*
+   * Referral promos are auto-generated and their stored name is
+   * "Referral {ref}:{visitor}" — two opaque ids concatenated, which rendered
+   * in the list as "Referral ncs785vycdaq:d6yv9k2tv2ru". The name is load
+   * bearing (it is the idempotency key, looked up via the by_name index) so
+   * it cannot change server-side without breaking claim dedupe; it is
+   * relabelled here instead.
+   */
+  if (promo.name.startsWith("Referral ")) {
+    return `Referral — ${describe(promo)}`;
+  }
+  return describe(promo);
+}
+
+/** The typed name, shown only when it adds something the label does not. */
+function internalNote(promo: Doc<"promos">): string | null {
+  if (promo.name.startsWith("Referral ")) return null;
+  return promo.name.trim() || null;
 }
 
 function StatusBadge({ status }: { status: string }) {

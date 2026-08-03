@@ -25,9 +25,11 @@ const STATUSES = ["draft", "sent", "paid", "overdue", "void"] as const;
 type Status = (typeof STATUSES)[number];
 
 /**
- * Plan is recorded on the invoice because it decides what the client is
- * offered at payment time — wallets are Enterprise only, and that has to be
- * knowable from the invoice alone when they open the portal weeks later.
+ * Plan is recorded on the invoice for reporting — revenue by tier, and which
+ * plans actually convert. It used to decide payment methods too (wallets were
+ * Enterprise only) but that rule is gone: every tier is offered Apple Pay and
+ * Google Pay, because they help most on exactly the small invoices the rule
+ * excluded.
  */
 const TIER_OPTIONS = [
   { id: "launch", label: "Launch" },
@@ -389,11 +391,10 @@ function CreatePairDialog({ onClose }: { onClose: () => void }) {
               ))}
             </select>
             <p className="mt-1.5 text-xs text-secondary">
-              {/* Stated here because it is decided here — the plan chosen on
-                  this form is what the client is offered when they pay. */}
-              {values.tier === "enterprise"
-                ? "Apple Pay and Google Pay available in the portal."
-                : "Card and Link in the portal. Wallets are Enterprise only."}
+              {/* One sentence, true for every tier now that wallets are not
+                  gated. It used to say "Wallets are Enterprise only" on five
+                  of the six options. */}
+              Card, Link, Apple Pay and Google Pay in the portal.
             </p>
           </div>
         </div>

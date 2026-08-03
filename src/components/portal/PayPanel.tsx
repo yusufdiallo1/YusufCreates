@@ -36,7 +36,6 @@ type Intent = {
   currency: string;
   reference: string;
   stage: "deposit" | "balance";
-  wallets: boolean;
 };
 
 export function PayPanel({ token }: { token: string }) {
@@ -189,16 +188,21 @@ function PayForm({ intent }: { intent: Intent }) {
         options={{
           layout: "tabs",
           /*
-           * Apple Pay and Google Pay are Enterprise only.
+           * Apple Pay and Google Pay, on every tier.
            *
-           * This hash is the reason payment lives here rather than on the
-           * hosted invoice page: wallets ride on the card method and cannot be
-           * excluded per transaction through the Invoices API, but Elements
-           * takes an explicit instruction.
+           * This hash was the actual gate — `applePay: "never"` — and it was
+           * gating the wrong way round. Wallets were reserved for Enterprise
+           * as a premium convenience, but a large enterprise invoice goes
+           * through procurement and is never paid by thumb, while a small
+           * deposit is exactly the payment someone settles on a phone in
+           * seconds. The restriction withheld the feature from the invoices
+           * it helps most.
+           *
+           * "auto" rather than "always": Stripe shows each wallet only where
+           * the device and the account can actually complete it, so this asks
+           * for them without promising a button that cannot work.
            */
-          wallets: intent.wallets
-            ? { applePay: "auto", googlePay: "auto" }
-            : { applePay: "never", googlePay: "never" },
+          wallets: { applePay: "auto", googlePay: "auto" },
         }}
       />
 

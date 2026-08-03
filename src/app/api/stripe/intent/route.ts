@@ -11,22 +11,19 @@ import { getStripe, toMinorUnits } from "@/lib/stripe";
  * is the embedded route, where the client stays on our domain and never sees a
  * handover to another site mid-payment.
  *
- * It is also the only place wallet availability can be enforced. Apple Pay and
- * Google Pay ride on the "card" method and cannot be excluded per transaction
- * through the Invoices API — but Elements accepts a `wallets` hash, so the
- * Enterprise-only rule is actually enforceable here.
+ * Wallets ride on the "card" method and cannot be excluded per transaction
+ * through the Invoices API, which is one reason payment lives here rather than
+ * on the hosted page: Elements accepts an explicit `wallets` hash. They are
+ * now offered on every tier — see PayPanel.
  */
 
 export const runtime = "nodejs";
 
-/**
- * Tiers whose clients are offered Apple Pay and Google Pay.
- *
- * Withholding a wallet does not withhold payment: every plan can pay by card
- * or Link, same rail, same speed, same fee. The wallet is a convenience sold
- * with Enterprise.
- */
-const WALLET_TIERS = new Set(["enterprise"]);
+/* WALLET_TIERS is gone. It gated Apple Pay and Google Pay to Enterprise —
+   the wrong way round, since wallets help most on the small invoices someone
+   settles on a phone, not on a large one going through procurement. Wallets
+   are now available on every tier. The enforcement point was the `wallets`
+   hash in PayPanel, which this route fed. */
 
 /** Statuses that still owe money. Anything else must not produce an intent. */
 const PAYABLE = new Set(["sent", "overdue", "draft"]);
@@ -71,8 +68,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not payable." }, { status: 409 });
   }
 
-  const wallets = WALLET_TIERS.has(invoice.tier ?? "");
-
   try {
     const intent = await stripe.paymentIntents.create(
       {
@@ -82,9 +77,23 @@ export async function POST(request: Request) {
           invoice.stage === "deposit" ? "40% deposit" : "balance on completion"
         }`,
         /*
-         * Wallets are suppressed for non-Enterprise by listing the methods
-         * explicitly. Automatic methods would let Stripe surface whatever is
-         * enabled on the account, which is exactly the behaviour being gated.
+         * Card, Link, and the card-backed wallets — on every tier.
+         *
+         * Two things were wrong here. The rule itself was backwards: wallets
+         * were sold as an Enterprise convenience, but a $22k enterprise
+         * invoice goes through procurement and will never be paid by thumb,
+         * while a $69 express deposit is exactly the payment someone settles
+         * on a phone in four seconds. The restriction was withholding the
+         * feature from the invoices it helps most.
+         *
+         * Apple Pay and Google Pay are tokenised cards; they ride on "card"
+         * and appear wherever the device can offer them. This list has never
+         * been what excluded them — the old comment here claimed it was, and
+         * was wrong. The actual gate was the `wallets` hash Elements takes,
+         * in PayPanel, which is where it has been lifted.
+         *
+         * Automatic methods are still avoided so Stripe cannot surface a
+         * redirect-based method into a flow that confirms in place.
          */
         payment_method_types: ["card", "link"],
         metadata: {
@@ -108,7 +117,8 @@ export async function POST(request: Request) {
       currency: invoice.currency,
       reference: invoice.reference,
       stage: invoice.stage,
-      wallets,
+      /* No `wallets` flag any more. The client no longer branches on it —
+         wallets are offered on every tier, decided in PayPanel. */
     });
   } catch {
     // Deliberately vague to the client; Stripe's own error text can name
