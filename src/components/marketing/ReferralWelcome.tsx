@@ -88,7 +88,7 @@ export function ReferralWelcome() {
         try {
           localStorage.setItem(REFERRAL_CODE_KEY, res.code);
         } catch {}
-        track("cta_click", { step: "referral_claimed" });
+        track("cta_click", { cta: "referral_claimed" });
 
         /*
          * Strip ?ref= once the code is in hand.

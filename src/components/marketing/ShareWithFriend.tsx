@@ -112,7 +112,7 @@ export function ShareWithFriend({ inModal = false }: { inModal?: boolean }) {
                   text: MESSAGE,
                   url,
                 });
-                track("cta_click", { step: "share_native" });
+                track("cta_click", { cta: "share_native" });
               } catch {
                 // Includes the user simply cancelling the sheet, which is not
                 // an error and must not surface as one.
@@ -130,7 +130,7 @@ export function ShareWithFriend({ inModal = false }: { inModal?: boolean }) {
             try {
               await navigator.clipboard.writeText(url);
               setCopied(true);
-              track("cta_click", { step: "share_copy" });
+              track("cta_click", { cta: "share_copy" });
             } catch {
               // Clipboard can be blocked; selecting the text still works.
             }
@@ -145,7 +145,7 @@ export function ShareWithFriend({ inModal = false }: { inModal?: boolean }) {
           href={`https://wa.me/?text=${encoded}`}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={() => track("cta_click", { step: "share_whatsapp" })}
+          onClick={() => track("cta_click", { cta: "share_whatsapp" })}
           className="hairline rounded-full px-4 py-2 text-xs text-primary transition-colors duration-fast hover:bg-surface-2"
         >
           WhatsApp
@@ -153,7 +153,7 @@ export function ShareWithFriend({ inModal = false }: { inModal?: boolean }) {
 
         <a
           href={`mailto:?subject=${encodeURIComponent("A developer worth knowing")}&body=${encoded}`}
-          onClick={() => track("cta_click", { step: "share_email" })}
+          onClick={() => track("cta_click", { cta: "share_email" })}
           className="hairline rounded-full px-4 py-2 text-xs text-primary transition-colors duration-fast hover:bg-surface-2"
         >
           Email

@@ -12,6 +12,7 @@ import { Magnetic } from "@/components/motion/Magnetic";
 import { SceneHost } from "@/components/three/SceneHost";
 import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
 import { useCurrency } from "@/lib/useCurrency";
+import { track } from "@/lib/track";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 import { CurrencyMark, hasCurrencyMark } from "@/components/ui/CurrencyMark";
 import {
@@ -166,7 +167,10 @@ export function PricingTables() {
               <button
                 key={code}
                 type="button"
-                onClick={() => setCurrency(code)}
+                onClick={() => {
+                  setCurrency(code);
+                  track("pricing_currency", { label: code });
+                }}
                 aria-pressed={currency === code}
                 /* 44px on touch, tighter on a pointer. These were 28px tall,
                    which is under every published minimum and genuinely fiddly
@@ -378,6 +382,19 @@ export function PricingTables() {
                         step={1}
                         value={pages}
                         onChange={(e) => setPages(Number(e.target.value))}
+                        /* onMouseUp/onTouchEnd, not onChange: the settled
+                           position is the signal, and firing per drag step
+                           would record forty events for one decision. */
+                        onMouseUp={(e) =>
+                          track("pricing_slider", {
+                            value: Number((e.target as HTMLInputElement).value),
+                          })
+                        }
+                        onTouchEnd={(e) =>
+                          track("pricing_slider", {
+                            value: Number((e.target as HTMLInputElement).value),
+                          })
+                        }
                         aria-valuetext={`${pages} pages`}
                         className="mt-2 w-full accent-[color:var(--accent)]"
                       />

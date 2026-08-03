@@ -10,6 +10,7 @@
 
 import type * as admin from "../admin.js";
 import type * as analytics from "../analytics.js";
+import type * as analyticsRollup from "../analyticsRollup.js";
 import type * as audits from "../audits.js";
 import type * as auth from "../auth.js";
 import type * as automation from "../automation.js";
@@ -27,6 +28,7 @@ import type * as http from "../http.js";
 import type * as invoices from "../invoices.js";
 import type * as kb from "../kb.js";
 import type * as leads from "../leads.js";
+import type * as lib_analyticsBuckets from "../lib/analyticsBuckets.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as maintenance from "../maintenance.js";
 import type * as paymentLinks from "../paymentLinks.js";
@@ -51,6 +53,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   analytics: typeof analytics;
+  analyticsRollup: typeof analyticsRollup;
   audits: typeof audits;
   auth: typeof auth;
   automation: typeof automation;
@@ -68,6 +71,7 @@ declare const fullApi: ApiFromModules<{
   invoices: typeof invoices;
   kb: typeof kb;
   leads: typeof leads;
+  "lib/analyticsBuckets": typeof lib_analyticsBuckets;
   "lib/auth": typeof lib_auth;
   maintenance: typeof maintenance;
   paymentLinks: typeof paymentLinks;

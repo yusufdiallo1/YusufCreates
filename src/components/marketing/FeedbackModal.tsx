@@ -130,7 +130,7 @@ function FeedbackForm({ onDone }: { onDone: () => void }) {
               message,
               path: pathname ?? undefined,
             });
-            track("cta_click", { step: "feedback_sent" });
+            track("cta_click", { cta: "feedback_sent" });
             setSent(true);
             // Long enough to read the acknowledgement before it closes.
             setTimeout(onDone, 2200);

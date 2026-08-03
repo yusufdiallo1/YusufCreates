@@ -326,7 +326,11 @@ export function SlotPicker({
             }
 
             playConfirmation();
-            track("form_submit", { step: `waitlist_${kind}` });
+            /* Deliberately NOT form_submit. A waitlist join and an enquiry are
+               different conversions with different value, and counting them
+               together made the funnel's last step overstate enquiries by
+               however many people held a slot. */
+            track("cta_click", { cta: `waitlist_${kind}` });
             setState("done");
           } catch {
             setError("That didn't save. Try again in a moment.");

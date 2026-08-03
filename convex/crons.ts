@@ -50,4 +50,24 @@ crons.interval(
   internal.automation.sweepInvoices,
 );
 
+/*
+ * Nightly analytics rollup.
+ *
+ * 03:30 UTC — after the chat-limit sweep at 03:00 so the two are not
+ * competing, and late enough that "yesterday" is unambiguously complete in
+ * every timezone the site is read from.
+ *
+ * This is the job that keeps the analytics page from degrading. Without it
+ * every chart re-scans a growing events table on each load; the previous
+ * implementation capped that read at 5000 rows and silently reported on a
+ * fraction of the window rather than slowing down, which is the worse
+ * failure of the two.
+ */
+crons.daily(
+  "roll up analytics",
+  { hourUTC: 3, minuteUTC: 30 },
+  internal.analyticsRollup.rollupDay,
+  {},
+);
+
 export default crons;

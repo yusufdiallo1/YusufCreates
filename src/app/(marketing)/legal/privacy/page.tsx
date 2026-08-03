@@ -63,10 +63,33 @@ export default function PrivacyPage() {
 
       <p>
         <strong className="text-primary">When you browse.</strong>{" "}
-        Page views, the page you came from, and which buttons are clicked. These are tied
-        to a random identifier held in your browser&apos;s session storage,
-        which is cleared when you close the tab. It is not a cookie, it is not
-        shared with anyone, and it cannot identify you.
+        Page views, how far down a page you scroll, which buttons are clicked,
+        and the site you arrived from — its address only, never the full link.
+        Also your device type, browser, screen width and country, so I can
+        tell whether the site works properly on what people actually use.
+      </p>
+
+      <p>
+        {/*
+          Stated precisely rather than reassuringly. There are two
+          identifiers and they behave differently; describing only the
+          shorter-lived one would be the more comfortable sentence and the
+          less true one.
+        */}
+        Those are tied to two random identifiers. One lives in your
+        browser&apos;s session storage and is gone when you close the tab. The
+        other lives in local storage and stays, so that a second visit is not
+        counted as a stranger — clearing your site data removes it and you
+        become a new visitor. Neither is a cookie, neither is derived from
+        anything about you, neither can be read by any other website, and
+        nothing here records your name, your address or your IP.
+      </p>
+
+      <p>
+        This is why there is no cookie banner. There is nothing to consent to:
+        the analytics are first-party, they identify a browser rather than a
+        person, and they never leave this site. If your browser sends a Do Not
+        Track signal, nothing is recorded at all.
       </p>
 
       <p>

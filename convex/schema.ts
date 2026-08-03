@@ -472,13 +472,65 @@ export default defineSchema({
     readAt: v.optional(v.number()),
   }).index("by_build", ["buildId", "createdAt"]),
 
+  /**
+   * First-party analytics.
+   *
+   * No third-party script, no advertising identifier and no cookie, which is
+   * what lets the site run without a consent banner.
+   *
+   * `visitorId` is a random id in the visitor's own localStorage. It is not
+   * derived from anything about them, it is not readable by any other site,
+   * and it identifies a browser rather than a person. It exists so "returning
+   * visitor" and "days from first visit to enquiry" are answerable at all —
+   * sessionId dies with the tab and cannot answer either.
+   */
   events: defineTable({
     type: v.string(),
     path: v.optional(v.string()),
     sessionId: v.optional(v.string()),
+    /** Stable per browser. See the note above on why this is not PII. */
+    visitorId: v.optional(v.string()),
     ts: v.number(),
+    /** Hostname only — never the full referring URL, which can carry a query. */
+    referrer: v.optional(v.string()),
+    utmSource: v.optional(v.string()),
+    utmMedium: v.optional(v.string()),
+    utmCampaign: v.optional(v.string()),
+    /** desktop | mobile | tablet, derived client-side from the viewport. */
+    device: v.optional(v.string()),
+    browser: v.optional(v.string()),
+    os: v.optional(v.string()),
+    /** Which breakpoints actually matter, rather than which ones I guessed. */
+    viewportW: v.optional(v.number()),
+    country: v.optional(v.string()),
     meta: v.optional(v.any()),
-  }).index("by_type_ts", ["type", "ts"]),
+  })
+    .index("by_type_ts", ["type", "ts"])
+    .index("by_session", ["sessionId"])
+    .index("by_visitor", ["visitorId"]),
+
+  /**
+   * Pre-rolled daily analytics.
+   *
+   * Charts read this; only today reads raw events. Without it the analytics
+   * page re-scans a growing table on every load and gets slower every week
+   * until it times out — and the existing summary already caps each read at
+   * 5000 rows, which silently drops data rather than slowing down.
+   *
+   * One row per date/metric/dimension, so a twelve-month chart is a few
+   * hundred rows rather than a few hundred thousand events.
+   */
+  analyticsDaily: defineTable({
+    /** YYYY-MM-DD, UTC. */
+    date: v.string(),
+    /** pageview, session, lead, cta … */
+    metric: v.string(),
+    /** The breakdown within the metric: a path, a referrer, a device. */
+    dimension: v.optional(v.string()),
+    value: v.number(),
+  })
+    .index("by_date", ["date"])
+    .index("by_metric_date", ["metric", "date"]),
 
   broadcasts: defineTable({
     subject: v.string(),
