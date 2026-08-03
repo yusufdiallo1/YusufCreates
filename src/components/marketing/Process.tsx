@@ -2,6 +2,7 @@
 
 import { Reveal } from "@/components/motion/Reveal";
 import { ProcessConnector } from "@/components/motion/ProcessConnector";
+import { WordReveal } from "@/components/motion/WordReveal";
 
 /**
  * Process — four sequential steps.
@@ -50,10 +51,13 @@ export function Process() {
         <h2 id="process-heading" className="text-3xl">
           How it works
         </h2>
-        <p className="mt-3 max-w-xl text-secondary">
+        {/* One of four places on the site using this. It is an emphasis
+            device — applied to body copy generally it stops meaning
+            anything and turns reading into waiting. */}
+        <WordReveal className="mt-3 max-w-xl text-secondary">
           Four steps, in order. No long discovery phase before anything is
           visible.
-        </p>
+        </WordReveal>
       </Reveal>
 
       {/* The grid stays a grid — see the note at the top of this file for why

@@ -3,6 +3,7 @@ import { fetchQuery } from "convex/nextjs";
 import { Reveal } from "@/components/motion/Reveal";
 import { CountUp } from "@/components/motion/CountUp";
 import { Typewriter } from "@/components/motion/Typewriter";
+import { WordReveal } from "@/components/motion/WordReveal";
 import { Motto } from "@/components/marketing/Motto";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 
@@ -58,15 +59,13 @@ export async function About() {
           {"I’m Yusuf. I build websites and web apps on my own — design, build, deploy, and the part after launch that most people leave out."}
         </Typewriter>
 
-        <Reveal delay={0.14}>
-          <p className="mt-4 text-secondary">
-            Most of my work is for small businesses and founders who have been
-            quoted too much by an agency, or who had something built cheaply
-            and now cannot change a price without breaking the page. I take
-            those on as often as new builds — usually the fastest way to
-            understand what someone actually needs is to fix what they have.
-          </p>
-        </Reveal>
+        {/* Word-brightened rather than plain: this is the paragraph that says
+            who the work is for, so it earns the emphasis. Deliberately NOT
+            the one above — that already has a Typewriter, and two attention
+            devices stacked cancel each other out. */}
+        <WordReveal className="mt-4 text-secondary">
+          {`Most of my work is for small businesses and founders who have been quoted too much by an agency, or who had something built cheaply and now cannot change a price without breaking the page. I take those on as often as new builds — usually the fastest way to understand what someone actually needs is to fix what they have.`}
+        </WordReveal>
 
         <Reveal delay={0.2}>
           <p className="mt-4 text-secondary">

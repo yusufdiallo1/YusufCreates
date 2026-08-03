@@ -5,6 +5,7 @@ import Link from "next/link";
 import { TextReveal } from "@/components/motion/TextReveal";
 import { Reveal } from "@/components/motion/Reveal";
 import { AmbientLight } from "@/components/motion/AmbientLight";
+import { WordReveal } from "@/components/motion/WordReveal";
 import { Magnetic } from "@/components/motion/Magnetic";
 import { FieldError } from "@/components/ui/FieldError";
 import { validateEmail } from "@/lib/validate";
@@ -70,11 +71,9 @@ export function ContactCTA() {
           Let&apos;s build the thing.
         </TextReveal>
 
-        <Reveal delay={0.1}>
-          <p className="mx-auto mt-4 max-w-md text-secondary">
-            Tell me what you need. I reply to everything within a day.
-          </p>
-        </Reveal>
+        <WordReveal className="mx-auto mt-4 max-w-md text-secondary">
+          Tell me what you need. I reply to everything within a day.
+        </WordReveal>
 
         <Reveal delay={0.18}>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">

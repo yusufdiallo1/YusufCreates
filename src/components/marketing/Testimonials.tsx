@@ -5,6 +5,8 @@ import type { api } from "@/lib/convex-api";
 import { LiquidGlass } from "@/components/ui/LiquidGlass";
 import { Marquee } from "@/components/motion/Marquee";
 import { Reveal } from "@/components/motion/Reveal";
+import { BlurBudgetGroup } from "@/components/motion/BlurBudget";
+import { Tilt } from "@/components/motion/Tilt";
 
 /**
  * Testimonials — two marquee rows running in opposite directions.
@@ -80,19 +82,36 @@ export function Testimonials({
 
       {enough ? (
         <div className="mt-12 space-y-6">
-          <Marquee speed={70} gap={24} pauseOnHover>
-            {rowOne.map((item) => (
-              <TestimonialCard key={item._id} item={item} />
-            ))}
-          </Marquee>
+          {/*
+            One budget entry per ROW, not per card.
+
+            Cards inside a marquee cross the viewport edge continuously under
+            their own motion, whether or not the user scrolls — so registering
+            each one would claim and release slots several times a second and
+            strobe the whole row. No amount of scroll hysteresis fixes that,
+            because the elements genuinely are entering and leaving. The
+            compositor cost is the row anyway.
+
+            Low priority: a marquee card is decoration, and should never take
+            blur from a pricing tier or a hero slab that is standing still.
+          */}
+          <BlurBudgetGroup priority={-1}>
+            <Marquee speed={70} gap={24} pauseOnHover>
+              {rowOne.map((item) => (
+                <TestimonialCard key={item._id} item={item} />
+              ))}
+            </Marquee>
+          </BlurBudgetGroup>
 
           {/* Opposite direction, different speed — the two rows must not
               appear to be one block sliding. */}
-          <Marquee speed={95} gap={24} direction="right" pauseOnHover>
-            {(rowTwo.length > 0 ? rowTwo : rowOne).map((item) => (
-              <TestimonialCard key={`b-${item._id}`} item={item} />
-            ))}
-          </Marquee>
+          <BlurBudgetGroup priority={-1}>
+            <Marquee speed={95} gap={24} direction="right" pauseOnHover>
+              {(rowTwo.length > 0 ? rowTwo : rowOne).map((item) => (
+                <TestimonialCard key={`b-${item._id}`} item={item} />
+              ))}
+            </Marquee>
+          </BlurBudgetGroup>
         </div>
       ) : (
         /* Every item, not just the first. This rendered items[0] alone, so
@@ -104,7 +123,12 @@ export function Testimonials({
           >
             {items.map((item, index) => (
               <Reveal key={item._id} delay={index * 0.07}>
-                <TestimonialCard item={item} wide />
+                {/* Tilt only on the static grid. A card already translating
+                    inside a marquee would be fighting two transforms, and the
+                    tilt would read as a wobble rather than a response. */}
+                <Tilt className="h-full rounded-2xl">
+                  <TestimonialCard item={item} wide />
+                </Tilt>
               </Reveal>
             ))}
           </div>
