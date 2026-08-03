@@ -11,6 +11,7 @@ import {
   SharedElement,
   sharedNames,
 } from "@/components/motion/SharedElement";
+import { ScaleToFullbleed } from "@/components/motion/ScaleToFullbleed";
 import { CountUp } from "@/components/motion/CountUp";
 import { SkillChip } from "@/components/marketing/Skills";
 
@@ -97,7 +98,12 @@ export function CaseStudy({
       </header>
 
       {project.coverUrl ? (
-        <Parallax distance={30} className="mt-12">
+        /* The page's one scrubbed sequence: the cover grows from a rounded
+           slab to fill the frame as you scroll into the study. Registered
+           against the scrub budget, so nothing else on this page can claim
+           it. Parallax is dropped here — two scroll-linked transforms on the
+           same element fight each other. */
+        <ScaleToFullbleed className="mt-12">
           <div className="hairline relative aspect-[2/1] overflow-hidden rounded-lg bg-surface-1">
             {/* The other end of the morph. Same name as the grid card's cover,
                 so the browser animates one image between two positions. */}
@@ -112,7 +118,7 @@ export function CaseStudy({
               />
             </SharedElement>
           </div>
-        </Parallax>
+        </ScaleToFullbleed>
       ) : null}
 
       {/* 2. The problem */}

@@ -1,6 +1,7 @@
 "use client";
 
 import { Reveal } from "@/components/motion/Reveal";
+import { ProcessConnector } from "@/components/motion/ProcessConnector";
 
 /**
  * Process — four sequential steps.
@@ -55,20 +56,28 @@ export function Process() {
         </p>
       </Reveal>
 
-      <ol className="mt-16 grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
-        {STEPS.map((step, index) => (
-          <li key={step.n}>
-            <Reveal delay={index * 0.07}>
-              {/* The rule doubles as the step's visual anchor. */}
-              <div className="hairline-t pt-5">
-                <p className="text-xs text-secondary tabular-nums">{step.n}</p>
-                <h3 className="mt-3 text-lg">{step.title}</h3>
-                <p className="mt-2 text-sm text-secondary">{step.body}</p>
-              </div>
-            </Reveal>
-          </li>
-        ))}
-      </ol>
+      {/* The grid stays a grid — see the note at the top of this file for why
+          the pinned version was removed. The connector is drawn behind it and
+          adds no layout of its own. */}
+      <div className="relative">
+        <ProcessConnector />
+
+        <ol className="relative mt-16 grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
+          {STEPS.map((step, index) => (
+            <li key={step.n}>
+              <Reveal delay={index * 0.07}>
+                {/* The rule doubles as the step's visual anchor, and is where
+                    the connector anchors too. */}
+                <div data-process-step className="hairline-t pt-5">
+                  <p className="text-xs text-secondary tabular-nums">{step.n}</p>
+                  <h3 className="mt-3 text-lg">{step.title}</h3>
+                  <p className="mt-2 text-sm text-secondary">{step.body}</p>
+                </div>
+              </Reveal>
+            </li>
+          ))}
+        </ol>
+      </div>
     </section>
   );
 }
