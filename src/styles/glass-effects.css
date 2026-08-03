@@ -294,6 +294,64 @@
 }
 
 /* --------------------------------------------------------------------------
+   View transitions
+
+   The morph works without any CSS; this only tunes it. 400ms is slow enough
+   to register as one object moving and fast enough to still feel direct.
+
+   The blur mid-flight hides the pixel interpolation between two images of
+   different sizes, which is otherwise visible as a brief shimmer along the
+   edges.
+   -------------------------------------------------------------------------- */
+
+::view-transition-group(.morph) {
+  animation-duration: 400ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+::view-transition-image-pair(.morph) {
+  animation-name: morph-blur;
+}
+
+@keyframes morph-blur {
+  30% {
+    filter: blur(3px);
+  }
+}
+
+/*
+ * The nav must not transition.
+ *
+ * Without this the fixed nav is snapshotted as part of the outgoing page and
+ * cross-faded against the incoming one, which reads as a flicker on every
+ * navigation. Naming it and suppressing its animation keeps it as the one
+ * fixed reference point while the content beneath it changes.
+ */
+::view-transition-group(site-nav) {
+  animation: none;
+  z-index: 100;
+}
+
+/* Prevents a flash where both the old and new nav are briefly painted. */
+::view-transition-old(site-nav) {
+  display: none;
+}
+
+::view-transition-new(site-nav) {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Suppressing the animations rather than the transition: the snapshot
+     machinery still runs, so nothing half-applies, but nothing moves. */
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
    Tier and preference overrides
    -------------------------------------------------------------------------- */
 

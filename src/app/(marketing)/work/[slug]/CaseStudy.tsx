@@ -7,6 +7,10 @@ import type { api } from "@/lib/convex-api";
 import { TextReveal } from "@/components/motion/TextReveal";
 import { Reveal } from "@/components/motion/Reveal";
 import { Parallax } from "@/components/motion/Parallax";
+import {
+  SharedElement,
+  sharedNames,
+} from "@/components/motion/SharedElement";
 import { CountUp } from "@/components/motion/CountUp";
 import { SkillChip } from "@/components/marketing/Skills";
 
@@ -95,14 +99,18 @@ export function CaseStudy({
       {project.coverUrl ? (
         <Parallax distance={30} className="mt-12">
           <div className="hairline relative aspect-[2/1] overflow-hidden rounded-lg bg-surface-1">
-            <Image
-              src={project.coverUrl}
-              alt={`${project.title} cover`}
-              fill
-              sizes="(max-width: 768px) 100vw, 768px"
-              className="object-cover"
-              priority
-            />
+            {/* The other end of the morph. Same name as the grid card's cover,
+                so the browser animates one image between two positions. */}
+            <SharedElement name={sharedNames.projectCover(project.slug)}>
+              <Image
+                src={project.coverUrl}
+                alt={`${project.title} cover`}
+                fill
+                sizes="(max-width: 768px) 100vw, 768px"
+                className="object-cover"
+                priority
+              />
+            </SharedElement>
           </div>
         </Parallax>
       ) : null}

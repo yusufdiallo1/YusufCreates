@@ -7,6 +7,10 @@ import { motion, useMotionValueEvent, useReducedMotion, useScroll } from "motion
 import { usePreloadedQuery, type Preloaded } from "convex/react";
 import type { api } from "@/lib/convex-api";
 import { Reveal } from "@/components/motion/Reveal";
+import {
+  SharedElement,
+  sharedNames,
+} from "@/components/motion/SharedElement";
 import { cn } from "@/lib/utils";
 
 /**
@@ -302,13 +306,17 @@ export function ProjectCard({ project }: { project: Project }) {
                 for the length of the transition. */
             className="relative aspect-[3/2] w-full transform-gpu overflow-hidden bg-surface-2">
         {project.coverUrl ? (
-          <Image
-            src={project.coverUrl}
-            alt=""
-            fill
-            sizes="(max-width: 640px) 100vw, 480px"
-            className="transform-gpu object-cover object-top transition-transform duration-slow ease-out-expo group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
-          />
+          /* Paired with the same name on the case study hero, so the card
+             becomes the hero rather than the two cross-fading. */
+          <SharedElement name={sharedNames.projectCover(project.slug)}>
+            <Image
+              src={project.coverUrl}
+              alt=""
+              fill
+              sizes="(max-width: 640px) 100vw, 480px"
+              className="transform-gpu object-cover object-top transition-transform duration-slow ease-out-expo group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+            />
+          </SharedElement>
         ) : null}
 
         {/* Keeps the metadata legible over a bright screenshot. */}
@@ -320,6 +328,12 @@ export function ProjectCard({ project }: { project: Project }) {
 
       <div className="bg-surface-1 p-5">
         <div className="flex items-baseline justify-between gap-4">
+          {/* Deliberately NOT a shared element. The case study heading is a
+              TextReveal, which splits the title into per-word spans and
+              animates them independently — morphing a single <h3> into that
+              means the browser tweens one box toward a box whose contents are
+              simultaneously moving, and the result reads as a glitch rather
+              than as continuity. The cover carries the connection on its own. */}
           <h3 className="text-base text-primary">{project.title}</h3>
           <span className="shrink-0 text-xs text-secondary tabular-nums">
             {project.year}

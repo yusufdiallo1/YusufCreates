@@ -49,6 +49,20 @@ const nextConfig: NextConfig = {
     root: __dirname,
   },
 
+  experimental: {
+    /*
+     * React's <ViewTransition>, which matches elements across a navigation by
+     * name and animates between their positions itself. A project card
+     * becoming a case study hero is one object moving rather than two things
+     * swapping.
+     *
+     * Without this flag the component is inert, not broken — the App Router
+     * navigates normally and nothing animates. Same on a browser without the
+     * View Transitions API.
+     */
+    viewTransition: true,
+  },
+
   /*
    * Uploaded covers and avatars live in Convex file storage, which serves them
    * from the deployment host. next/image refuses any remote host it has not

@@ -80,7 +80,14 @@ export function Nav() {
 
   return (
     <>
-      <header className="fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-4">
+      <header
+        /* Named so the view-transition rules can hold it still. Without a
+           name the fixed nav is snapshotted with the outgoing page and
+           cross-faded against the incoming one, which flickers on every
+           navigation. See ::view-transition-group(site-nav). */
+        style={{ viewTransitionName: "site-nav" }}
+        className="fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-4"
+      >
         <motion.nav
           aria-label="Main"
           animate={
