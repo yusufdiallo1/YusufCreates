@@ -254,7 +254,7 @@ function StatusCell({
       <span className="badge badge-warm">
         paid
         {invoice.paidAt ? (
-          <span className="opacity-70">
+          <span className="text-secondary">
             {new Date(invoice.paidAt).toLocaleDateString("en-GB", {
               day: "numeric",
               month: "short",

@@ -57,6 +57,24 @@ const GROUPS: { heading: string; items: { href: string; label: string }[] }[] = 
       { href: `${ADMIN_PATH}/kb`, label: "AI" },
     ],
   },
+  {
+    /*
+     * Was an unlabelled block below a separator. Five destinations with no
+     * heading read as leftovers rather than as a section — and the waitlist
+     * was not in the sidebar at all, reachable only by typing the URL.
+     *
+     * "Express", not "Express builds": the sidebar, the breadcrumb and the
+     * page title each called this something different.
+     */
+    heading: "Tools",
+    items: [
+      { href: `${ADMIN_PATH}/express`, label: "Express" },
+      { href: `${ADMIN_PATH}/waitlist`, label: "Waitlist" },
+      { href: `${ADMIN_PATH}/audits`, label: "Site audits" },
+      { href: `${ADMIN_PATH}/feedback`, label: "Feedback" },
+      { href: `${ADMIN_PATH}/settings`, label: "Settings" },
+    ],
+  },
 ];
 
 export function Sidebar() {
@@ -151,39 +169,14 @@ export function Sidebar() {
         ))}
       </div>
 
+      {/*
+        Only the two links that leave the admin stay unlabelled down here.
+        Express, audits, feedback, settings and the waitlist used to sit in
+        this same ungrouped block — five real destinations with no heading,
+        below a separator, reading as an afterthought. They are now the TOOLS
+        group above, alongside CLIENTS, SITE and GROWTH.
+      */}
       <div className="space-y-1 px-1 py-3 before:mb-3 before:block before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/8 before:to-transparent">
-        <Link
-          href={`${ADMIN_PATH}/express`}
-          aria-current={isActive(`${ADMIN_PATH}/express`) ? "page" : undefined}
-          onClick={() => setMobileOpen(false)}
-          className="admin-nav-link"
-        >
-          Express builds
-        </Link>
-        <Link
-          href={`${ADMIN_PATH}/audits`}
-          aria-current={isActive(`${ADMIN_PATH}/audits`) ? "page" : undefined}
-          onClick={() => setMobileOpen(false)}
-          className="admin-nav-link"
-        >
-          Site audits
-        </Link>
-        <Link
-          href={`${ADMIN_PATH}/feedback`}
-          aria-current={isActive(`${ADMIN_PATH}/feedback`) ? "page" : undefined}
-          onClick={() => setMobileOpen(false)}
-          className="admin-nav-link"
-        >
-          Feedback
-        </Link>
-        <Link
-          href={`${ADMIN_PATH}/settings`}
-          aria-current={isActive(`${ADMIN_PATH}/settings`) ? "page" : undefined}
-          onClick={() => setMobileOpen(false)}
-          className="admin-nav-link"
-        >
-          Settings
-        </Link>
         <Link href="/" className="admin-nav-link">
           View site
         </Link>

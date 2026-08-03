@@ -9,6 +9,7 @@ import { CountUp } from "@/components/motion/CountUp";
 import { SpotlightGroup } from "@/components/motion/Spotlight";
 import { BorderBeam } from "@/components/motion/BorderBeam";
 import { Magnetic } from "@/components/motion/Magnetic";
+import { SceneHost } from "@/components/three/SceneHost";
 import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
 import { useCurrency } from "@/lib/useCurrency";
 import { api, isConvexConfigured } from "@/lib/convex-api";
@@ -512,8 +513,28 @@ export function PricingTables() {
                  different speeds and angles, with a dark gap between them —
                  see .specular-sweep for why all three of those matter. */
               data-specular-sweep=""
-              className="enterprise-band relative flex h-full flex-col rounded-xl p-6"
+              className="enterprise-band relative flex h-full flex-col overflow-hidden rounded-xl p-6"
             >
+              {/* The one 3D scene on the site, behind the content. Mounts only
+                  at full tier, within 200px of the viewport, and inside the
+                  context budget — everything else gets the gradient. This is
+                  where a real refracting solid earns its cost, because the
+                  band is already making a claim about material. */}
+              <div className="pointer-events-none absolute inset-0 -z-10 opacity-60">
+                <SceneHost
+                  className="h-full"
+                  fallback={
+                    <div
+                      className="size-full"
+                      style={{
+                        background:
+                          "radial-gradient(60% 60% at 70% 30%, var(--dev-violet-glow), transparent 70%)",
+                      }}
+                    />
+                  }
+                />
+              </div>
+
               {/* The second and last beam on the site. Offset from the pricing
                   tier's 7s so the two never peak together. */}
               <BorderBeam duration={9} delay={2} />

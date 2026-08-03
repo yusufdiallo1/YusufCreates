@@ -54,6 +54,22 @@
      8.62:1 on --bg-surface-1, so it clears AA at the 12px these render at. */
   --text-notice: #dba463;
 
+  /* The third text tier — for meta rows, table labels and timestamps.
+
+     DELIBERATELY THE SAME COLOUR as --text-secondary, and that is the whole
+     point. A genuinely dimmer step is not available: --text-secondary is
+     already only 4.72:1 on --bg-surface-3, so anything darker fails AA on the
+     lightest surface the admin uses. Measured — #868b94 comes out at 4.48:1,
+     under the line.
+
+     The admin was faking this tier with opacity-40 and opacity-50 on
+     secondary text, which measures 1.91:1. That is not a dim label, it is an
+     unreadable one. So the hierarchy is carried by SIZE, WEIGHT and CASE
+     (12px mono, uppercase, wide tracking) rather than by lowering contrast,
+     and this token exists so there is one name for it instead of an opacity
+     utility scattered through thirty files. */
+  --text-muted: #8a8f98;
+
   /* Developer palette -------------------------------------------------------
      A splash of colour on a site that is otherwise monochrome plus one accent.
 
@@ -237,6 +253,11 @@
      theme's value would sit near 1.6:1 here. Verified 5.40:1 on --bg-surface-1. */
   --text-notice: #8a5a00;
 
+  /* Same as --text-secondary, for the same reason as the dark theme: a third
+     step down measures 4.40:1 on --bg-surface-3 and fails. Hierarchy comes
+     from size and case, not from contrast. Verified 4.97:1. */
+  --text-muted: #5b5f66;
+
   /* Developer palette, darkened for a light canvas. The dark-theme values are
      tuned against near-black and sit around 1.5–2:1 here, which is unusable.
      Each of these clears 4.5:1 on --bg-surface-1. Hue is preserved so the
@@ -272,6 +293,7 @@
   --color-surface-3: var(--bg-surface-3);
   --color-primary: var(--text-primary);
   --color-secondary: var(--text-secondary);
+  --color-muted: var(--text-muted);
   --color-hairline: var(--border-hairline);
   --color-glass: var(--border-glass);
   --color-accent: var(--accent);
@@ -1001,7 +1023,73 @@
     border: 1px solid var(--border-hairline);
     border-radius: 0.75rem;
     background-color: var(--bg-surface-1);
-    padding: 1.25rem;
+    /* 16px, down from 20px. A tool puts more on screen than a marketing page;
+       the old value was chosen for a landing section, not a row of records. */
+    padding: 1rem;
+  }
+
+  /* ------------------------------------------------------------------------
+     Admin scale
+
+     Scoped to .admin-scope, applied once on the admin shell, so none of this
+     reaches the marketing site — which keeps its display scale deliberately.
+
+     The admin was rendering an h1 at --text-3xl, which clamps up to 32px, and
+     padding at 48px. That reads as a landing page. An operator screen wants
+     density: the title is a label for where you are, not a headline.
+     ---------------------------------------------------------------------- */
+
+  .admin-scope {
+    /* Row height, switched by the density toggle. Everything that draws a row
+       reads this rather than hardcoding a height, so one control moves the
+       whole admin. */
+    --row-h: 44px;
+    --admin-pad: 1.5rem; /* 24 */
+    --admin-gap: 2rem; /* 32 */
+  }
+
+  .admin-scope[data-density="compact"] {
+    --row-h: 36px;
+  }
+
+  /* Page title. 24px flat — NOT --text-3xl, which clamps to 32 on a wide
+     viewport and is what made the admin read as marketing. */
+  .admin-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    color: var(--text-primary);
+  }
+
+  /* One line. If it needs two, it belongs in the empty state or a tooltip. */
+  .admin-subtitle {
+    font-size: 0.8125rem; /* 13 */
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  .admin-section-title {
+    font-size: 0.9375rem; /* 15 */
+    font-weight: 590;
+    color: var(--text-primary);
+  }
+
+  /* Meta, column headers, timestamps. This is the third tier, and it is
+     carried by size, case and tracking rather than by dimming the colour —
+     see --text-muted for why lowering contrast was not an option. */
+  .admin-meta {
+    font-family: var(--font-mono);
+    font-size: 0.75rem; /* 12 */
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+
+  /* Body and table text. */
+  .admin-body {
+    font-size: 0.8125rem; /* 13 */
+    color: var(--text-primary);
   }
 
   /* Score badges. Colour alone never carries the meaning — each badge also

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Sidebar } from "@/components/admin/Sidebar";
-import { Breadcrumbs } from "@/components/admin/Breadcrumbs";
 import { CommandPalette } from "@/components/admin/CommandPalette";
 import { AdminGate } from "@/components/admin/AdminGate";
+import { AdminShell } from "@/components/admin/AdminShell";
 
 /**
  * Admin shell.
@@ -34,30 +34,13 @@ export default function AdminLayout({
       <Sidebar />
       <CommandPalette />
 
-      <div className="lg:pl-60">
-        <header className="sticky top-0 z-30 border-b border-[color:var(--border-hairline)] bg-[color:var(--bg-canvas)]/80 backdrop-blur-md">
-          <div className="flex items-center justify-between gap-4 px-6 py-3.5 pl-16 lg:pl-6">
-            <Breadcrumbs />
-            <PaletteHint />
-          </div>
-        </header>
-
-        <main className="px-6 py-8">
+      {/* min-w-0 is load-bearing: without it a wide table inside a grid/flex
+          child refuses to shrink and pushes the whole page sideways. */}
+      <div className="min-w-0 lg:pl-60">
+        <AdminShell>
           <AdminGate>{children}</AdminGate>
-        </main>
+        </AdminShell>
       </div>
     </div>
-  );
-}
-
-/** Discoverability for the palette — a shortcut nobody knows about is dead. */
-function PaletteHint() {
-  return (
-    <span className="hidden items-center gap-1.5 text-xs text-secondary sm:flex">
-      <kbd className="rounded border border-[color:var(--border-hairline)] px-1.5 py-0.5 text-[10px]">
-        ⌘K
-      </kbd>
-      to jump
-    </span>
   );
 }

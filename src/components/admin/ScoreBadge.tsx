@@ -18,7 +18,10 @@ export function ScoreBadge({ score }: { score: number }) {
   return (
     <span className={`badge badge-${band}`} title={`Score ${score} of 100`}>
       {band}
-      <span className="tabular-nums opacity-70">{score}</span>
+      {/* Was opacity-70, which dims the figure below AA inside an already
+          tinted badge. The band word carries the emphasis; the number does
+          not need to be quieter to be secondary. */}
+      <span className="tabular-nums">{score}</span>
     </span>
   );
 }

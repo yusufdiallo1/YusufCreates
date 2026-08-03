@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ADMIN_PATH } from "@/lib/constants";
 
 /**
  * Breadcrumbs derived from the path.
@@ -13,6 +14,15 @@ import { usePathname } from "next/navigation";
 
 const LABELS: Record<string, string> = {
   admin: "Admin",
+  /*
+   * The root segment, and the most repeated string in the product.
+   *
+   * Without an entry here it fell through to the de-hyphenating fallback and
+   * rendered "Yusuf diallo creates" — lowercase d, three words, on every
+   * single admin page. Derived from ADMIN_PATH so a rename of the route
+   * cannot leave this pointing at a segment that no longer exists.
+   */
+  [ADMIN_PATH.replace(/^\//, "")]: "YusufCreates",
   leads: "Leads",
   analytics: "Analytics",
   projects: "Projects",
@@ -20,8 +30,17 @@ const LABELS: Record<string, string> = {
   feedback: "Feedback",
   broadcasts: "Broadcasts",
   blog: "Blog",
-  kb: "Knowledge base",
-  invoices: "Proposals and invoices",
+  kb: "AI",
+  invoices: "Invoices",
+  proposals: "Proposals",
+  clients: "Clients",
+  content: "Content",
+  promos: "Promotions",
+  /* One name for this concept: the sidebar, the breadcrumb and the page title
+     all said something different — "Express builds", "Express", "Requests". */
+  express: "Express",
+  audits: "Site audits",
+  waitlist: "Waitlist",
   settings: "Settings",
   new: "New",
 };
@@ -49,7 +68,7 @@ export function Breadcrumbs() {
           return (
             <li key={href} className="flex items-center gap-1.5">
               {index > 0 ? (
-                <span aria-hidden="true" className="text-secondary/60">
+                <span aria-hidden="true" className="text-muted">
                   /
                 </span>
               ) : null}

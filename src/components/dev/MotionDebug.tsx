@@ -3,6 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { activeBlurCount, blurCandidateCount } from "@/lib/blur-budget";
 import { activeScrubCount } from "@/lib/scrub-budget";
+import { MAX_LIVE_CONTEXTS, liveContextCount } from "@/lib/webgl-budget";
 import {
   MAX_BLURRED_IN_VIEWPORT,
   MAX_SCRUBBED_SEQUENCES,
@@ -31,7 +32,12 @@ export function MotionDebug() {
   const capability = useCapability();
   const enabled = useSyncExternalStore(noopSubscribe, readDebugFlag, () => false);
   const [fps, setFps] = useState(0);
-  const [counts, setCounts] = useState({ blur: 0, candidates: 0, scrub: 0 });
+  const [counts, setCounts] = useState({
+    blur: 0,
+    candidates: 0,
+    scrub: 0,
+    gl: 0,
+  });
 
   useEffect(() => {
     if (!enabled) return;
@@ -49,6 +55,7 @@ export function MotionDebug() {
         blur: activeBlurCount(),
         candidates: blurCandidateCount(),
         scrub: activeScrubCount(),
+        gl: liveContextCount(),
       });
       frames = 0;
       last = now;
@@ -96,6 +103,11 @@ export function MotionDebug() {
         label="scrub"
         value={`${counts.scrub}/${MAX_SCRUBBED_SEQUENCES}`}
         tone={counts.scrub > MAX_SCRUBBED_SEQUENCES ? "bad" : "ok"}
+      />
+      <Row
+        label="webgl"
+        value={`${counts.gl}/${MAX_LIVE_CONTEXTS}`}
+        tone={counts.gl > MAX_LIVE_CONTEXTS ? "bad" : "ok"}
       />
       <Row label="hover" value={capability.canHover ? "yes" : "no"} />
       <Row
