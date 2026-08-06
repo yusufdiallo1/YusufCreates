@@ -231,6 +231,7 @@
 [data-capability-tier="minimal"] .reveal-scale,
 [data-capability-tier="minimal"] .reveal-blur-in,
 [data-capability-tier="minimal"] .reveal-clip-up,
+[data-capability-tier="minimal"] .section-seam,
 [data-capability-tier="minimal"] .reveal-stagger > *,
 [data-capability-tier="minimal"] .scroll-progress-bar {
   animation: none !important;
@@ -248,6 +249,7 @@
   .reveal-blur-in,
   .reveal-clip-up,
   .reveal-stagger > *,
+  .section-seam,
   .scroll-progress-bar {
     animation: none !important;
     opacity: 1 !important;

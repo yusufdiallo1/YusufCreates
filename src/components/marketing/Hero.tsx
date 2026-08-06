@@ -863,6 +863,17 @@ function Slab({
                         alt=""
                         fill
                         sizes="(max-width: 1024px) 90vw, 40vw"
+                        /*
+                         * priority here as well as on the base copy.
+                         *
+                         * THIS is the layer that is visible at rest — the base
+                         * underneath is only ever seen through the hole the
+                         * cursor opens. So on the near slab this is the LCP
+                         * element, and without the hint Next lazy-loads the
+                         * largest thing above the fold. Both copies resolve to
+                         * one request, so the preload is not duplicated.
+                         */
+                        priority={config.depth === "near"}
                         style={{
                           filter: `saturate(0.95) brightness(${config.imageOpacity})`,
                         }}

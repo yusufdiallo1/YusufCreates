@@ -47,8 +47,25 @@ export function Nav() {
   // Set when pointerdown has already toggled the menu, so the click that
   // follows on a mouse does not toggle it straight back.
   const pointerHandled = useRef(false);
-  /** Bumped each time the reader scrolls up, to replay the expand. */
-  const [expandKey, setExpandKey] = useState(0);
+
+  /*
+   * The expand overshoot.
+   *
+   * maxWidth rather than scaleX: four per cent of scale is small on a box and
+   * very visible on the type inside it, and a wordmark that stretches every
+   * time you scroll up is worse than no overshoot at all.
+   *
+   * Out fast and back on a spring — the settle is the part that reads as
+   * responsiveness.
+   */
+  const overshoot = useMotionValue(0);
+  const pillMaxWidth = useTransform(
+    overshoot,
+    [0, 1],
+    [PILL_WIDTH, PILL_WIDTH * 1.04],
+  );
+  /** Blocks a re-trigger until the current overshoot has been and come back. */
+  const expandingUntil = useRef(0);
 
   /*
    * Scroll POSITION decides the condensed state; scroll DIRECTION decides
@@ -64,46 +81,54 @@ export function Nav() {
     let last = window.scrollY;
     let wasCondensed = last > 24;
 
+    /*
+     * ONE overshoot per gesture, not one per scroll event.
+     *
+     * A wheel scroll upward fires dozens of events, and the first version
+     * restarted the animation on every one of them — the outward leg never
+     * finished, so the spring back never started, and the pill simply stayed
+     * 4% too wide until the next reload. The guard is on time rather than on
+     * the animation's own state because the return leg is what has to be
+     * allowed to finish.
+     *
+     * Driven straight from here rather than through React state: this fires
+     * per scroll event, and a setState per event would re-render a nav that
+     * carries a `layout` animation, which re-measures its box on every render.
+     */
+    const expand = () => {
+      if (reduceMotion) return;
+      const now = performance.now();
+      if (now < expandingUntil.current) return;
+      expandingUntil.current = now + 700;
+
+      animate(overshoot, 1, {
+        duration: 0.16,
+        ease: "easeOut",
+        onComplete: () => {
+          animate(overshoot, 0, {
+            type: "spring",
+            stiffness: 300,
+            damping: 22,
+          });
+        },
+      });
+    };
+
     const onScroll = () => {
       const y = window.scrollY;
       const nowCondensed = y > 24;
-      if (wasCondensed && y < last - 2) setExpandKey((n) => n + 1);
+      if (wasCondensed && y < last - 2) expand();
       wasCondensed = nowCondensed;
       last = y;
+      // React bails out when the value is unchanged, so this is a no-op on
+      // all but the two scroll events that actually cross the threshold.
       setCondensed(nowCondensed);
     };
 
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  /*
-   * The expand overshoot.
-   *
-   * maxWidth rather than scaleX: four per cent of scale is small on a box and
-   * very visible on the type inside it, and a wordmark that stretches every
-   * time you scroll up is worse than no overshoot at all.
-   *
-   * Out fast and back on a spring — the settle is the part that reads as
-   * responsiveness. Driven by a MotionValue rather than a keyframe on `animate`
-   * so it never re-renders, which matters because the nav also carries a
-   * `layout` animation that re-measures on every render.
-   */
-  const overshoot = useMotionValue(0);
-  const pillMaxWidth = useTransform(overshoot, [0, 1], [PILL_WIDTH, PILL_WIDTH * 1.04]);
-
-  useEffect(() => {
-    if (expandKey === 0 || reduceMotion) return;
-    const run = animate(overshoot, 1, {
-      duration: 0.16,
-      ease: "easeOut",
-      onComplete: () => {
-        animate(overshoot, 0, { type: "spring", stiffness: 300, damping: 22 });
-      },
-    });
-    return () => run.stop();
-  }, [expandKey, reduceMotion, overshoot]);
+  }, [reduceMotion, overshoot]);
 
   /*
    * Which item the indicator rests on when nothing is hovered.
