@@ -614,3 +614,75 @@ export function discountLabel(promo: ActivePromo): string {
   if (promo.discountType === "fixed") return `$${promo.discountValue} off`;
   return "Reduced";
 }
+
+/* ---------------------------------------------------------------------------
+   The comparison matrix
+
+   NOT derived from BUILD_TIERS[].features. Those lists are prose written to be
+   read one card at a time — "Everything in Launch", "Three pages included,
+   then priced per page" — and unioning them into rows produces a table where
+   half the cells are true of a tier that never claimed them and the other half
+   are sentences that mean nothing without their card.
+
+   So the matrix is stated explicitly, and every cell here is traceable to a
+   line on the card it belongs to or to a stated constant. If a card's features
+   change, this changes with it; the two are not derived from each other
+   because they are answering different questions.
+
+   Columns are the ladder: Launch, Growth, Web app, Enterprise. Native is
+   deliberately absent for the same reason it is absent from PACKAGED_TIERS —
+   it is a second codebase alongside a site, not a bigger version of one, and
+   putting it in a row invites a like-for-like reading that does not hold.
+   --------------------------------------------------------------------------- */
+
+export type ComparisonValue = true | false | string;
+
+export interface ComparisonRow {
+  label: string;
+  /** In column order: Launch, Growth, Web app, Enterprise. */
+  values: [ComparisonValue, ComparisonValue, ComparisonValue, ComparisonValue];
+}
+
+export const COMPARISON_COLUMNS = [
+  "Launch",
+  "Growth",
+  "Web app",
+  "Enterprise",
+] as const;
+
+export const COMPARISON_ROWS: ComparisonRow[] = [
+  {
+    label: "Pages",
+    values: [
+      "One",
+      `${GROWTH.minPages}–${GROWTH.maxPages}`,
+      "As scoped",
+      "Up to 25",
+    ],
+  },
+  { label: "Contact form", values: [true, true, true, true] },
+  { label: "SEO basics and social card", values: [true, true, true, true] },
+  { label: "Admin area you control", values: [true, true, true, true] },
+  { label: "Yours outright on final payment", values: [true, true, true, true] },
+  { label: "Blog and pages you edit yourself", values: [false, true, true, true] },
+  { label: "Analytics without a cookie banner", values: [false, true, true, true] },
+  { label: "Accounts, roles and permissions", values: [false, false, true, true] },
+  { label: "Real-time database", values: [false, false, true, true] },
+  { label: "Card payments and subscriptions", values: [false, false, true, true] },
+  { label: "Dashboards and reporting", values: [false, false, true, true] },
+  { label: "Third-party integrations", values: [false, false, true, true] },
+  { label: "Bilingual English and Arabic, RTL", values: [false, false, false, true] },
+  { label: "Design system handed over", values: [false, false, false, true] },
+  { label: "Approval workflows", values: [false, false, false, true] },
+  { label: "WCAG 2.2 AA accessibility", values: [false, false, false, true] },
+  { label: "Staging environment", values: [false, false, false, true] },
+  { label: "Apple Pay and Google Pay", values: [false, false, false, true] },
+  { label: "NDA, SSO, security questionnaires", values: [false, false, false, true] },
+  { label: "Dedicated channel, priority response", values: [false, false, false, true] },
+  { label: "Training and written documentation", values: [false, false, false, true] },
+  { label: "30 days post-launch support", values: [true, true, true, true] },
+  {
+    label: "Uptime and performance SLA",
+    values: [false, false, false, "With Care Plan"],
+  },
+];

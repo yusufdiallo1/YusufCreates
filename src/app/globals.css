@@ -1173,6 +1173,39 @@
     to { height: 0; }
   }
 
+  /* The answer RESOLVES rather than sliding into view.
+
+     The panel opening is a box changing height; that is the container moving,
+     and it says nothing about the text. Bringing the text from blurred and
+     faint to sharp and legible over the same duration makes the answer itself
+     the thing that arrived — you watch it come into focus, which is what
+     reading it feels like.
+
+     On the text, not on the panel: a filter on the animating container would
+     blur its own height transition, and a blurred edge sliding is worse than
+     either effect on its own. */
+  @keyframes faq-resolve {
+    from {
+      filter: blur(4px);
+      opacity: 0.4;
+    }
+    to {
+      filter: blur(0);
+      opacity: 1;
+    }
+  }
+  .faq-content[data-state="open"] > * {
+    animation: faq-resolve var(--dur-fast) var(--ease-out-expo);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .faq-content[data-state="open"],
+    .faq-content[data-state="closed"],
+    .faq-content[data-state="open"] > * {
+      animation: none;
+    }
+  }
+
   /* Disappearing ink: typed characters fade to invisible, and revealing the
      password fades them back. The value is never masked by the browser, so
      the animation is what provides the privacy. */

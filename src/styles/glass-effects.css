@@ -37,6 +37,19 @@
   inherits: false;
 }
 
+/* The beam's own period.
+   Registered so it can be TRANSITIONED. Changing an animation's duration
+   restarts it from frame zero — the beam would teleport back to its starting
+   angle every time it changed speed. Interpolating the variable the duration
+   reads from keeps the same running animation and only changes how fast it
+   plays, which is the difference between a beam that accelerates and a beam
+   that jumps. */
+@property --beam-duration {
+  syntax: "<time>";
+  initial-value: 6s;
+  inherits: false;
+}
+
 /* --------------------------------------------------------------------------
    Section seam
 
