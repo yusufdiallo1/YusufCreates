@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Authenticated,
   AuthLoading,
@@ -8,9 +8,17 @@ import {
   useMutation,
   useQuery,
 } from "convex/react";
+import {
+  AnimatePresence,
+  LayoutGroup,
+  motion,
+  useReducedMotion,
+} from "motion/react";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 import { Logo } from "@/components/ui/Logo";
 import { PayPanel } from "@/components/portal/PayPanel";
+import { ProgressRing } from "@/components/portal/ProgressRing";
+import { TypingBubbles } from "@/components/ui/TypingBubbles";
 import type { Id } from "@convex/_generated/dataModel";
 
 /**
@@ -114,26 +122,31 @@ function PortalContent() {
             .map((project) => (
               <div key={project._id} className="mt-8 space-y-10">
                 <section aria-labelledby="progress-heading">
-                  <div className="flex items-baseline justify-between gap-4">
-                    <h2 id="progress-heading" className="text-lg">
-                      {project.title}
-                    </h2>
-                    <span className="text-sm text-secondary tabular-nums">
-                      {project.percentComplete}% complete
-                    </span>
-                  </div>
+                  <div className="flex items-start justify-between gap-6">
+                    <div className="min-w-0">
+                      <h2 id="progress-heading" className="text-lg">
+                        {project.title}
+                      </h2>
+                      <p className="mt-1 text-sm text-secondary">
+                        {project.milestones.filter((m) => m.status === "done")
+                          .length}{" "}
+                        of {project.milestones.length} done
+                      </p>
+                    </div>
 
-                  <div
-                    className="mt-3 h-1.5 rounded-full bg-surface-2"
-                    role="img"
-                    aria-label={`${project.percentComplete} percent complete`}
-                  >
-                    <div
-                      className="h-full rounded-full bg-[color:var(--accent)] transition-[width] duration-slow"
-                      style={{ width: `${project.percentComplete}%` }}
+                    {/* A ring rather than the bar that was here. Same number,
+                        but it charges toward the accent as it fills instead of
+                        just getting longer — see ProgressRing. */}
+                    <ProgressRing
+                      value={project.percentComplete}
+                      label={project.title}
                     />
                   </div>
 
+                  {/* Deliberately NOT animated on load. This is reference
+                      information — what is done and what is next — and a list
+                      that assembles itself is a list you cannot scan until it
+                      has finished. */}
                   <ol className="mt-6 space-y-3">
                     {project.milestones.map((m) => (
                       <li key={m._id} className="flex gap-3">
@@ -181,6 +194,7 @@ function PortalContent() {
                   </ol>
                 </section>
 
+                <Activity project={project} />
                 <Deliverables projectId={project._id} />
                 <Messages projectId={project._id} />
               </div>
@@ -247,6 +261,122 @@ function PortalContent() {
   );
 }
 
+/** One thing that happened, and when. */
+type Event = { id: string; at: number; text: string };
+
+/**
+ * Recent activity, newest first.
+ *
+ * DERIVED CLIENT-SIDE from data the portal already holds — milestone
+ * completedAt, deliverable uploadedAt and approvedAt, message creation times.
+ * No new query, no schema change, and nothing for a concurrent change to the
+ * portal's server side to collide with.
+ *
+ * ARRIVALS PUSH THE LIST DOWN. Convex is reactive, so a milestone marked done
+ * while the client happens to have this open lands here live, and that is the
+ * single best moment in the portal — the thing they are paying for visibly
+ * progressing while they watch. Making the existing rows move out of the way,
+ * rather than having a new row materialise at the top, is the difference
+ * between something arriving and the list simply being different.
+ */
+function Activity({
+  project,
+}: {
+  project: {
+    _id: Id<"clientProjects">;
+    milestones: {
+      _id: string;
+      title: string;
+      status: string;
+      completedAt?: number;
+    }[];
+  };
+}) {
+  const files = useQuery(api.portal.deliverables, { projectId: project._id });
+  const messages = useQuery(api.portal.messages, { projectId: project._id });
+
+  const events: Event[] = [];
+
+  for (const milestone of project.milestones) {
+    if (milestone.status === "done" && milestone.completedAt) {
+      events.push({
+        id: `m-${milestone._id}`,
+        at: milestone.completedAt,
+        text: `${milestone.title} — done`,
+      });
+    }
+  }
+
+  for (const file of files ?? []) {
+    events.push({
+      id: `f-${file._id}`,
+      at: file.uploadedAt,
+      text: `${file.name} added`,
+    });
+    if (file.approvedAt) {
+      events.push({
+        id: `a-${file._id}`,
+        at: file.approvedAt,
+        text: `You approved ${file.name}`,
+      });
+    }
+  }
+
+  for (const message of messages ?? []) {
+    if (message.authorType !== "admin") continue;
+    events.push({
+      id: `msg-${message._id}`,
+      at: message._creationTime,
+      text: `${message.authorName} replied`,
+    });
+  }
+
+  // Newest first, and capped. A feed is a sense of momentum, not an audit log
+  // — past a screen's worth it stops being read and starts being scrolled past.
+  const recent = events.sort((a, b) => b.at - a.at).slice(0, 8);
+
+  if (recent.length === 0) return null;
+
+  return (
+    <section aria-labelledby="activity-heading">
+      <h2 id="activity-heading" className="text-lg">
+        Recent activity
+      </h2>
+
+      {/* LayoutGroup so the rows measure against each other. Without it each
+          item animates its own box in isolation and the push-down turns into
+          eight things independently deciding to be somewhere else. */}
+      <LayoutGroup>
+        <ul className="mt-4 space-y-2">
+          <AnimatePresence initial={false}>
+            {recent.map((event) => (
+              <motion.li
+                key={event.id}
+                layout
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                className="hairline flex items-baseline justify-between gap-4 rounded-xl bg-surface-1 px-4 py-3"
+              >
+                <span className="min-w-0 text-sm text-primary">
+                  {event.text}
+                </span>
+                <span className="shrink-0 text-xs text-secondary tabular-nums">
+                  {new Date(event.at).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                  })}
+                </span>
+              </motion.li>
+            ))}
+          </AnimatePresence>
+        </ul>
+      </LayoutGroup>
+    </section>
+  );
+}
+
 function Deliverables({ projectId }: { projectId: Id<"clientProjects"> }) {
   const files = useQuery(api.portal.deliverables, { projectId });
   const approve = useMutation(api.portal.approveDeliverable);
@@ -297,10 +427,16 @@ function Deliverables({ projectId }: { projectId: Id<"clientProjects"> }) {
   );
 }
 
+/** An outgoing message that has been sent but has not come back yet. */
+type Pending = { id: number; body: string };
+
 function Messages({ projectId }: { projectId: Id<"clientProjects"> }) {
   const messages = useQuery(api.portal.messages, { projectId });
   const post = useMutation(api.portal.postMessage);
   const [draft, setDraft] = useState("");
+  const [pending, setPending] = useState<Pending[]>([]);
+  const pendingId = useRef(0);
+  const reduceMotion = useReducedMotion();
 
   return (
     <section aria-labelledby="messages-heading">
@@ -312,18 +448,58 @@ function Messages({ projectId }: { projectId: Id<"clientProjects"> }) {
       </p>
 
       <ul className="mt-4 space-y-3">
-        {(messages ?? []).map((m) => (
+        {(messages ?? []).map((m) => {
+          const mine = m.authorType === "client";
+          return (
+            <motion.li
+              key={m._id}
+              /*
+               * INCOMING messages land with a slight overshoot. A reply is news
+               * — it arrived without you asking, and it should read as having
+               * arrived rather than as having always been there.
+               *
+               * OUTGOING messages do not overshoot, and by the time one of
+               * these renders it has already been on screen as a pending
+               * bubble. You know you sent it. Announcing it back to you is the
+               * interface talking to itself.
+               */
+              initial={
+                reduceMotion || mine ? false : { scale: 0.96, opacity: 0 }
+              }
+              animate={{ scale: 1, opacity: 1 }}
+              transition={
+                mine
+                  ? { duration: 0 }
+                  : { type: "spring", stiffness: 400, damping: 20 }
+              }
+              className={
+                mine
+                  ? "ml-auto w-fit max-w-[85%] rounded-2xl bg-surface-2 px-4 py-2.5"
+                  : "hairline w-fit max-w-[85%] rounded-2xl bg-surface-1 px-4 py-2.5"
+              }
+            >
+              <p className="text-xs text-secondary">{m.authorName}</p>
+              <p className="mt-1 text-sm whitespace-pre-wrap text-primary">
+                {m.body}
+              </p>
+            </motion.li>
+          );
+        })}
+
+        {/* In flight. Appears the instant you press send, in a state that says
+            so, and is replaced by the real message when it comes back. Sending
+            a message and watching nothing happen is what makes a chat feel
+            unreliable even when it is not. */}
+        {pending.map((item) => (
           <li
-            key={m._id}
-            className={
-              m.authorType === "client"
-                ? "ml-auto w-fit max-w-[85%] rounded-2xl bg-surface-2 px-4 py-2.5"
-                : "hairline w-fit max-w-[85%] rounded-2xl bg-surface-1 px-4 py-2.5"
-            }
+            key={`pending-${item.id}`}
+            className="ml-auto w-fit max-w-[85%] rounded-2xl bg-surface-2 px-4 py-2.5 opacity-60"
           >
-            <p className="text-xs text-secondary">{m.authorName}</p>
+            <p className="flex items-center gap-2 text-xs text-secondary">
+              <TypingBubbles label="Sending your message" />
+            </p>
             <p className="mt-1 text-sm whitespace-pre-wrap text-primary">
-              {m.body}
+              {item.body}
             </p>
           </li>
         ))}
@@ -336,7 +512,12 @@ function Messages({ projectId }: { projectId: Id<"clientProjects"> }) {
           const body = draft.trim();
           if (!body) return;
           setDraft("");
-          void post({ projectId, body });
+
+          const id = pendingId.current++;
+          setPending((current) => [...current, { id, body }]);
+          void post({ projectId, body }).finally(() => {
+            setPending((current) => current.filter((p) => p.id !== id));
+          });
         }}
         className="mt-4 flex gap-2"
       >
