@@ -7,6 +7,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { AmbientLight } from "@/components/motion/AmbientLight";
 import { WordReveal } from "@/components/motion/WordReveal";
 import { Magnetic } from "@/components/motion/Magnetic";
+import { Marquee } from "@/components/motion/Marquee";
 import { FieldError } from "@/components/ui/FieldError";
 import { validateEmail } from "@/lib/validate";
 
@@ -23,6 +24,26 @@ import { validateEmail } from "@/lib/validate";
  */
 
 type Status = "idle" | "sending" | "sent" | "error";
+
+/**
+ * What the closing marquee says.
+ *
+ * The kinds of work, not the tools — the tech ticker at the top of the
+ * homepage already lists those, and repeating them here would make the page
+ * end where it began. These are the things someone might actually be looking
+ * for when they arrive at the bottom still deciding.
+ */
+const CLOSING_WORDS = [
+  "Websites",
+  "Web apps",
+  "iOS and macOS",
+  "Rescues",
+  "Aftercare",
+  "Ecommerce",
+  "Landing pages",
+  "Design systems",
+  "Integrations",
+];
 
 export function ContactCTA() {
   const [email, setEmail] = useState("");
@@ -65,8 +86,27 @@ export function ContactCTA() {
        directions to agree with, which is the specific thing that reads as
        wrong. Below `full` it renders a centred static glow, which is exactly
        what the old wash was. */
-    <AmbientLight asSection className="relative overflow-hidden px-6 py-32">
-      <div className="mx-auto max-w-3xl text-center">
+    <AmbientLight asSection className="relative overflow-hidden px-6 py-24">
+      {/*
+        The content now sits inside a panel with an edge.
+
+        It used to be a centred stack floating directly on the ambient wash,
+        which gave the tallest, loudest section on the page nothing to hold it
+        — the eye had no boundary to land on, so it read as an unfinished
+        footer rather than the close. A single bordered surface turns the same
+        content into a deliberate ending.
+
+        py-24 rather than py-32 for the same reason: the emptiness was doing
+        the opposite of what emptiness is supposed to do here.
+      */}
+      <div className="glass-depth glass-near glass-panel relative mx-auto max-w-2xl overflow-hidden px-6 py-14 text-center sm:px-12">
+        {/* A hairline of accent along the top edge — the one place this
+            section spends colour on something other than the button. */}
+        <span
+          aria-hidden="true"
+          className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[color:var(--accent)]/50 to-transparent"
+        />
+
         <TextReveal as="h2" by="word" className="block text-4xl">
           Let&apos;s build the thing.
         </TextReveal>
@@ -88,7 +128,7 @@ export function ContactCTA() {
             <span className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-hairline)] px-3 py-1.5 text-xs text-secondary">
               <span
                 aria-hidden="true"
-                className="size-1.5 rounded-full bg-accent"
+                className="size-1.5 animate-pulse rounded-full bg-accent"
               />
               Available for new work
             </span>
@@ -103,7 +143,7 @@ export function ContactCTA() {
           <form
             noValidate
             onSubmit={onSubmit}
-            className="mx-auto mt-12 max-w-md"
+            className="mx-auto mt-10 max-w-md"
           >
             <div className="flex flex-col gap-2 sm:flex-row">
               <label htmlFor="cta-email" className="sr-only">
@@ -160,6 +200,34 @@ export function ContactCTA() {
                 : ""}
           </p>
         </Reveal>
+      </div>
+
+      {/*
+        The closing marquee.
+
+        The last thing on every marketing page is a form, and a form is a full
+        stop. This is the line under it: the kinds of work, moving, so the page
+        ends on something alive rather than on an empty input.
+
+        Outside the panel and at the section's full width — inside it the row
+        would have nowhere to travel and would read as a list that happens to
+        be sliding. The items are quiet by design; the centre-focus falloff in
+        Marquee is what gives the row a reading point.
+      */}
+      <div className="relative mt-16 -mb-6">
+        <Marquee speed={90} gap={0} className="text-secondary">
+          {CLOSING_WORDS.map((word) => (
+            <span
+              key={word}
+              className="flex items-center whitespace-nowrap text-lg"
+            >
+              {word}
+              <span aria-hidden="true" className="px-8 text-lg opacity-40">
+                ·
+              </span>
+            </span>
+          ))}
+        </Marquee>
       </div>
     </AmbientLight>
   );

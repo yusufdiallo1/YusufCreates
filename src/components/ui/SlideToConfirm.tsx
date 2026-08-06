@@ -3,7 +3,9 @@
 import {
   motion,
   AnimatePresence,
+  useMotionTemplate,
   useMotionValue,
+  useSpring,
   useTransform,
   useReducedMotion,
   animate,
@@ -132,6 +134,8 @@ const LABEL_SIZE_MIN = 12;
 const THUMB_H = 54;
 const PAD = 5;
 const COMPLETE_AT = 0.985;
+/** How far ahead of the thumb the rim light's bright point sits, in px. */
+const RIM_LEAD = 60;
 
 const CHEVRON = "M61 48 L92 79 L61 110";
 const ARM = "M159 48 L115 92 L115 137";
@@ -211,11 +215,79 @@ export function SlideToConfirm({
     `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.05)`,
     `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.18)`,
   ]);
-  /** Recessed groove whose rim brightens with progress. */
-  const trackShadow = useTransform(x, [0, safeMax], [
-    "inset 0 1px 2px rgba(0,0,0,0.6), inset 0 0 0 0.5px rgba(255,255,255,0.09)",
-    "inset 0 1px 2px rgba(0,0,0,0.6), inset 0 0 0 0.5px rgba(255,255,255,0.31)",
-  ]);
+
+  /*
+   * Trail residue — condensation left in the groove.
+   *
+   * A second, dimmer trail on a heavily damped spring off the same x. While
+   * the thumb advances it sits under the main trail and is invisible; the
+   * moment it matters is RELEASE, when the thumb springs back and the main
+   * trail collapses with it while this one is still extended across the
+   * channel, fading as it catches up.
+   *
+   * At stiffness 60 / damping 30 the spring takes roughly 600ms to converge,
+   * which IS the fade — no separate timer, and the residue is never out of
+   * step with the physics that produced it.
+   *
+   * The opacity therefore tracks the GAP rather than being inverse to it.
+   * Fading as the trail falls further behind would hide the effect at exactly
+   * the moment there is something to see: the residue is only ever exposed
+   * when the gap is wide, so it has to be brightest there and gone when the
+   * two agree.
+   */
+  const laggedX = useSpring(x, { stiffness: 60, damping: 30 });
+  const residueWidth = useTransform(
+    laggedX,
+    (v) => `${PAD + v + thumbW / 2}px`,
+  );
+  const residueOpacity = useTransform<number, number>(
+    [x, laggedX],
+    ([now, lag]: number[]) => Math.min(1, Math.abs(now - lag) / 80),
+  );
+
+  /**
+   * Recessed groove. The rim is CONSTANT here — the brightening moved to the
+   * directional rim light below, which concentrates it ahead of the thumb
+   * rather than lifting the whole ring uniformly.
+   */
+  const trackShadow =
+    "inset 0 1px 2px rgba(0,0,0,0.6), inset 0 0 0 0.5px rgba(255,255,255,0.09)";
+
+  /*
+   * Directional rim light.
+   *
+   * The bright point sits about 60px AHEAD of the thumb, so the rim lights up
+   * in front of the gesture rather than behind it — the thumb reads as pushing
+   * light along the channel instead of trailing it.
+   *
+   * box-shadow cannot hold a gradient, so this is a ring: a padded box whose
+   * background is masked down to its own border by compositing a content-box
+   * fill out of a padding-box fill. Same technique as .border-beam, which is
+   * where it is documented.
+   */
+  const rimCentre = useTransform(
+    x,
+    (v) => `${PAD + v + thumbW / 2 + RIM_LEAD}px`,
+  );
+  const rimBackground = useMotionTemplate`radial-gradient(160px 100% at ${rimCentre} 50%, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.05) 65%, rgba(255,255,255,0.03) 100%)`;
+
+  /*
+   * Completion flash and checkmark glow.
+   *
+   * The flash is the confirmation: the whole track lightens once, fast in and
+   * slower out, and then never again. Fired before the checkmark starts
+   * drawing so the sequence reads as "yes — and here is the mark" rather than
+   * two unrelated events.
+   *
+   * The glow is the mark's own light falling on the track under it, in the
+   * purpose's colour, holding at a low level afterwards so the finished
+   * control still looks lit rather than switched off.
+   */
+  const flash = useMotionValue(0);
+  const flashBg = useTransform(flash, (v) => `rgba(255,255,255,${v * 0.1})`);
+  const glow = useMotionValue(0);
+  const glowCentre = useTransform(x, (v) => `${PAD + v + thumbW / 2}px`);
+  const glowBg = useMotionTemplate`radial-gradient(110px circle at ${glowCentre} 50%, rgba(${rgb[0]},${rgb[1]},${rgb[2]},1) 0%, rgba(${rgb[0]},${rgb[1]},${rgb[2]},0) 70%)`;
 
   const signals = useRef({ start: 0, samples: 0, peak: 0, keyboard: false });
 
@@ -331,6 +403,45 @@ export function SlideToConfirm({
   };
 
 
+  /*
+   * The completion sequence. Fires once, ever.
+   *
+   * A ref rather than relying on `done` only ever going false → true: this
+   * control sits inside drawers and modals that remount, and a confirmation
+   * pulse that can repeat stops being a confirmation.
+   *
+   * Skipped entirely under reduced motion — the existing path there shows the
+   * checkmark without drawing it, and a flash plus a glow would be exactly the
+   * kind of thing that preference exists to suppress.
+   */
+  const celebrated = useRef(false);
+
+  useEffect(() => {
+    if (!done || reduceMotion || celebrated.current) return;
+    celebrated.current = true;
+
+    // 90ms up, 260ms back. Fast enough to read as a single pulse rather than
+    // as the track changing colour.
+    animate(flash, 1, {
+      duration: 0.09,
+      ease: "linear",
+      onComplete: () => {
+        animate(flash, 0, { duration: 0.26, ease: EASE });
+      },
+    });
+
+    // Matched to the checkmark's own draw — same delay, same duration — so the
+    // light arrives with the stroke rather than after it.
+    animate(glow, 0.2, {
+      duration: 0.35,
+      delay: 0.12,
+      ease: EASE,
+      onComplete: () => {
+        animate(glow, 0.08, { duration: 0.3, ease: EASE });
+      },
+    });
+  }, [done, reduceMotion, flash, glow]);
+
   const inert = disabled || done || busy;
   const shimmering = !touched && !inert && !reduceMotion;
 
@@ -365,6 +476,23 @@ export function SlideToConfirm({
           userSelect: "none",
         }}
       >
+        {/* Residue first, so the live trail paints over it. */}
+        {!reduceMotion && !done ? (
+          <motion.div
+            aria-hidden
+            style={{
+              position: "absolute",
+              top: 0,
+              bottom: 0,
+              left: 0,
+              width: residueWidth,
+              opacity: residueOpacity,
+              background: `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.13)`,
+              pointerEvents: "none",
+            }}
+          />
+        ) : null}
+
         <motion.div
           aria-hidden
           style={{
@@ -379,6 +507,53 @@ export function SlideToConfirm({
             pointerEvents: "none",
           }}
         />
+
+        {/* The mark's light falling on the track beneath it. */}
+        {!reduceMotion ? (
+          <motion.div
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: glowBg,
+              opacity: glow,
+              pointerEvents: "none",
+            }}
+          />
+        ) : null}
+
+        {/* One confirmation pulse across the whole track. */}
+        {!reduceMotion ? (
+          <motion.div
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: flashBg,
+              pointerEvents: "none",
+            }}
+          />
+        ) : null}
+
+        {/* The rim light, masked down to the groove's own edge. */}
+        {!reduceMotion && !done ? (
+          <motion.div
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: 9999,
+              padding: 1,
+              pointerEvents: "none",
+              background: rimBackground,
+              WebkitMask:
+                "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+              mask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+              WebkitMaskComposite: "xor",
+              maskComposite: "exclude",
+            }}
+          />
+        ) : null}
 
         {/*
           Label never fades. The thumb is opaque and slides over it.
