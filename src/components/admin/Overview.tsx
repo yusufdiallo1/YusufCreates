@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
 import { ADMIN_PATH } from "@/lib/constants";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { useUpdateFlash } from "@/lib/useUpdateFlash";
 
 /**
  * The operator dashboard.
@@ -195,8 +196,19 @@ function Metric({
   hint?: string;
   spark?: number[];
 }) {
+  /*
+   * The universal update signal.
+   *
+   * Convex is reactive, so these figures change under the reader with nothing
+   * having asked them to. A number that silently becomes a different number is
+   * a discrepancy rather than an update — you notice it minutes later and
+   * cannot tell whether you misread it. One flash at the accent, the same one
+   * used everywhere else in the product, and the change is unmissable.
+   */
+  const flashRef = useUpdateFlash<HTMLDivElement>(value);
+
   return (
-    <div className="admin-card">
+    <div ref={flashRef} className="admin-card">
       <p className="admin-meta">{label}</p>
       <div className="mt-1.5 flex items-baseline gap-2">
         <span className="text-xl text-primary tabular-nums">{value}</span>

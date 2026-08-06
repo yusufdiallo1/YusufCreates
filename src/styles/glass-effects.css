@@ -28,6 +28,53 @@
   inherits: false;
 }
 
+/* The section seam's brightness. Registered for the same reason as the beam
+   angle: an unregistered number is a string, and the seam would jump between
+   0.08 and 0.18 with nothing in between rather than lifting into view. */
+@property --seam-alpha {
+  syntax: "<number>";
+  initial-value: 0.08;
+  inherits: false;
+}
+
+/* --------------------------------------------------------------------------
+   Section seam
+
+   A hairline between marketing sections: transparent at both ends, brightest
+   in the middle. It reads as a join in a material rather than as a rule drawn
+   across the page, which is the difference between the sections feeling like
+   one surface and feeling like a stack of slides.
+
+   The brightening on entry is a scroll timeline in scroll-animations.css. It
+   is native CSS with no JS behind it, so it costs nothing and keeps working
+   with the main thread busy.
+   -------------------------------------------------------------------------- */
+
+.section-seam {
+  height: 1px;
+  width: 100%;
+  border: 0;
+  margin: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, var(--seam-alpha)) 50%,
+    transparent 100%
+  );
+}
+
+/* On a light canvas the seam is a shadow between panels, not a highlight —
+   a white line on white is invisible and a grey one reads as a border. */
+[data-theme="light"] .section-seam {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(10, 10, 10, var(--seam-alpha)) 50%,
+    transparent 100%
+  );
+}
+
 /* --------------------------------------------------------------------------
    Spotlight
    -------------------------------------------------------------------------- */

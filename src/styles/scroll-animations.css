@@ -158,6 +158,38 @@
     animation: progress-grow linear both;
     animation-timeline: scroll(root block);
   }
+
+  /* ------------------------------------------------------------------------
+     Section seams
+
+     The seam brightens as it enters and settles back once it is properly in
+     view — so the join announces itself on arrival and then stops asking for
+     attention, which is what a join between two sections should do.
+
+     The alpha is animated, not the opacity. Opacity cannot go above 1, so
+     brightening a line already drawn at full opacity is impossible that way;
+     the value that actually has headroom is the alpha inside the gradient. And
+     an alpha only interpolates if the property carrying it is registered —
+     see --seam-alpha beside --beam-angle in glass-effects.css.
+     ------------------------------------------------------------------------ */
+
+  @keyframes seam-brighten {
+    0% {
+      --seam-alpha: 0.08;
+    }
+    55% {
+      --seam-alpha: 0.18;
+    }
+    100% {
+      --seam-alpha: 0.08;
+    }
+  }
+
+  .section-seam {
+    animation: seam-brighten linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 45%;
+  }
 }
 
 /* --------------------------------------------------------------------------

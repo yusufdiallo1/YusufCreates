@@ -1,3 +1,7 @@
+"use client";
+
+import { useUpdateFlash } from "@/lib/useUpdateFlash";
+
 interface StatCardProps {
   label: string;
   value: string;
@@ -18,8 +22,12 @@ interface StatCardProps {
  * not because it is faded.
  */
 export function StatCard({ label, value, hint }: StatCardProps) {
+  // Flashes its border once whenever the figure changes — the same signal
+  // every other live number in the product uses. See useUpdateFlash.
+  const flashRef = useUpdateFlash<HTMLDivElement>(value);
+
   return (
-    <div className="admin-card">
+    <div ref={flashRef} className="admin-card">
       <p className="admin-meta">{label}</p>
       <p className="mt-2 text-2xl font-semibold tracking-tight tabular-nums">
         {value}
