@@ -44,6 +44,30 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
    * lock the day.
    */
   signIn: { maxFailedAttempsPerHour: 4 },
+  /*
+   * How long a session lives. THIS IS THE "it auto logs me in" FIX.
+   *
+   * Convex Auth defaults to a 30-day session with no inactivity limit, and
+   * nothing here overrode it — so signing in once meant the back office simply
+   * opened, every time, for a month. Typing the admin URL and landing straight
+   * inside is not a bug in the gate; it is the session doing exactly what it
+   * was configured to do.
+   *
+   * 12 hours absolute: a working day. Whatever else happens, the session is
+   * dead tomorrow and the password gets typed again.
+   *
+   * 2 hours inactive: walking away from an unlocked laptop stops being a
+   * standing invitation. Any request inside the window refreshes it, so this
+   * is never felt while actually working.
+   *
+   * These are the real control. A shorter cookie would not help — the cookie
+   * is only a pointer, and the server decides whether the session behind it is
+   * still alive.
+   */
+  session: {
+    totalDurationMs: 12 * 60 * 60 * 1000,
+    inactiveDurationMs: 2 * 60 * 60 * 1000,
+  },
   callbacks: {
     /**
      * Two kinds of account may exist, and nothing else.

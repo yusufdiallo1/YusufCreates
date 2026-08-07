@@ -95,7 +95,47 @@ export const overview = query({
       }),
     );
 
-    return { name: client.name, projects: withProgress };
+    /*
+     * The deposit gate.
+     *
+     * Until the first 40% is paid, the portal shows the invoice and nothing
+     * else. Progress, chat and calls are what the engagement buys, and handing
+     * them over before it has been paid for makes the deposit optional in
+     * practice however firmly the email words it.
+     *
+     * LOCKED ONLY WHEN MONEY IS ACTUALLY OWED, never by default. A client with
+     * no deposit invoice at all — added by hand, on a retainer, or on some
+     * other arrangement — is not locked out. The gate engages when a deposit
+     * has been ISSUED and not paid, which is a fact about this project rather
+     * than an assumption about the client.
+     *
+     * Computed here rather than in the browser: a client who can see the
+     * locked flag can also flip it, and "hidden in the UI" is not a gate. The
+     * queries behind each section check their own permissions too — this
+     * decides what to SHOW, and those decide what to serve.
+     */
+    const invoices = await ctx.db.query("invoices").collect();
+    const mine = invoices.filter(
+      (i) =>
+        i.status !== "draft" &&
+        i.clientEmail.toLowerCase() === client.email.toLowerCase(),
+    );
+    const deposits = mine.filter((i) => i.stage === "deposit");
+    const depositPaid = deposits.some((i) => i.status === "paid");
+    const depositOutstanding = deposits.some(
+      (i) => i.status === "sent" || i.status === "overdue",
+    );
+
+    return {
+      name: client.name,
+      projects: withProgress,
+      access: {
+        locked: depositOutstanding && !depositPaid,
+        depositPaid,
+        /** Drives the copy: "pay to start" reads wrong on an overdue invoice. */
+        overdue: deposits.some((i) => i.status === "overdue"),
+      },
+    };
   },
 });
 
@@ -468,5 +508,272 @@ export const adminMilestones = query({
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .order("asc")
       .collect();
+  },
+});
+
+/* ---------------------------------------------------------------------------
+   Delivery receipts and typing presence.
+
+   Both sides of the thread run the same three calls, differing only in which
+   direction they act on. They are separated by identity rather than by an
+   argument: a client must not be able to mark their OWN message as read by the
+   admin, and passing "who am I" as a parameter is exactly how that becomes
+   possible.
+   --------------------------------------------------------------------------- */
+
+/** How long a keypress keeps the typing indicator alive. */
+const TYPING_TTL_MS = 5000;
+
+/**
+ * Marks the other side's messages as delivered, then read.
+ *
+ * Called by the recipient when the thread is on screen. Delivery and reading
+ * are stamped in the same call because by the time a live query has returned a
+ * message to a visible thread, both are true — separating them would mean
+ * inventing a moment between "your browser has it" and "it is on screen" that
+ * does not exist for an open panel.
+ *
+ * Writes only to messages that are missing the stamp, so an open thread does
+ * not rewrite the same rows on every reactive tick.
+ */
+export const markThreadSeen = mutation({
+  args: { projectId: v.id("clientProjects") },
+  handler: async (ctx, args) => {
+    const client = await requireClient(ctx);
+    await assertOwns(ctx, client, args.projectId);
+
+    const now = Date.now();
+    const messages = await ctx.db
+      .query("portalMessages")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    for (const m of messages) {
+      // The client marks the ADMIN's messages. Never their own.
+      if (m.authorType !== "admin") continue;
+      if (m.deliveredAt && m.readAt) continue;
+      await ctx.db.patch(m._id, {
+        deliveredAt: m.deliveredAt ?? now,
+        readAt: m.readAt ?? now,
+      });
+    }
+  },
+});
+
+/** The admin equivalent: stamps the CLIENT's messages. */
+export const adminMarkThreadSeen = mutation({
+  args: { projectId: v.id("clientProjects") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const now = Date.now();
+    const messages = await ctx.db
+      .query("portalMessages")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    for (const m of messages) {
+      if (m.authorType !== "client") continue;
+      if (m.deliveredAt && m.readAt) continue;
+      await ctx.db.patch(m._id, {
+        deliveredAt: m.deliveredAt ?? now,
+        readAt: m.readAt ?? now,
+      });
+    }
+  },
+});
+
+/**
+ * Pushes the caller's typing expiry a few seconds into the future.
+ *
+ * `typing: false` clears it immediately, for the case where someone selects
+ * their draft and deletes it — waiting the full TTL there would show them as
+ * typing when the box is visibly empty.
+ */
+export const setTyping = mutation({
+  args: { projectId: v.id("clientProjects"), typing: v.boolean() },
+  handler: async (ctx, args) => {
+    const client = await requireClient(ctx);
+    await assertOwns(ctx, client, args.projectId);
+    await ctx.db.patch(args.projectId, {
+      clientTypingUntil: args.typing ? Date.now() + TYPING_TTL_MS : undefined,
+    });
+  },
+});
+
+export const adminSetTyping = mutation({
+  args: { projectId: v.id("clientProjects"), typing: v.boolean() },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    await ctx.db.patch(args.projectId, {
+      adminTypingUntil: args.typing ? Date.now() + TYPING_TTL_MS : undefined,
+    });
+  },
+});
+
+/**
+ * Is the other side typing right now?
+ *
+ * Returned as a boolean computed against the server clock, not as the raw
+ * timestamp. Comparing an expiry to Date.now() in the browser would trust a
+ * clock we do not control, and a client skewed five minutes fast would never
+ * see the indicator at all.
+ *
+ * Because this is a Convex query it re-runs when the document changes — but
+ * NOT when time simply passes, so the UI also re-checks on its own timer. See
+ * TypingIndicator.
+ */
+export const typingState = query({
+  args: { projectId: v.id("clientProjects") },
+  handler: async (ctx, args) => {
+    const client = await requireClient(ctx);
+    await assertOwns(ctx, client, args.projectId);
+    const project = await ctx.db.get(args.projectId);
+    const now = Date.now();
+    return {
+      otherSideTyping: Boolean(
+        project?.adminTypingUntil && project.adminTypingUntil > now,
+      ),
+    };
+  },
+});
+
+export const adminTypingState = query({
+  args: { projectId: v.id("clientProjects") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const project = await ctx.db.get(args.projectId);
+    const now = Date.now();
+    return {
+      otherSideTyping: Boolean(
+        project?.clientTypingUntil && project.clientTypingUntil > now,
+      ),
+    };
+  },
+});
+
+/**
+ * Project insights — the numbers behind the progress bar.
+ *
+ * DERIVED, NEVER STORED. Every figure here is computed from rows that already
+ * exist for other reasons: milestone completion stamps, message timestamps,
+ * deliverable uploads, calls. Nothing has to be kept up to date, nothing can
+ * go stale, and there is no counter to drift out of sync with reality.
+ *
+ * WHAT THIS IS NOT. The original ask was "analytics on their site" — traffic
+ * to the thing I built them. That needs their site instrumented and reporting
+ * somewhere, which is a separate integration and not something this portal can
+ * invent. What it CAN answer honestly is how the engagement itself is going,
+ * which is the question a client actually opens the portal with.
+ *
+ * The reply-time figure is deliberately included even though it is the one
+ * that can embarrass me. A response-time commitment nobody measures is
+ * marketing; one the client can see is a promise.
+ */
+export const insights = query({
+  args: { projectId: v.id("clientProjects") },
+  handler: async (ctx, args) => {
+    const client = await requireClient(ctx);
+    await assertOwns(ctx, client, args.projectId);
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) return null;
+
+    const [milestones, deliverables, messages, calls] = await Promise.all([
+      ctx.db
+        .query("milestones")
+        .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+        .collect(),
+      ctx.db
+        .query("deliverables")
+        .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+        .collect(),
+      ctx.db
+        .query("portalMessages")
+        .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+        .order("asc")
+        .collect(),
+      ctx.db
+        .query("calls")
+        .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+        .collect(),
+    ]);
+
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
+    const done = milestones.filter((m) => m.status === "done");
+
+    /*
+     * How long I take to reply, measured rather than claimed.
+     *
+     * Walks the thread in order and measures each client message to the next
+     * admin message. Runs of consecutive client messages collapse into one
+     * wait — someone sending three lines in a row has asked once, and counting
+     * that as three fast replies would flatter the number dishonestly.
+     */
+    let waitTotal = 0;
+    let waitCount = 0;
+    let askedAt: number | null = null;
+    for (const m of messages) {
+      if (m.authorType === "client") {
+        askedAt ??= m.createdAt;
+      } else if (askedAt !== null) {
+        waitTotal += m.createdAt - askedAt;
+        waitCount++;
+        askedAt = null;
+      }
+    }
+
+    /*
+     * Milestones finished in each of the last two weeks.
+     *
+     * Two windows rather than a single average: "three this week, one last
+     * week" says something an average across a whole project cannot.
+     */
+    const doneThisWeek = done.filter(
+      (m) => (m.completedAt ?? 0) >= now - 7 * day,
+    ).length;
+    const donePrevWeek = done.filter(
+      (m) =>
+        (m.completedAt ?? 0) >= now - 14 * day &&
+        (m.completedAt ?? 0) < now - 7 * day,
+    ).length;
+
+    return {
+      percentComplete:
+        milestones.length === 0
+          ? 0
+          : Math.round((done.length / milestones.length) * 100),
+      milestonesDone: done.length,
+      milestonesTotal: milestones.length,
+      doneThisWeek,
+      donePrevWeek,
+
+      /** null when nothing has been delivered yet, so the UI can omit it. */
+      lastUpdateAt:
+        [
+          ...done.map((m) => m.completedAt ?? 0),
+          ...deliverables.map((d) => d.uploadedAt),
+        ].sort((a, b) => b - a)[0] || null,
+
+      filesDelivered: deliverables.length,
+      filesApproved: deliverables.filter((d) => d.approvedAt).length,
+
+      messagesTotal: messages.length,
+      /** Mean minutes from a question to my reply, or null if never asked. */
+      replyMinutes:
+        waitCount === 0 ? null : Math.round(waitTotal / waitCount / 60000),
+
+      callsHeld: calls.filter((c) => c.startedAt).length,
+
+      startedAt: project.startedAt ?? null,
+      daysRunning: project.startedAt
+        ? Math.max(0, Math.round((now - project.startedAt) / day))
+        : null,
+      targetLaunch: project.targetLaunch ?? null,
+      daysToTarget: project.targetLaunch
+        ? Math.round((project.targetLaunch - now) / day)
+        : null,
+    };
   },
 });

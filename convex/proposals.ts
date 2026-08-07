@@ -149,8 +149,23 @@ export const upsert = mutation({
       return id;
     }
 
+    /*
+     * Proposals are the ENTERPRISE instrument, and the tier says so.
+     *
+     * Every packaged tier has a published price and goes through the normal
+     * request flow — a proposal for one would be re-quoting a number already
+     * on the pricing page. Enterprise is the only engagement that is scoped on
+     * a call and priced in a document, which is what a proposal is for.
+     *
+     * Defaulted rather than forced: an explicit tier passed by a caller still
+     * wins, so an existing non-enterprise proposal can still be edited without
+     * this quietly rewriting what it is. The field was simply never populated
+     * before — the admin form does not ask — so every proposal had a null tier
+     * and nothing could report on them.
+     */
     return await ctx.db.insert("proposals", {
       ...fields,
+      tier: fields.tier ?? "enterprise",
       status: "draft",
       token: makeToken(),
     });
