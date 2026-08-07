@@ -289,7 +289,7 @@ export function Nav() {
                     onPointerEnter={() => setHovered(item.href)}
                     onFocus={() => setHovered(item.href)}
                     className={cn(
-                      "relative block py-1 text-sm transition-colors duration-fast",
+                      "relative block py-1 text-sm transition-colors duration-hover ease-hover",
                       active || marked
                         ? "text-primary"
                         : "text-secondary hover:text-primary",
@@ -309,7 +309,7 @@ export function Nav() {
             <Magnetic className="hidden sm:inline-flex">
               <Link
                 href="/pricing"
-                className="rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+                className="rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
               >
                 Start a project
               </Link>
@@ -359,13 +359,13 @@ export function Nav() {
               <span className="relative block h-3 w-4">
                 <span
                   className={cn(
-                    "absolute left-0 block h-px w-4 bg-current transition-transform duration-fast",
+                    "absolute left-0 block h-px w-4 bg-current transition-transform duration-hover ease-hover",
                     open ? "top-1.5 rotate-45" : "top-0",
                   )}
                 />
                 <span
                   className={cn(
-                    "absolute left-0 block h-px w-4 bg-current transition-transform duration-fast",
+                    "absolute left-0 block h-px w-4 bg-current transition-transform duration-hover ease-hover",
                     open ? "top-1.5 -rotate-45" : "top-3",
                   )}
                 />

@@ -394,7 +394,7 @@ export function StartForm() {
                         if (!plan) track("form_start", { step: p.id });
                         setPlan(p.id);
                       }}
-                      className={`hairline block w-full rounded-lg px-5 py-4 text-left transition-colors duration-fast ${
+                      className={`hairline block w-full rounded-lg px-5 py-4 text-left transition-colors duration-hover ease-hover ${
                         active
                           ? "border-[color:var(--accent)] bg-surface-2"
                           : "bg-surface-1 hover:bg-surface-2"
@@ -541,7 +541,7 @@ export function StartForm() {
                 By sending this you agree to the{" "}
                 <a
                   href="/legal/privacy"
-                  className="text-accent transition-colors duration-fast hover:text-primary"
+                  className="text-accent transition-colors duration-hover ease-hover hover:text-primary"
                 >
                   privacy policy
                 </a>
@@ -629,7 +629,7 @@ export function StartForm() {
           type="button"
           onClick={() => goToStep(Math.max(1, step - 1))}
           disabled={step === 1}
-          className="rounded-full px-4 py-2 text-sm text-secondary transition-colors duration-fast hover:text-primary disabled:opacity-40"
+          className="rounded-full px-4 py-2 text-sm text-secondary transition-colors duration-hover ease-hover hover:text-primary disabled:opacity-40"
         >
           Back
         </button>
@@ -653,7 +653,7 @@ export function StartForm() {
               goToStep(step + 1);
             }}
             disabled={step === 1 && !planChosen}
-            className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+            className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-40"
           >
             Next
           </button>

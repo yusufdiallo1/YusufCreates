@@ -179,7 +179,7 @@ export function AdminSignIn() {
       <button
         type="button"
         onClick={() => setRevealed((v) => !v)}
-        className="mt-3 text-xs text-secondary transition-colors duration-fast hover:text-primary"
+        className="mt-3 text-xs text-secondary transition-colors duration-hover ease-hover hover:text-primary"
       >
         {revealed ? "Hide" : "Reveal"}
       </button>
@@ -187,7 +187,7 @@ export function AdminSignIn() {
       <button
         type="submit"
         disabled={busy || value === "" || email.trim() === ""}
-        className="mt-6 w-full rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-60"
+        className="mt-6 w-full rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-60"
       >
         {busy ? "Checking…" : "Continue"}
       </button>

@@ -392,7 +392,7 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
           {/* Live, not a claim. Reads the same capacity as the waitlist, so
               the hero cannot advertise work that is already booked. */}
           <motion.div {...step(0.1)}>
-            <AvailabilityBadge className="inline-flex items-center gap-2.5 font-mono text-xs tracking-[0.1em] text-secondary uppercase transition-colors duration-fast hover:text-primary" />
+            <AvailabilityBadge className="inline-flex items-center gap-2.5 font-mono text-xs tracking-[0.1em] text-secondary uppercase transition-colors duration-hover ease-hover hover:text-primary" />
           </motion.div>
 
           <h1
@@ -443,14 +443,14 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
               href="/pricing"
               data-cursor="link"
               onClick={() => track("cta_click", { cta: "hero-start" })}
-              className="rounded-full bg-[color:var(--accent-solid)] px-6 py-3 text-center text-sm font-medium text-white transition-opacity duration-fast hover:opacity-90"
+              className="rounded-full bg-[color:var(--accent-solid)] px-6 py-3 text-center text-sm font-medium text-white transition-opacity duration-hover ease-hover hover:opacity-90"
             >
               Start a project
             </Link>
             <Link
               href="/work"
               data-cursor="link"
-              className="rounded-full px-6 py-3 text-center text-sm text-primary transition-colors duration-fast hover:bg-surface-2"
+              className="rounded-full px-6 py-3 text-center text-sm text-primary transition-colors duration-hover ease-hover hover:bg-surface-2"
             >
               View work
             </Link>
@@ -817,7 +817,7 @@ function Slab({
             <LiquidGlass
               depth={config.depth}
               shape="panel"
-              className="overflow-hidden !p-2 transition-transform duration-slow ease-out-expo group-hover:-translate-y-2.5"
+              className="overflow-hidden !p-2 transition-transform duration-hover ease-hover group-hover:-translate-y-2.5"
             >
               <div
                 className="relative aspect-[16/10] overflow-hidden rounded-[var(--radius-xs)] bg-surface-2"
@@ -894,7 +894,7 @@ function Slab({
                        imageOpacity of 0.6 that read as a broken image rather than
                        a recessed one; the depth is already carried by scale, blur
                        and position, so the colour barely needs to help. */
-                    className="object-cover object-top saturate-[0.95] transition-[opacity,filter] duration-slow ease-out-expo group-hover:!opacity-100 group-hover:saturate-100 motion-reduce:!opacity-100 motion-reduce:saturate-100"
+                    className="object-cover object-top saturate-[0.95] transition-[opacity,filter] duration-hover ease-hover group-hover:!opacity-100 group-hover:saturate-100 motion-reduce:!opacity-100 motion-reduce:saturate-100"
                   />
                 )}
 

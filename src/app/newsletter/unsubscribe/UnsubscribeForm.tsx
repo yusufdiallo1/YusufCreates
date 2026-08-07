@@ -48,7 +48,7 @@ export function UnsubscribeForm({ token }: { token: string }) {
             setState("error");
           }
         }}
-        className="mx-auto mt-8 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-60"
+        className="mx-auto mt-8 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-60"
       >
         {state === "busy" ? "Removing…" : "Yes, unsubscribe me"}
       </button>

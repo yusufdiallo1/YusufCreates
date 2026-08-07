@@ -120,7 +120,7 @@ export function ContactCTA() {
             <Magnetic>
               <Link
                 href="/pricing"
-                className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+                className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
               >
                 Start a project
               </Link>
@@ -175,7 +175,7 @@ export function ContactCTA() {
               <button
                 type="submit"
                 disabled={status === "sending" || status === "sent"}
-                className="shrink-0 rounded-full border border-[color:var(--border-hairline)] px-4 py-2.5 text-sm text-primary transition-colors duration-fast hover:bg-surface-2 disabled:opacity-60"
+                className="shrink-0 rounded-full border border-[color:var(--border-hairline)] px-4 py-2.5 text-sm text-primary transition-colors duration-hover ease-hover hover:bg-surface-2 disabled:opacity-60"
               >
                 {status === "sending" ? "Sending…" : "Send me a note"}
               </button>

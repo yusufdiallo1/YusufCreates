@@ -42,7 +42,7 @@ export default async function AuditPage({
     typeof id === "string" && /^[a-z0-9]{20,64}$/.test(id) ? id : null;
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-24">
+    <main className="mx-auto max-w-2xl px-6 pt-32 pb-24">
       <h1 className="text-4xl">How good is your site, really?</h1>
       <p className="mt-4 text-secondary">
         A real audit — speed, accessibility, SEO and best practices — with three

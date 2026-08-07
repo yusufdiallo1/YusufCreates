@@ -195,7 +195,7 @@ export function PricingTables() {
                    which is under every published minimum and genuinely fiddly
                    with a thumb — five of them in a row means the neighbour is
                    the likely hit. */
-                className={`min-h-11 rounded-full px-4 py-1.5 text-xs transition-colors duration-fast sm:min-h-0 ${
+                className={`min-h-11 rounded-full px-4 py-1.5 text-xs transition-colors duration-hover ease-hover sm:min-h-0 ${
                   currency === code
                     ? "bg-primary text-canvas"
                     : "text-secondary hover:text-primary"
@@ -270,7 +270,7 @@ export function PricingTables() {
 
               <Link
                 href="/express"
-                className="mt-4 inline-block rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+                className="mt-4 inline-block rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
               >
                 Start now
               </Link>
@@ -471,7 +471,7 @@ export function PricingTables() {
                   >
                     <Link
                       href={`/start?tier=${tier.id}${isGrowth ? `&pages=${pages}` : ""}`}
-                      className={`${tier.popular ? "w-full" : "mt-8"} rounded-full px-5 py-2.5 text-center text-sm font-medium transition-opacity duration-fast hover:opacity-90 ${
+                      className={`${tier.popular ? "w-full" : "mt-8"} rounded-full px-5 py-2.5 text-center text-sm font-medium transition-opacity duration-hover ease-hover hover:opacity-90 ${
                         tier.popular
                           ? "bg-primary text-canvas"
                           : "border border-[color:var(--border-hairline)] text-primary"
@@ -628,16 +628,24 @@ export function PricingTables() {
               </ul>
 
               <div className="mt-8">
-                {/* Enterprise needs company, role, procurement and NDA details,
-                    so this routes into the enterprise branch of the lead form
-                    rather than submitting anything inline. */}
+                {/*
+                  Goes to /enterprise, not straight into the lead form.
+
+                  An enterprise buyer is rarely the person who can commit on
+                  the spot — they have a security review to clear and a
+                  procurement process to satisfy, and none of that fits in a
+                  pricing card. The dedicated page answers those questions and
+                  carries the same "Request a proposal" action at the end, so
+                  the path is one click longer for someone already decided and
+                  vastly shorter for everyone else.
+                */}
                 <SlideToConfirm
                   purpose="submit-lead"
-                  label="Slide to request a proposal"
-                  completedLabel="Request received"
-                  ariaLabel="Slide to request an enterprise proposal"
+                  label="Slide to see how it works"
+                  completedLabel="Opening"
+                  ariaLabel="Slide to read about enterprise engagements"
                   onConfirm={async () => {
-                    router.push("/start?tier=enterprise");
+                    router.push("/enterprise");
                   }}
                 />
               </div>
@@ -690,7 +698,7 @@ export function PricingTables() {
 
               <Link
                 href="/audit"
-                className="mt-8 rounded-full border border-[color:var(--border-hairline)] px-5 py-2.5 text-center text-sm font-medium text-primary transition-colors duration-fast hover:bg-surface-2"
+                className="mt-8 rounded-full border border-[color:var(--border-hairline)] px-5 py-2.5 text-center text-sm font-medium text-primary transition-colors duration-hover ease-hover hover:bg-surface-2"
               >
                 Get a free audit first
               </Link>
@@ -722,7 +730,7 @@ export function PricingTables() {
                     type="button"
                     onClick={() => setPeriod(option)}
                     aria-pressed={period === option}
-                    className={`min-h-11 rounded-full px-4 py-1 text-xs transition-colors duration-fast sm:min-h-0 sm:px-3 ${
+                    className={`min-h-11 rounded-full px-4 py-1 text-xs transition-colors duration-hover ease-hover sm:min-h-0 sm:px-3 ${
                       period === option
                         ? "bg-primary text-canvas"
                         : "text-secondary hover:text-primary"

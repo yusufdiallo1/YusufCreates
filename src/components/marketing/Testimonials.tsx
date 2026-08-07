@@ -198,7 +198,7 @@ function TestimonialCard({
                   href={item.website}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-accent transition-opacity duration-fast hover:opacity-80"
+                  className="text-accent transition-opacity duration-hover ease-hover hover:opacity-80"
                 >
                   {item.company}
                 </a>

@@ -36,7 +36,7 @@ export default function NotFound() {
           <li key={item.href}>
             <Link
               href={item.href}
-              className="block py-2 text-primary transition-colors duration-fast hover:text-accent"
+              className="block py-2 text-primary transition-colors duration-hover ease-hover hover:text-accent"
             >
               {item.label}
             </Link>

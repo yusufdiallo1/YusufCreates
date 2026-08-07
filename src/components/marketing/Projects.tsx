@@ -69,7 +69,7 @@ export function Projects({ preloaded }: ProjectsProps) {
           <Link
             href="/work"
             data-cursor="link"
-            className="text-sm text-secondary transition-colors duration-fast hover:text-primary"
+            className="text-sm text-secondary transition-colors duration-hover ease-hover hover:text-primary"
           >
             All work
           </Link>
@@ -189,7 +189,7 @@ function PinnedShowcase({ projects }: { projects: Project[] }) {
               <Link
                 href={`/work/${project.slug}`}
                 data-cursor="view"
-                className="mt-8 inline-block text-sm text-accent transition-colors duration-fast hover:text-primary"
+                className="mt-8 inline-block text-sm text-accent transition-colors duration-hover ease-hover hover:text-primary"
               >
                 View case study
               </Link>
@@ -203,7 +203,7 @@ function PinnedShowcase({ projects }: { projects: Project[] }) {
                   <Link
                     href={`/work/${p.slug}`}
                     className={cn(
-                      "flex items-center gap-3 py-1 text-xs transition-colors duration-fast",
+                      "flex items-center gap-3 py-1 text-xs transition-colors duration-hover ease-hover",
                       i === active
                         ? "text-primary"
                         : "text-secondary hover:text-primary",
@@ -252,7 +252,13 @@ function PinnedShowcase({ projects }: { projects: Project[] }) {
                     data-cursor="view"
                     aria-hidden={i !== active}
                     tabIndex={i === active ? 0 : -1}
-                    className="block h-full w-full"
+                    /* `relative` is load-bearing, not cosmetic: next/image
+                       with `fill` absolutely positions itself against the
+                       nearest positioned ancestor, and this Link sat at
+                       `static` — so the cover resolved against the section
+                       instead of the card and Next logged a warning for every
+                       featured project on first paint. */
+                    className="relative block h-full w-full"
                   >
                     {p.coverUrl ? (
                       <Image
@@ -292,19 +298,36 @@ function StackedList({ projects }: { projects: Project[] }) {
  * Used by the stacked fallback and by /work. Deliberately one uniform aspect
  * ratio — the old variant let the first card grow taller than the viewport.
  */
-export function ProjectCard({ project }: { project: Project }) {
+export function ProjectCard({
+  project,
+  /**
+   * The lead card on /work, which spans both columns.
+   *
+   * Side by side rather than simply bigger: at full width a 3:2 image is
+   * enormous and pushes the text off the fold, so the extra room goes
+   * sideways. Everything inside is unchanged — only the axis differs.
+   */
+  wide = false,
+}: {
+  project: Project;
+  wide?: boolean;
+}) {
   return (
     <Link
       href={`/work/${project.slug}`}
       data-cursor="view"
       data-spotlight=""
-      className="project-card group relative block h-full overflow-hidden rounded-xl"
+      className={`project-card group relative block h-full overflow-hidden rounded-xl transition-transform duration-hover ease-hover hover:-translate-y-1 motion-reduce:hover:translate-y-0 ${
+        wide ? "sm:grid sm:grid-cols-[1.35fr_1fr] sm:items-stretch" : ""
+      }`}
     >
       <div /* transform-gpu on the clipping box as well as the image: the
                 clip and the thing being clipped have to composite on the
                 same layer, or their edges disagree by a fraction of a pixel
                 for the length of the transition. */
-            className="relative aspect-[3/2] w-full transform-gpu overflow-hidden bg-surface-2">
+            className={`relative w-full transform-gpu overflow-hidden bg-surface-2 ${
+              wide ? "aspect-[3/2] sm:h-full sm:aspect-auto" : "aspect-[3/2]"
+            }`}>
         {project.coverUrl ? (
           /* Paired with the same name on the case study hero, so the card
              becomes the hero rather than the two cross-fading. */
@@ -314,10 +337,22 @@ export function ProjectCard({ project }: { project: Project }) {
               alt=""
               fill
               sizes="(max-width: 640px) 100vw, 480px"
-              className="transform-gpu object-cover object-top transition-transform duration-slow ease-out-expo group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+              className="transform-gpu object-cover object-top transition-transform duration-hover ease-hover group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
             />
           </SharedElement>
-        ) : null}
+        ) : (
+          /*
+            A project with no cover used to render a bare grey rectangle, which
+            is indistinguishable from an image that failed to load — and that
+            is exactly how it was being read. This says "no screenshot yet"
+            rather than saying nothing.
+          */
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[color:var(--bg-surface-2)] to-[color:var(--bg-surface-1)]">
+            <span className="font-mono text-[11px] tracking-[0.08em] text-muted uppercase">
+              {project.category ?? "Case study"}
+            </span>
+          </div>
+        )}
 
         {/* Keeps the metadata legible over a bright screenshot. */}
         <div
@@ -326,7 +361,7 @@ export function ProjectCard({ project }: { project: Project }) {
         />
       </div>
 
-      <div className="bg-surface-1 p-5">
+      <div className={`bg-surface-1 p-5 ${wide ? "sm:flex sm:flex-col sm:justify-center sm:p-8" : ""}`}>
         <div className="flex items-baseline justify-between gap-4">
           {/* Deliberately NOT a shared element. The case study heading is a
               TextReveal, which splits the title into per-word spans and

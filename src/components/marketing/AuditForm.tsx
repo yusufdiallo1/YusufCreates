@@ -151,7 +151,7 @@ export function AuditForm({
       <button
         type="submit"
         disabled={!valid || busy}
-        className="rounded-full bg-[color:var(--accent-solid)] px-6 py-3 text-sm font-medium text-white transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+        className="rounded-full bg-[color:var(--accent-solid)] px-6 py-3 text-sm font-medium text-white transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-40"
       >
         {busy ? "Starting…" : "Run the audit"}
       </button>
@@ -222,7 +222,7 @@ function Result({
           </button>
           <a
             href="mailto:hello@yusufcreates.com?subject=Site%20audit"
-            className="hairline rounded-full px-5 py-2.5 text-sm text-primary transition-colors duration-fast hover:bg-surface-2"
+            className="hairline rounded-full px-5 py-2.5 text-sm text-primary transition-colors duration-hover ease-hover hover:bg-surface-2"
           >
             Email me instead
           </a>

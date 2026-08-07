@@ -99,7 +99,7 @@ export function NewsletterForm({ className }: { className?: string }) {
         <button
           type="submit"
           disabled={status === "sending" || status === "sent"}
-          className="shrink-0 rounded-full border border-[color:var(--border-hairline)] px-4 py-2.5 text-sm text-primary transition-colors duration-fast hover:bg-surface-2 disabled:opacity-60"
+          className="shrink-0 rounded-full border border-[color:var(--border-hairline)] px-4 py-2.5 text-sm text-primary transition-colors duration-hover ease-hover hover:bg-surface-2 disabled:opacity-60"
         >
           {status === "sending" ? "…" : "Subscribe"}
         </button>
@@ -127,7 +127,7 @@ export function NewsletterForm({ className }: { className?: string }) {
         By subscribing you agree to the{" "}
         <a
           href="/legal/privacy"
-          className="text-accent transition-colors duration-fast hover:text-primary"
+          className="text-accent transition-colors duration-hover ease-hover hover:text-primary"
         >
           privacy policy
         </a>

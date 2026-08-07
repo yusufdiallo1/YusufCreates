@@ -102,7 +102,7 @@ export function PricingComparison() {
               <tr
                 key={line.label}
                 data-row={index}
-                className="border-t border-[color:var(--border-hairline)] transition-colors duration-fast"
+                className="border-t border-[color:var(--border-hairline)] transition-colors duration-hover ease-hover"
                 style={
                   row === index
                     ? { backgroundColor: "var(--bg-surface-2)" }

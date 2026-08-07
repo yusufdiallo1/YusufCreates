@@ -160,7 +160,7 @@ function StoriesRow({ posts }: { posts: Post[] }) {
             href={`/blog/${post.slug}`}
             className="group flex w-20 shrink-0 flex-col items-center gap-2 text-center"
           >
-            <span className="relative block size-16 overflow-hidden rounded-full ring-1 ring-[color:var(--border-hairline)] transition-[box-shadow] duration-fast group-hover:ring-[color:var(--accent)]">
+            <span className="relative block size-16 overflow-hidden rounded-full ring-1 ring-[color:var(--border-hairline)] transition-[box-shadow] duration-hover ease-hover group-hover:ring-[color:var(--accent)]">
               {post.coverUrl ? (
                 <Image
                   src={post.coverUrl}

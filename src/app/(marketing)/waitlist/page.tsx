@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function WaitlistPage() {
   return (
-    <main className="mx-auto max-w-2xl px-6 py-24">
+    <main className="mx-auto max-w-2xl px-6 pt-32 pb-24">
       <h1 className="text-4xl">Hold a slot</h1>
       <p className="mt-4 text-secondary">
         I take two projects and two care plans at a time. Not a scarcity

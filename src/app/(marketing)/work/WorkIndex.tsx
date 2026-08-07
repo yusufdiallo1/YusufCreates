@@ -6,10 +6,11 @@ import type { api } from "@/lib/convex-api";
 import { ProjectCard, type Project } from "@/components/marketing/Projects";
 import { Reveal } from "@/components/motion/Reveal";
 import { TextReveal } from "@/components/motion/TextReveal";
-import { Typewriter } from "@/components/motion/Typewriter";
+import { WordReveal } from "@/components/motion/WordReveal";
 import { Parallax } from "@/components/motion/Parallax";
 import { SpotlightGroup } from "@/components/motion/Spotlight";
 import { ScrollProgress } from "@/components/motion/ScrollProgress";
+import { DrawnGlyph, type GlyphName } from "@/components/ui/DrawnGlyph";
 
 /**
  * Work — the case-study index.
@@ -24,19 +25,22 @@ import { ScrollProgress } from "@/components/motion/ScrollProgress";
  */
 
 /** What is actually true of every project below. */
-const HOW = [
+const HOW: { n: string; glyph: GlyphName; title: string; body: string }[] = [
   {
     n: "01",
+    glyph: "handover-box",
     title: "Built to be handed over",
     body: "Every one of these runs without me. Code, domain and accounts are in the client's name from the first day, and there is an admin they use themselves rather than emailing me to change a price.",
   },
   {
     n: "02",
+    glyph: "speed",
     title: "Fast because of how it is built",
     body: "Not fast because it was optimised afterwards. Server rendering, images sized for the device asking for them, and no framework loaded to do something the browser already does.",
   },
   {
     n: "03",
+    glyph: "uptime",
     title: "Still running",
     body: "Anyone can ship something that works on launch day. These have been live and largely unattended since, which is the part that actually costs people money when it goes wrong.",
   },
@@ -55,15 +59,15 @@ export function WorkIndex({
           answers "how much more is there" without a number. */}
       <ScrollProgress />
 
-      <div className="mx-auto max-w-5xl px-6 py-24">
+      <div className="mx-auto max-w-5xl px-6 pt-32 pb-24">
         <TextReveal as="h1" by="word" className="block text-4xl">
           Work
         </TextReveal>
 
         <div className="mt-6 max-w-2xl">
-          <Typewriter as="p" speed={22} className="text-secondary">
+          <WordReveal as="p" className="text-secondary">
             {"Real projects with real users, not concepts. Each one is a business that needed something specific and now has it."}
-          </Typewriter>
+          </WordReveal>
 
           <Reveal delay={0.2}>
             <p className="mt-4 text-secondary">
@@ -81,19 +85,67 @@ export function WorkIndex({
             </p>
           </Reveal>
         ) : (
-          <SpotlightGroup className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2">
-            {projects.map((project: Project, index: number) => (
-              /* Alternating columns drift at different rates as you scroll,
-                 so the grid reads as depth rather than a table of pictures.
-                 The difference is small on purpose — enough to notice, not
-                 enough to make one column feel detached from the other. */
-              <Parallax key={project._id} distance={index % 2 === 0 ? 24 : 48}>
-                <Reveal delay={(index % 2) * 0.08}>
-                  <ProjectCard project={project} />
-                </Reveal>
-              </Parallax>
-            ))}
-          </SpotlightGroup>
+          <>
+            {/* A count, and the years covered. Two facts that turn "some
+                screenshots" into a body of work, and they cost one line. */}
+            <Reveal delay={0.24}>
+              <p className="mt-12 font-mono text-xs tracking-[0.08em] text-muted uppercase">
+                {projects.length}{" "}
+                {projects.length === 1 ? "case study" : "case studies"}
+                {(() => {
+                  const years = projects
+                    .map((p: Project) => p.year)
+                    .filter(Boolean)
+                    .sort();
+                  const first = years[0];
+                  const last = years[years.length - 1];
+                  if (!first) return null;
+                  return ` · ${first === last ? first : `${first}–${last}`}`;
+                })()}
+              </p>
+            </Reveal>
+
+            {/*
+              ASYMMETRIC ON PURPOSE. The first project runs full width, the
+              rest sit in a two-column grid beneath it.
+
+              A uniform grid gives every project identical weight, which reads
+              as a contact sheet — the eye has nowhere to land and nothing to
+              read first. Leading with one at full width makes the page have an
+              opening rather than a beginning, and it is also simply honest:
+              the newest, best piece deserves the room.
+
+              Falls back to the plain grid at one project, where a "lead" with
+              nothing following it is just a big card.
+            */}
+            <SpotlightGroup className="mt-6 grid grid-cols-1 gap-8 sm:grid-cols-2">
+              {projects.map((project: Project, index: number) => {
+                const lead = index === 0 && projects.length > 1;
+                return (
+                  /* Alternating columns drift at different rates as you
+                     scroll, so the grid reads as depth rather than a table of
+                     pictures. The lead card does not drift — the first thing
+                     you see should be still. */
+                  <div
+                    key={project._id}
+                    className={lead ? "sm:col-span-2" : undefined}
+                  >
+                    {lead ? (
+                      <Reveal>
+                        <ProjectCard project={project} wide />
+                      </Reveal>
+                    ) : (
+                      <Parallax distance={index % 2 === 0 ? 24 : 48}>
+                        <Reveal delay={(index % 2) * 0.08}>
+                          <ProjectCard project={project} />
+                        </Reveal>
+                      </Parallax>
+                    )}
+                  </div>
+                );
+              })}
+            </SpotlightGroup>
+          </>
         )}
 
         {/* Placed after the work rather than before it, so it reads as what
@@ -111,8 +163,18 @@ export function WorkIndex({
               <li key={item.n}>
                 <Reveal delay={index * 0.06}>
                   <div className="flex gap-6 py-6">
-                    <span className="text-xs text-secondary tabular-nums">
-                      {item.n}
+                    {/* The number stays — it is the sequence — but the mark is
+                        what makes the row scannable, and it draws itself in as
+                        the row arrives. */}
+                    <span className="flex shrink-0 items-center gap-3">
+                      <span className="font-mono text-xs text-secondary tabular-nums">
+                        {item.n}
+                      </span>
+                      <DrawnGlyph
+                        name={item.glyph}
+                        delay={index * 0.08}
+                        className="size-6 text-accent"
+                      />
                     </span>
                     <div className="max-w-2xl">
                       <h3 className="text-base text-primary">{item.title}</h3>
@@ -136,7 +198,7 @@ export function WorkIndex({
             </p>
             <Link
               href="/pricing"
-              className="mt-6 inline-block rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+              className="mt-6 inline-block rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
             >
               See pricing
             </Link>

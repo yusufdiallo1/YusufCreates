@@ -6,7 +6,7 @@ import { useMutation } from "convex/react";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 import { Reveal } from "@/components/motion/Reveal";
 import { TextReveal } from "@/components/motion/TextReveal";
-import { Typewriter } from "@/components/motion/Typewriter";
+import { WordReveal } from "@/components/motion/WordReveal";
 import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
 import { WorkingHours } from "@/components/marketing/WorkingHours";
 import { FieldError } from "@/components/ui/FieldError";
@@ -65,9 +65,9 @@ export function ExpressOrder() {
         Live in two hours
       </TextReveal>
 
-      <Typewriter as="p" speed={22} className="mt-5 text-secondary">
+      <WordReveal as="p" className="mt-5 text-secondary">
         {`Up to two pages, built and deployed while you wait. $${EXPRESS_PRICE_USD} total — and if I miss the window, you owe nothing more and still get the site.`}
-      </Typewriter>
+      </WordReveal>
 
       {/* Stated before the form. A guarantee read after committing is a
           guarantee nobody actually bought. */}
@@ -132,7 +132,7 @@ export function ExpressOrder() {
                   role="radio"
                   aria-checked={pages === n}
                   onClick={() => setPages(n)}
-                  className={`min-h-11 rounded-full border px-5 text-sm transition-colors duration-fast ${
+                  className={`min-h-11 rounded-full border px-5 text-sm transition-colors duration-hover ease-hover ${
                     pages === n
                       ? "border-[color:var(--accent)] bg-surface-2 text-primary"
                       : "border-[color:var(--border-hairline)] text-secondary hover:text-primary"

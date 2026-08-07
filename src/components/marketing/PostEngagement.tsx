@@ -55,7 +55,7 @@ export function PostEngagement({ postId }: { postId: string }) {
             void toggleLike({ postId: postId as Id<"posts">, visitorId: visitor })
           }
           aria-pressed={liked}
-          className={`flex items-center gap-2.5 rounded-full border px-4 py-2 text-sm transition-colors duration-fast ${
+          className={`flex items-center gap-2.5 rounded-full border px-4 py-2 text-sm transition-colors duration-hover ease-hover ${
             liked
               ? "border-[color:var(--accent)] text-accent"
               : "border-[color:var(--border-hairline)] text-secondary hover:text-primary"
