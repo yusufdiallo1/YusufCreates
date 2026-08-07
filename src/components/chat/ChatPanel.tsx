@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { sessionId, track } from "@/lib/track";
+import { getLenis } from "@/lib/lenis-instance";
 import { ThinkingMark } from "@/components/chat/ThinkingMark";
 
 /**
@@ -35,11 +36,21 @@ interface Turn {
  * MIN_MS is a floor on the whole exchange, not a fixed delay before it: the
  * text is being written the entire time, so the wait is spent reading rather
  * than watching a spinner.
+ *
+ * This was 7000ms with a 45 chars/sec ceiling, which meant every answer —
+ * including a one-line one — took at least seven seconds to finish appearing,
+ * and a long one took far longer. Groq returns the whole paragraph in well
+ * under a second, so the pacing was the entire perceived latency of the
+ * assistant. The typing effect is worth keeping; making someone watch it for
+ * seven seconds is not.
+ *
+ * 1200ms floor and ~170 chars/sec: still visibly written rather than pasted,
+ * but a short reply lands in about a second.
  */
-const MIN_MS = 7000;
+const MIN_MS = 1200;
 
-/** ~45 chars/sec — a shade quicker than a fast typist, still readable. */
-const CHARS_PER_MS = 0.045;
+/** ~170 chars/sec — reads as fast typing rather than as a delay. */
+const CHARS_PER_MS = 0.17;
 
 export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
   const reduceMotion = useReducedMotion();
@@ -106,6 +117,57 @@ export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
+  }, [open]);
+
+  /*
+   * Lock the page behind the panel.
+   *
+   * There was no lock at all, so on a phone — where the panel is full-screen —
+   * flicking anywhere scrolled the page underneath it. The panel looked frozen
+   * because the thing moving was behind it.
+   *
+   * Lenis is stopped as well as the body being locked: on desktop Lenis owns
+   * the wheel, so `overflow: hidden` on <body> alone does not stop it. Both
+   * mechanisms exist, so both have to be told.
+   */
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    getLenis()?.stop();
+    return () => {
+      document.body.style.overflow = previous;
+      getLenis()?.start();
+    };
+  }, [open]);
+
+  /*
+   * Track the visual viewport so the panel shrinks to fit the keyboard.
+   *
+   * `h-dvh` plus `interactiveWidget: "resizes-content"` was supposed to handle
+   * this on its own. It does not on iOS Safari, which leaves the layout
+   * viewport alone and only moves the VISUAL viewport when the keyboard opens
+   * — so the bottom half of the panel, composer included, ended up behind the
+   * keys. visualViewport.height is the only number that reflects what is
+   * actually on screen.
+   *
+   * null until measured, and only applied on the mobile full-screen variant,
+   * so the desktop floating panel keeps its own sizing.
+   */
+  const [viewportH, setViewportH] = useState<number | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const read = () => setViewportH(vv.height);
+    read();
+    vv.addEventListener("resize", read);
+    vv.addEventListener("scroll", read);
+    return () => {
+      vv.removeEventListener("resize", read);
+      vv.removeEventListener("scroll", read);
+      setViewportH(null);
+    };
   }, [open]);
 
   // Keep the newest message in view as it streams.
@@ -269,11 +331,40 @@ export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
 
       <AnimatePresence>
         {open ? (
-          <motion.div
-            ref={panelRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Site assistant"
+          <>
+            {/*
+              An INVISIBLE click-catcher, not a scrim.
+
+              It exists only so that clicking the page beside the panel closes
+              it — the one gesture everyone tries first, which previously did
+              nothing because there was no overlay at all.
+
+              It deliberately paints NOTHING. It used to carry a 55% canvas
+              fill and a blur, which dimmed and smeared the entire site the
+              moment the chat opened. The assistant is a small panel in the
+              corner, not a modal that takes the page hostage; the page behind
+              it should stay exactly as it was. The panel itself is glass and
+              already reads as sitting above the page — see the glass-panel
+              class on the panel below. That is where the blur belongs.
+
+              A real element rather than a document listener, because a
+              document handler has to reason about what counts as "inside" and
+              gets it wrong for anything portalled.
+            */}
+            <div
+              aria-hidden="true"
+              onClick={() => {
+                setOpen(false);
+                pillRef.current?.focus();
+              }}
+              className="fixed inset-0 z-40"
+            />
+
+            <motion.div
+              ref={panelRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Site assistant"
             initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.98 }}
@@ -289,13 +380,22 @@ export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
               dvh, never vh: on mobile Safari vh is the LARGEST viewport
               height, so a vh-sized panel extends under the browser chrome.
 
-              h-dvh alongside inset-0 because the root viewport is set to
-              resizes-content — dvh tracks the shrinking visual viewport as
-              the keyboard opens, so the composer stays above the keys
-              instead of behind them.
+              h-dvh is the fallback; the real height comes from
+              visualViewport via the inline style below, because iOS Safari
+              does not shrink the layout viewport for the keyboard and dvh
+              therefore does not track it. See the effect above.
+
+              glass-panel joins glass-depth/glass-near so the surface itself
+              is frosted rather than flat — the panel used to sit on a plain
+              fill, which read as a grey box over a blurred page.
             */
-            className="glass-depth glass-near fixed inset-0 z-50 flex h-dvh w-full flex-col !rounded-none !p-0 sm:inset-auto sm:right-5 sm:bottom-5 sm:h-[min(32rem,80dvh)] sm:w-[min(24rem,calc(100vw-2.5rem))] sm:!rounded-[28px] lg:right-8 lg:bottom-8"
-          >
+              style={
+                viewportH !== null
+                  ? ({ "--chat-vh": `${viewportH}px` } as React.CSSProperties)
+                  : undefined
+              }
+              className="glass-depth glass-near glass-panel fixed inset-0 z-50 flex h-[var(--chat-vh,100dvh)] w-full flex-col !rounded-none !p-0 sm:inset-auto sm:right-5 sm:bottom-5 sm:h-[min(32rem,80dvh)] sm:w-[min(24rem,calc(100vw-2.5rem))] sm:!rounded-[var(--radius-lg)] lg:right-8 lg:bottom-8"
+            >
             <div className="flex items-center justify-between px-5 py-4">
               <p className="text-sm text-primary">Ask about the work</p>
               <button
@@ -305,7 +405,7 @@ export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
                   pillRef.current?.focus();
                 }}
                 aria-label="Close assistant"
-                className="rounded-full p-1.5 text-secondary transition-colors duration-fast hover:text-primary"
+                className="rounded-full p-1.5 text-secondary transition-colors duration-hover ease-hover hover:text-primary"
               >
                 <svg width={16} height={16} viewBox="0 0 16 16" aria-hidden="true">
                   <path
@@ -336,7 +436,7 @@ export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
                           <button
                             type="button"
                             onClick={() => void send(q)}
-                            className="w-full rounded-lg bg-surface-2/60 px-3 py-2 text-left text-xs text-primary transition-colors duration-fast hover:bg-surface-2"
+                            className="w-full rounded-lg bg-surface-2/60 px-3 py-2 text-left text-xs text-primary transition-colors duration-hover ease-hover hover:bg-surface-2"
                           >
                             {q}
                           </button>
@@ -350,10 +450,14 @@ export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
               {turns.map((turn, i) => (
                 <div
                   key={i}
+                  /* The assistant's replies are the reason the panel exists,
+                     so they get the primary ink. They were text-secondary,
+                     which put the actual answer a step below the question the
+                     visitor had just typed. */
                   className={
                     turn.role === "user"
                       ? "ml-auto w-fit max-w-[85%] rounded-2xl bg-surface-2 px-3.5 py-2 text-sm text-primary"
-                      : "text-sm whitespace-pre-wrap text-secondary"
+                      : "text-sm whitespace-pre-wrap text-primary"
                   }
                 >
                   {turn.content ||
@@ -419,7 +523,7 @@ export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
               <button
                 type="submit"
                 disabled={busy || draft.trim() === ""}
-                className="shrink-0 rounded-full bg-primary px-3.5 py-2 text-xs font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40 sm:px-4 sm:py-2.5"
+                className="shrink-0 rounded-full bg-primary px-3.5 py-2 text-xs font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-40 sm:px-4 sm:py-2.5"
               >
                 {busy ? (
                   <ThinkingMark className="size-4" />
@@ -428,7 +532,8 @@ export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
                 )}
               </button>
             </form>
-          </motion.div>
+            </motion.div>
+          </>
         ) : null}
       </AnimatePresence>
     </>
