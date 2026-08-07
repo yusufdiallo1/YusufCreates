@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Authenticated,
   AuthLoading,
@@ -19,6 +19,8 @@ import { Logo } from "@/components/ui/Logo";
 import { PayPanel } from "@/components/portal/PayPanel";
 import { ProgressRing } from "@/components/portal/ProgressRing";
 import { TypingBubbles } from "@/components/ui/TypingBubbles";
+import { CallsPanel } from "@/components/calls/CallsPanel";
+import { Insights } from "@/components/portal/Insights";
 import type { Id } from "@convex/_generated/dataModel";
 
 /**
@@ -85,6 +87,42 @@ function PortalContent() {
   }
 
   const current = active ?? data.projects[0]?._id ?? null;
+
+  /*
+   * Before the deposit, the portal is one thing: the invoice.
+   *
+   * Returning early rather than conditionally hiding four sections. A page
+   * that renders everything and then suppresses most of it still fetches it
+   * all, still ships it to the browser, and grows a new leak every time a
+   * section is added and somebody forgets the guard. One branch, one thing on
+   * screen, nothing to forget.
+   */
+  if (data.access.locked) {
+    return (
+      <Shell>
+        <h1 className="text-2xl">Hello {data.name.split(" ")[0]}</h1>
+        <p className="mt-3 text-sm text-secondary">
+          {data.access.overdue
+            ? "The deposit invoice is past due. Settling it reopens the project."
+            : "One thing first — the deposit. Once it clears, this page becomes your project: progress, files, direct chat and calls."}
+        </p>
+
+        {invoices && invoices.length > 0 ? (
+          <div className="mt-8">
+            <Invoices
+              invoices={invoices}
+              paying={paying}
+              setPaying={setPaying}
+            />
+          </div>
+        ) : (
+          <p className="mt-8 text-sm text-secondary">
+            The invoice is on its way. Refresh in a moment.
+          </p>
+        )}
+      </Shell>
+    );
+  }
 
   return (
     <Shell>
@@ -194,8 +232,10 @@ function PortalContent() {
                   </ol>
                 </section>
 
+                <Insights projectId={project._id} />
                 <Activity project={project} />
                 <Deliverables projectId={project._id} />
+                <CallsPanel projectId={project._id} />
                 <Messages projectId={project._id} />
               </div>
             ))}
@@ -203,7 +243,42 @@ function PortalContent() {
       )}
 
       {invoices && invoices.length > 0 ? (
-        <section aria-labelledby="invoices-heading" className="mt-12">
+        <div className="mt-12">
+          <Invoices invoices={invoices} paying={paying} setPaying={setPaying} />
+        </div>
+      ) : null}
+    </Shell>
+  );
+}
+
+/**
+ * The invoice list.
+ *
+ * Extracted so the deposit gate above can render exactly this and nothing
+ * else. Inline, the locked state would have had to duplicate every row, the
+ * currency formatting and the embedded payment panel — three places to fix a
+ * bug in the one part of the portal that handles money.
+ */
+function Invoices({
+  invoices,
+  paying,
+  setPaying,
+}: {
+  invoices: {
+    _id: string;
+    reference: string;
+    description: string;
+    amount: number;
+    currency: string;
+    status: string;
+    stage: string;
+    token: string;
+  }[];
+  paying: string | null;
+  setPaying: React.Dispatch<React.SetStateAction<string | null>>;
+}) {
+  return (
+        <section aria-labelledby="invoices-heading">
           <h2 id="invoices-heading" className="text-lg">
             Invoices
           </h2>
@@ -236,7 +311,7 @@ function PortalContent() {
                       setPaying((cur) => (cur === inv._id ? null : inv._id))
                     }
                     aria-expanded={paying === inv._id}
-                    className="shrink-0 rounded-full bg-[color:var(--accent-solid)] px-4 py-2 text-xs font-medium text-white transition-opacity duration-fast hover:opacity-90"
+                    className="shrink-0 rounded-full bg-[color:var(--accent-solid)] px-4 py-2 text-xs font-medium text-white transition-opacity duration-hover ease-hover hover:opacity-90"
                   >
                     {paying === inv._id ? "Close" : "Pay"}
                   </button>
@@ -256,8 +331,6 @@ function PortalContent() {
             ))}
           </ul>
         </section>
-      ) : null}
-    </Shell>
   );
 }
 
@@ -432,11 +505,45 @@ type Pending = { id: number; body: string };
 
 function Messages({ projectId }: { projectId: Id<"clientProjects"> }) {
   const messages = useQuery(api.portal.messages, { projectId });
+  const typing = useQuery(api.portal.typingState, { projectId });
   const post = useMutation(api.portal.postMessage);
+  const markSeen = useMutation(api.portal.markThreadSeen);
+  const setTyping = useMutation(api.portal.setTyping);
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState<Pending[]>([]);
   const pendingId = useRef(0);
   const reduceMotion = useReducedMotion();
+
+  /*
+   * Stamp delivered/read whenever the thread is on screen and something new
+   * arrives. Depends on the message COUNT rather than the array, because the
+   * array is a fresh object on every reactive tick and would loop forever.
+   */
+  const count = messages?.length ?? 0;
+  useEffect(() => {
+    if (count === 0) return;
+    void markSeen({ projectId });
+  }, [count, projectId, markSeen]);
+
+  /*
+   * Typing presence, throttled to one write per TTL rather than one per
+   * keystroke. A mutation per character would be hundreds of writes to send a
+   * sentence, for an indicator whose whole job is to be approximate.
+   */
+  const lastTypingPing = useRef(0);
+  const onDraftChange = (value: string) => {
+    setDraft(value);
+    const now = Date.now();
+    if (value.trim() === "") {
+      lastTypingPing.current = 0;
+      void setTyping({ projectId, typing: false });
+      return;
+    }
+    if (now - lastTypingPing.current > 3000) {
+      lastTypingPing.current = now;
+      void setTyping({ projectId, typing: true });
+    }
+  };
 
   return (
     <section aria-labelledby="messages-heading">
@@ -448,8 +555,16 @@ function Messages({ projectId }: { projectId: Id<"clientProjects"> }) {
       </p>
 
       <ul className="mt-4 space-y-3">
-        {(messages ?? []).map((m) => {
+        {(messages ?? []).map((m, index) => {
           const mine = m.authorType === "client";
+          // Only the newest of my own messages carries a receipt. Stamping
+          // every bubble turns a status into wallpaper — what you want to know
+          // is whether the last thing you said landed.
+          const isLastMine =
+            mine &&
+            !(messages ?? [])
+              .slice(index + 1)
+              .some((later) => later.authorType === "client");
           return (
             <motion.li
               key={m._id}
@@ -482,6 +597,15 @@ function Messages({ projectId }: { projectId: Id<"clientProjects"> }) {
               <p className="mt-1 text-sm whitespace-pre-wrap text-primary">
                 {m.body}
               </p>
+              <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted">
+                <time dateTime={new Date(m.createdAt).toISOString()}>
+                  {new Date(m.createdAt).toLocaleTimeString("en-GB", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </time>
+                {isLastMine ? <Receipt message={m} /> : null}
+              </p>
             </motion.li>
           );
         })}
@@ -503,6 +627,14 @@ function Messages({ projectId }: { projectId: Id<"clientProjects"> }) {
             </p>
           </li>
         ))}
+
+        {/* Their end of the conversation, live. Sits in the list rather than
+            above the composer so it appears where the next message will. */}
+        {typing?.otherSideTyping ? (
+          <li className="hairline w-fit rounded-2xl bg-surface-1 px-4 py-2.5">
+            <TypingBubbles label="Yusuf is typing" />
+          </li>
+        ) : null}
       </ul>
 
       <form
@@ -512,12 +644,39 @@ function Messages({ projectId }: { projectId: Id<"clientProjects"> }) {
           const body = draft.trim();
           if (!body) return;
           setDraft("");
+          // Clear presence immediately on send: the message itself is the
+          // signal now, and leaving "typing…" up for the remaining TTL reads
+          // as a second message that never arrives.
+          lastTypingPing.current = 0;
+          void setTyping({ projectId, typing: false });
 
+          /*
+           * The sending bubble stays up for a minimum beat.
+           *
+           * Convex mutations round-trip in roughly 50ms on a decent
+           * connection, so the three-dot indicator was being mounted and
+           * unmounted inside a single frame or two — the animation existed and
+           * was never once seen. That reads as "nothing happened when I
+           * pressed send", which is the exact anxiety the indicator is there
+           * to remove.
+           *
+           * 420ms is long enough for the dots to complete most of one wave and
+           * short enough that it never feels like waiting. It is a FLOOR, not
+           * a delay: a genuinely slow send holds the bubble for as long as it
+           * actually takes, because Promise.all resolves on the slower of the
+           * two.
+           */
           const id = pendingId.current++;
           setPending((current) => [...current, { id, body }]);
-          void post({ projectId, body }).finally(() => {
-            setPending((current) => current.filter((p) => p.id !== id));
-          });
+
+          const minimumVisible = new Promise((resolve) =>
+            setTimeout(resolve, 420),
+          );
+          void Promise.all([post({ projectId, body }), minimumVisible]).finally(
+            () => {
+              setPending((current) => current.filter((p) => p.id !== id));
+            },
+          );
         }}
         className="mt-4 flex gap-2"
       >
@@ -527,7 +686,7 @@ function Messages({ projectId }: { projectId: Id<"clientProjects"> }) {
         <input
           id="portal-msg"
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => onDraftChange(e.target.value)}
           placeholder="Ask something…"
           className="hairline min-w-0 flex-1 rounded-full bg-surface-1 px-4 py-2.5 text-sm text-primary placeholder:text-secondary"
         />
@@ -549,5 +708,37 @@ function Shell({ children }: { children: React.ReactNode }) {
       <Logo variant="mark" className="h-7 w-auto" />
       <div className="mt-10">{children}</div>
     </main>
+  );
+}
+
+/**
+ * Sent → Delivered → Read, for the newest outgoing message.
+ *
+ * Words, not tick marks. A single grey tick and a double blue tick are a
+ * convention people have learned from one specific app; outside it they are a
+ * guess. This is a client waiting on a reply about their own project, and
+ * three characters of plain English cost nothing.
+ *
+ * Rendered inside the timestamp row, so it reads as metadata about the message
+ * rather than as a second message.
+ */
+function Receipt({
+  message,
+}: {
+  message: { deliveredAt?: number; readAt?: number };
+}) {
+  const label = message.readAt
+    ? "Read"
+    : message.deliveredAt
+      ? "Delivered"
+      : "Sent";
+
+  return (
+    <>
+      <span aria-hidden="true">·</span>
+      <span className={message.readAt ? "text-accent" : undefined}>
+        {label}
+      </span>
+    </>
   );
 }
