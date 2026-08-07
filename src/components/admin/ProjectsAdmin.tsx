@@ -65,7 +65,7 @@ export function ProjectsAdmin() {
         <button
           type="button"
           onClick={() => setEditing("new")}
-          className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+          className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
         >
           New project
         </button>
@@ -217,7 +217,7 @@ function ProjectDrawer({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="text-secondary transition-colors duration-fast hover:text-primary"
+            className="text-secondary transition-colors duration-hover ease-hover hover:text-primary"
           >
             ✕
           </button>
@@ -361,14 +361,14 @@ function ProjectDrawer({
                 setSaving(false);
               }
             }}
-            className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+            className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-40"
           >
             {saving ? "Saving…" : "Save"}
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="text-sm text-secondary transition-colors duration-fast hover:text-primary"
+            className="text-sm text-secondary transition-colors duration-hover ease-hover hover:text-primary"
           >
             Cancel
           </button>

@@ -50,7 +50,7 @@ export function AiConsole() {
             type="button"
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            className={`-mb-px border-b-2 px-4 py-2.5 text-sm transition-colors duration-fast ${
+            className={`-mb-px border-b-2 px-4 py-2.5 text-sm transition-colors duration-hover ease-hover ${
               tab === t.id
                 ? "border-[color:var(--accent)] text-primary"
                 : "border-transparent text-secondary hover:text-primary"
@@ -160,7 +160,7 @@ function Assistant() {
                   key={s}
                   type="button"
                   onClick={() => void send(s)}
-                  className="hairline rounded-full px-3.5 py-2 text-left text-xs text-secondary transition-colors duration-fast hover:text-primary"
+                  className="hairline rounded-full px-3.5 py-2 text-left text-xs text-secondary transition-colors duration-hover ease-hover hover:text-primary"
                 >
                   {s}
                 </button>
@@ -225,7 +225,7 @@ function Assistant() {
         <button
           type="submit"
           disabled={busy || input.trim() === ""}
-          className="shrink-0 rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+          className="shrink-0 rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-40"
         >
           Send
         </button>

@@ -64,7 +64,7 @@ export function TestimonialsAdmin() {
         <button
           type="button"
           onClick={() => setEditing("new")}
-          className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+          className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
         >
           Add testimonial
         </button>

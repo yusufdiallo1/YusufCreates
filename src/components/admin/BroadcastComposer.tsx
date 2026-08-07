@@ -116,9 +116,21 @@ export function BroadcastComposer() {
   const preview = subject || body ? html : "";
 
   const ready = subject.trim() !== "" && body.trim() !== "";
-  // A test send is required before the real one. It is the only way to catch a
-  // broken link or a wrong name before it reaches everyone.
-  const canSend = ready && testState === "sent" && count > 0;
+  /*
+   * The test send is OFFERED, not required.
+   *
+   * It used to gate the real send: `testState === "sent"` had to be true, and
+   * editing any field reset it, so changing one word in the subject meant
+   * mailing yourself again before you could send at all. For a newsletter you
+   * have already sent nineteen times that is friction spent on a mistake you
+   * are not making, and the slide-to-confirm below is already the deliberate
+   * act that stops an accidental send.
+   *
+   * The button is still there and still first in the order, because it is
+   * genuinely the only way to catch a broken link before it reaches everyone.
+   * It is now a recommendation rather than a lock.
+   */
+  const canSend = ready && count > 0;
 
   return (
     <div className="space-y-6">
@@ -153,7 +165,7 @@ export function BroadcastComposer() {
                 role="radio"
                 aria-checked={active}
                 onClick={() => setAudience(a.id)}
-                className={`rounded-xl border p-3 text-left transition-colors duration-fast ${
+                className={`rounded-xl border p-3 text-left transition-colors duration-hover ease-hover ${
                   active
                     ? "border-[color:var(--accent)] bg-surface-2"
                     : "border-[color:var(--border-hairline)] bg-surface-1 hover:bg-surface-2"
@@ -245,7 +257,9 @@ export function BroadcastComposer() {
                   setIncludeButton(Boolean(json.includeButton));
                   setCtaLabel(json.buttonLabel ?? "");
                   setCtaUrl(json.buttonUrl ?? "");
-                  // A fresh draft invalidates the previous test send.
+                  // Reset the button's label so it stops claiming a test was
+                  // sent for copy that has since changed. Nothing is gated on
+                  // this any more — it is only what the button says.
                   setTestState("idle");
                 } catch {
                   setDraftError("Could not reach the drafting service.");
@@ -253,7 +267,7 @@ export function BroadcastComposer() {
                   setDrafting(false);
                 }
               }}
-              className="mt-3 rounded-full bg-[color:var(--accent-solid)] px-4 py-2 text-xs font-medium text-white transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+              className="mt-3 rounded-full bg-[color:var(--accent-solid)] px-4 py-2 text-xs font-medium text-white transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-40"
             >
               {drafting ? "Drafting…" : "Draft with AI"}
             </button>
@@ -310,10 +324,10 @@ export function BroadcastComposer() {
 
           <div className="admin-card space-y-4">
             <div>
-              <p className="text-sm text-primary">1. Send yourself a test</p>
+              <p className="text-sm text-primary">Send yourself a test</p>
               <p className="mt-1 text-xs text-secondary">
-                Required. It is the only way to catch a broken link before it
-                reaches {count} people.
+                Optional, but it is the only way to catch a broken link before
+                it reaches {count} people.
               </p>
               <button
                 type="button"
@@ -340,7 +354,7 @@ export function BroadcastComposer() {
                     setError("The test didn't send. Check the Resend key.");
                   }
                 }}
-                className="hairline mt-3 rounded-full px-4 py-2 text-xs text-primary transition-colors duration-fast hover:bg-surface-2 disabled:opacity-40"
+                className="hairline mt-3 rounded-full px-4 py-2 text-xs text-primary transition-colors duration-hover ease-hover hover:bg-surface-2 disabled:opacity-40"
               >
                 {testState === "sending"
                   ? "Sending…"
@@ -353,11 +367,11 @@ export function BroadcastComposer() {
             <div className="rule" />
 
             <div>
-              <p className="text-sm text-primary">2. Send for real</p>
+              <p className="text-sm text-primary">Send for real</p>
               <p className="mt-1 text-xs text-secondary">
-                {canSend
+                {ready
                   ? "This cannot be recalled."
-                  : "Send a test first — this unlocks once it has gone."}
+                  : "Add a subject and a body first."}
               </p>
               <div className="mt-3 max-w-sm">
                 <SlideToConfirm

@@ -47,7 +47,7 @@ export function ContentAdmin() {
             role="tab"
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            className={`min-h-11 rounded-full px-4 text-sm transition-colors duration-fast ${
+            className={`min-h-11 rounded-full px-4 text-sm transition-colors duration-hover ease-hover ${
               tab === t.id
                 ? "bg-surface-2 text-primary"
                 : "text-secondary hover:text-primary"

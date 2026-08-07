@@ -97,7 +97,7 @@ export function FeedbackAdmin() {
                         onClick={() =>
                           void resolve({ id: item._id, resolved: true })
                         }
-                        className="hairline shrink-0 rounded-full px-3 py-1 text-xs text-primary transition-colors duration-fast hover:bg-surface-2"
+                        className="hairline shrink-0 rounded-full px-3 py-1 text-xs text-primary transition-colors duration-hover ease-hover hover:bg-surface-2"
                       >
                         Resolve
                       </button>
@@ -147,7 +147,7 @@ function SiteFeedbackList() {
                 {row.name}
                 <a
                   href={`mailto:${row.email}`}
-                  className="ml-2 text-xs text-accent transition-opacity duration-fast hover:opacity-80"
+                  className="ml-2 text-xs text-accent transition-opacity duration-hover ease-hover hover:opacity-80"
                 >
                   {row.email}
                 </a>
@@ -173,7 +173,7 @@ function SiteFeedbackList() {
               <button
                 type="button"
                 onClick={() => void markRead({ id: row._id, read: !row.read })}
-                className="hairline ml-auto rounded-full px-3 py-1 text-xs text-primary transition-colors duration-fast hover:bg-surface-2"
+                className="hairline ml-auto rounded-full px-3 py-1 text-xs text-primary transition-colors duration-hover ease-hover hover:bg-surface-2"
               >
                 {row.read ? "Mark unread" : "Mark read"}
               </button>
@@ -226,7 +226,7 @@ function CommentsList() {
                 {row.name}
                 <a
                   href={`mailto:${row.email}`}
-                  className="ml-2 text-xs text-accent transition-opacity duration-fast hover:opacity-80"
+                  className="ml-2 text-xs text-accent transition-opacity duration-hover ease-hover hover:opacity-80"
                 >
                   {row.email}
                 </a>
@@ -251,7 +251,7 @@ function CommentsList() {
                 onClick={() =>
                   void approve({ id: row._id, approved: !row.approved })
                 }
-                className="hairline ml-auto rounded-full px-3 py-1 text-xs text-primary transition-colors duration-fast hover:bg-surface-2"
+                className="hairline ml-auto rounded-full px-3 py-1 text-xs text-primary transition-colors duration-hover ease-hover hover:bg-surface-2"
               >
                 {row.approved ? "Unpublish" : "Publish"}
               </button>

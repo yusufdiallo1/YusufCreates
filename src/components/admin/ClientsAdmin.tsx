@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
 import { PageHeader } from "@/components/admin/PageHeader";
@@ -8,6 +8,8 @@ import { Field, TextArea } from "@/components/admin/shared/Fields";
 import { Empty, Skeleton } from "@/components/admin/ProjectsAdmin";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { ProjectPanel } from "@/components/admin/ProjectPanel";
+import { RequestsInbox } from "@/components/admin/RequestsInbox";
+import { LeadsTable } from "@/components/admin/LeadsTable";
 import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
 import type { Id } from "@convex/_generated/dataModel";
 
@@ -53,24 +55,33 @@ export function ClientsAdmin() {
     <div className="space-y-6">
       <PageHeader
         title="Clients"
-        description="Each client gets a project, a portal link and a direct chat."
+        description="Requests come in here. Accepting one turns it into a client with a project, a portal link and a direct chat."
         action={
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+            className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
           >
             Add client
           </button>
         }
       />
 
+      {/* Above the client list, because it is the thing with a clock on it.
+          A request sitting undecided is costing a reply; an existing client
+          is not going anywhere. */}
+      <RequestsInbox />
+
+      <div className="hairline-t pt-6">
+        <h2 className="text-lg">Clients</h2>
+      </div>
+
       {clients === undefined ? (
         <Skeleton />
       ) : clients.length === 0 ? (
         <Empty
           title="No clients yet"
-          body="Adding one creates their project and a portal link you can send straight over."
+          body="Accept a request above, or add someone by hand."
         />
       ) : (
         <ul className="space-y-3">
@@ -108,7 +119,7 @@ export function ClientsAdmin() {
                   <button
                     type="button"
                     onClick={() => setRemoving(client._id)}
-                    className="text-xs text-secondary transition-colors duration-fast hover:text-[color:var(--text-notice)]"
+                    className="text-xs text-secondary transition-colors duration-hover ease-hover hover:text-[color:var(--text-notice)]"
                   >
                     Remove
                   </button>
@@ -140,7 +151,7 @@ export function ClientsAdmin() {
                             name: project.name,
                           })
                         }
-                        className="hairline shrink-0 rounded-full px-3 py-1 text-xs text-primary transition-colors duration-fast hover:bg-surface-2"
+                        className="hairline shrink-0 rounded-full px-3 py-1 text-xs text-primary transition-colors duration-hover ease-hover hover:bg-surface-2"
                       >
                         Manage
                       </button>
@@ -213,6 +224,28 @@ export function ClientsAdmin() {
           }}
         />
       ) : null}
+
+      {/*
+        The full archive, below the two live sections.
+
+        The Leads screen was merged into this page, and the searchable history
+        came with it rather than being dropped. Everything ever submitted is
+        here — declined, won, and undecided — with the search and filters the
+        inbox above deliberately does not have, because an inbox you have to
+        search is an inbox you are not clearing.
+
+        Suspense because LeadsTable reads useSearchParams: the selected lead
+        lives in the URL so it survives a refresh and can be linked to.
+      */}
+      <div className="hairline-t space-y-4 pt-6">
+        <Suspense
+          fallback={
+            <p className="text-sm text-secondary">Loading the archive…</p>
+          }
+        >
+          <LeadsTable />
+        </Suspense>
+      </div>
     </div>
   );
 }
@@ -453,7 +486,7 @@ function RemoveClientDialog({
         <button
           type="button"
           onClick={onClose}
-          className="mt-4 w-full text-center text-sm text-secondary transition-colors duration-fast hover:text-primary"
+          className="mt-4 w-full text-center text-sm text-secondary transition-colors duration-hover ease-hover hover:text-primary"
         >
           Cancel
         </button>

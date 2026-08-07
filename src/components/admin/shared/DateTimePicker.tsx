@@ -211,7 +211,7 @@ export function DateTimePicker({
                 onClick={() =>
                   setView(new Date(view.getFullYear(), view.getMonth() - 1, 1))
                 }
-                className="rounded-md px-2 py-1 text-secondary transition-colors duration-fast hover:text-primary"
+                className="rounded-md px-2 py-1 text-secondary transition-colors duration-hover ease-hover hover:text-primary"
               >
                 ‹
               </button>
@@ -224,7 +224,7 @@ export function DateTimePicker({
                 onClick={() =>
                   setView(new Date(view.getFullYear(), view.getMonth() + 1, 1))
                 }
-                className="rounded-md px-2 py-1 text-secondary transition-colors duration-fast hover:text-primary"
+                className="rounded-md px-2 py-1 text-secondary transition-colors duration-hover ease-hover hover:text-primary"
               >
                 ›
               </button>
@@ -251,7 +251,7 @@ export function DateTimePicker({
                     onClick={() => setDay(day)}
                     aria-pressed={selected ? sameDay(day, selected) : false}
                     aria-label={day.toDateString()}
-                    className={`rounded-md py-1.5 text-center text-xs transition-colors duration-fast ${
+                    className={`rounded-md py-1.5 text-center text-xs transition-colors duration-hover ease-hover ${
                       selected && sameDay(day, selected)
                         ? "bg-[color:var(--accent-solid)] text-white"
                         : sameDay(day, today)
@@ -321,7 +321,7 @@ export function DateTimePicker({
                   setView(now);
                   commit(now);
                 }}
-                className="ml-auto text-xs text-accent transition-colors duration-fast hover:text-primary"
+                className="ml-auto text-xs text-accent transition-colors duration-hover ease-hover hover:text-primary"
               >
                 Now
               </button>

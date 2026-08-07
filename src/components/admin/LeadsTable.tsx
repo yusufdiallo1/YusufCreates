@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
-import { ScoreBadge } from "@/components/admin/ScoreBadge";
+import { BANDS, ScoreBadge, type Band } from "@/components/admin/ScoreBadge";
 import { LeadDrawer } from "@/components/admin/LeadDrawer";
 import { MiniSlide } from "@/components/ui/MiniSlide";
 import type { Doc } from "@convex/_generated/dataModel";
-import { ADMIN_PATH } from "@/lib/constants";
 
 /**
  * Leads table.
@@ -29,11 +28,22 @@ const STATUSES = [
 ] as const;
 
 type Status = (typeof STATUSES)[number];
-type Band = "hot" | "warm" | "cold";
 
 export function LeadsTable() {
   const router = useRouter();
   const params = useSearchParams();
+  /*
+   * The CURRENT path, not a hardcoded one.
+   *
+   * This wrote to `${ADMIN_PATH}/leads` when selecting a lead. That route is
+   * now a redirect to Clients, where this table actually lives — so opening a
+   * lead navigated to /leads, bounced to /clients, and dropped the ?id on the
+   * way. The drawer never opened.
+   *
+   * Reading the pathname means the table works wherever it is mounted and
+   * cannot go stale if it moves again.
+   */
+  const pathname = usePathname();
   const selectedId = params.get("id");
 
   const [status, setStatus] = useState<Status | "">("");
@@ -53,7 +63,7 @@ export function LeadsTable() {
     const next = new URLSearchParams(params.toString());
     if (id) next.set("id", id);
     else next.delete("id");
-    router.replace(`${ADMIN_PATH}/leads?${next.toString()}`, { scroll: false });
+    router.replace(`${pathname}?${next.toString()}`, { scroll: false });
   };
 
   return (
@@ -86,11 +96,16 @@ export function LeadsTable() {
           onChange={(v) => setStatus(v as Status | "")}
           options={STATUSES}
         />
+        {/* "Readiness", not "Temperature" — and the options read as sentences
+            rather than as the three words the scorer happens to use
+            internally. The stored values are unchanged, so existing filters
+            and links keep working. */}
         <Filter
-          label="Temperature"
+          label="Readiness"
           value={band}
           onChange={(v) => setBand(v as Band | "")}
           options={["hot", "warm", "cold"] as const}
+          labelFor={(v) => BANDS[v as Band].label}
         />
       </div>
 
@@ -111,7 +126,7 @@ export function LeadsTable() {
               <tr className="border-b border-[color:var(--border-hairline)] text-left">
                 <Th>Name</Th>
                 <Th>Project</Th>
-                <Th>Score</Th>
+                <Th>Readiness</Th>
                 <Th>Status</Th>
                 <Th>When</Th>
                 <Th>
@@ -124,21 +139,21 @@ export function LeadsTable() {
                 <tr
                   key={lead._id}
                   onClick={() => select(lead._id)}
-                  className="cursor-pointer border-b border-[color:var(--border-hairline)] transition-colors duration-fast hover:bg-surface-1"
+                  className="cursor-pointer border-b border-[color:var(--border-hairline)] transition-colors duration-hover ease-hover hover:bg-surface-1"
                 >
-                  <td className="py-3 pr-4">
+                  <td className="row-cell pr-4">
                     <div className="text-primary">{lead.name || "—"}</div>
                     <div className="text-xs text-secondary">
                       {lead.company || lead.email}
                     </div>
                   </td>
-                  <td className="py-3 pr-4 text-secondary">
+                  <td className="row-cell pr-4 text-secondary">
                     {lead.projectType ?? "—"}
                   </td>
-                  <td className="py-3 pr-4">
+                  <td className="row-cell pr-4">
                     <ScoreBadge score={lead.score ?? 0} />
                   </td>
-                  <td className="py-3 pr-4">
+                  <td className="row-cell pr-4">
                     {/* Inline status change: the most common edit by far, and
                         making it require opening the drawer would be busywork.
                         stopPropagation so changing it does not also open the
@@ -163,7 +178,7 @@ export function LeadsTable() {
                       ))}
                     </select>
                   </td>
-                  <td className="py-3 pr-4 text-xs text-secondary whitespace-nowrap">
+                  <td className="row-cell pr-4 text-xs text-secondary whitespace-nowrap">
                     {relative(lead._creationTime)}
                   </td>
                   {/* On the row, not behind the drawer. Deleting a lead was
@@ -171,7 +186,7 @@ export function LeadsTable() {
                       slide is the confirmation — a click that can land by
                       accident is the wrong gesture for something permanent. */}
                   <td
-                    className="py-3"
+                    className="row-cell"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="w-[11.5rem]">
@@ -213,11 +228,14 @@ function Filter({
   value,
   onChange,
   options,
+  labelFor,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   options: readonly string[];
+  /** Maps a stored value to what the reader sees. Defaults to the value. */
+  labelFor?: (value: string) => string;
 }) {
   const id = `filter-${label.toLowerCase()}`;
   return (
@@ -234,7 +252,7 @@ function Filter({
         <option value="">All {label.toLowerCase()}</option>
         {options.map((o) => (
           <option key={o} value={o}>
-            {o}
+            {labelFor ? labelFor(o) : o}
           </option>
         ))}
       </select>

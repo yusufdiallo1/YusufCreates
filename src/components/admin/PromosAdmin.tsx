@@ -38,7 +38,7 @@ export function PromosAdmin() {
           <button
             type="button"
             onClick={() => setCreating(true)}
-            className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+            className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
           >
             New promotion
           </button>
@@ -102,7 +102,7 @@ export function PromosAdmin() {
                     onClick={() =>
                       setExpanded(expanded === promo._id ? null : promo._id)
                     }
-                    className="text-xs text-secondary transition-colors duration-fast hover:text-primary"
+                    className="text-xs text-secondary transition-colors duration-hover ease-hover hover:text-primary"
                   >
                     {expanded === promo._id ? "Hide" : "Redemptions"}
                   </button>
@@ -138,7 +138,7 @@ export function PromosAdmin() {
                 <button
                   type="button"
                   onClick={() => void archive({ id: promo._id })}
-                  className="text-xs text-secondary transition-colors duration-fast hover:text-[color:var(--text-notice)]"
+                  className="text-xs text-secondary transition-colors duration-hover ease-hover hover:text-[color:var(--text-notice)]"
                 >
                   {promo.redemptionCount > 0
                     ? "Archive (redemption history is kept)"

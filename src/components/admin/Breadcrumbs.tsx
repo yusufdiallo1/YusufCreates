@@ -80,7 +80,7 @@ export function Breadcrumbs() {
               ) : (
                 <Link
                   href={href}
-                  className="transition-colors duration-fast hover:text-primary"
+                  className="transition-colors duration-hover ease-hover hover:text-primary"
                 >
                   {labelFor(segment)}
                 </Link>
