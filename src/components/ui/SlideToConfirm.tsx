@@ -347,8 +347,30 @@ export function SlideToConfirm({
     if (!signals.current.start) signals.current.start = Date.now();
   };
 
+  /*
+   * The re-entrancy latch, and it has to be a ref.
+   *
+   * complete() is called from onDrag, which fires on every pointermove — tens
+   * of times per second. `busy` and `done` are React state, so they do not
+   * change until the next render, which is far too late: every one of those
+   * calls read `busy === false` and ran onConfirm again. A single drag to the
+   * end fired the action SEVENTEEN times.
+   *
+   * What that looked like from the outside was "delete is broken". The first
+   * call deleted the record and the following sixteen threw because it was
+   * already gone, so the control rolled back and showed its failure message
+   * over an action that had in fact succeeded.
+   *
+   * A ref mutates synchronously, so the second call in the same frame sees it.
+   * On success it is deliberately never released — a completed control must
+   * not be able to fire again. Only a failure reopens it, so a retry is still
+   * possible.
+   */
+  const running = useRef(false);
+
   const complete = useCallback(async () => {
-    if (done || busy || disabled) return;
+    if (running.current || done || busy || disabled) return;
+    running.current = true;
     setBusy(true);
     animate(x, maxX, { duration: 0.2, ease: EASE });
     const s = signals.current;
@@ -365,6 +387,7 @@ export function SlideToConfirm({
       }
     } catch {
       animate(x, 0, { duration: 0.42, ease: EASE });
+      running.current = false;
     } finally {
       setBusy(false);
     }
