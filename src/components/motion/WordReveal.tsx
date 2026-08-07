@@ -70,8 +70,18 @@ export function WordReveal({
     offset: ["start 0.85", "start 0.35"],
   });
 
-  // Below full, the paragraph is simply a paragraph.
-  if (tier !== "full") {
+  /*
+   * Only `minimal` opts out now.
+   *
+   * This used to bail below `full`, which meant most of the site's emphasis
+   * disappeared on any device that scored `reduced` — and `reduced` is the
+   * default until the capability probe finishes, so it was also the state on
+   * first paint. The work here is one opacity transform per word driven by a
+   * scroll MotionValue: no blur, no filter, no layout, nothing that costs a
+   * compositor pass. That is affordable at `reduced`; it is only at `minimal`,
+   * where we are trying not to run scroll listeners at all, that it is not.
+   */
+  if (tier === "minimal") {
     return <Tag className={className}>{children}</Tag>;
   }
 

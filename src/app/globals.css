@@ -305,6 +305,25 @@
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 
+  /* Hover -------------------------------------------------------------------
+     THE CURVE, NOT THE DURATION, IS WHY HOVERS FELT WRONG.
+
+     Everything hover-related used --ease-out-expo. Expo-out is violently
+     front-loaded: it covers about 90% of the distance in the first third of
+     the time and then crawls the rest. Over 800ms that reads as luxurious and
+     slow. Shortened to 200ms to fix the slowness, the same curve becomes a
+     SNAP followed by a drift too small to see — which is what "not smooth"
+     actually is. Cutting the duration made it worse, not better.
+
+     easeOutCubic is the right shape for a 200ms interaction: it starts
+     immediately, decelerates evenly, and arrives. Nothing about it is
+     dramatic, which is the point — a hover is feedback, not an event.
+
+     --dur-hover is separate from --dur-fast so tuning the feel of hovers never
+     silently retimes a toast, a focus ring or a dropdown. */
+  --ease-hover: cubic-bezier(0.33, 1, 0.68, 1);
+  --dur-hover: 0.22s;
+
   /* Focus ------------------------------------------------------------------- */
   --focus-ring-width: 2px;
   --focus-ring-offset: 2px;
@@ -483,12 +502,18 @@
   --animate-duration-slow: var(--dur-slow);
   --ease-out-expo: var(--ease-out-expo);
   --ease-in-out-quint: var(--ease-in-out);
+  --ease-hover: var(--ease-hover);
 }
 
 /* Tailwind v4 derives duration-* from its own scale, so register the motion
    durations as first-class utilities. */
 @utility duration-fast {
   transition-duration: var(--dur-fast);
+}
+
+/* The hover timing, as one utility. Pairs with ease-hover. */
+@utility duration-hover {
+  transition-duration: var(--dur-hover);
 }
 @utility duration-base {
   transition-duration: var(--dur-base);
@@ -531,9 +556,26 @@
     overflow: hidden;
   }
 
-  /* Touch is native (syncTouch is off), so pointer events must reach the
-     document — Lenis's default would swallow them. */
-  .lenis.lenis-smooth iframe {
+  /* Iframes stay INTERACTIVE. This is opt-in, not blanket.
+
+     This used to be `.lenis.lenis-smooth iframe { pointer-events: none }` —
+     every iframe on every marketing route, unconditionally, for as long as
+     smooth scroll was active. The intent was scroll passthrough: a wheel event
+     over an iframe does not reach the parent document, so the page stops
+     scrolling while the pointer is over one.
+
+     The cost was far worse than the problem. On this site the iframes are
+     Stripe's hosted card fields, the Turnstile challenge, and embedded
+     YouTube/Vimeo players. All of them were completely unclickable on any page
+     Lenis was running — which is every marketing page, including the one
+     asking for a card number. Nothing about that failure announces itself:
+     the field simply does not focus.
+
+     So the default is now correct-for-interaction, and anything genuinely
+     decorative — a background embed nobody needs to click — opts INTO the old
+     behaviour by wrapping itself in [data-lenis-block]. Trading a scroll
+     stutter over a video for a payment form that works is not a close call. */
+  .lenis.lenis-smooth [data-lenis-block] iframe {
     pointer-events: none;
   }
 
@@ -737,12 +779,14 @@
      0.82 measures 7.1:1 at rest and still leaves a visible step up to 1 on
      hover, so the affordance survives without the text ever being unreadable.
 
-     Slow easing rather than --dur-fast: this is an ambient response to the
-     pointer drifting over a list, not a button acknowledging a click. */
+     --dur-fast, not --dur-slow. An 800ms fade was chosen as "ambient", but a
+     response that arrives a full second after the pointer does not read as
+     calm — it reads as lag, and on a list you sweep across it never finishes
+     before you have moved on. Confident interfaces answer immediately. */
   .skill-row-use {
     color: var(--text-secondary);
     opacity: 0.82;
-    transition: opacity var(--dur-slow) var(--ease-out-expo);
+    transition: opacity var(--dur-fast) var(--ease-out-expo);
   }
 
   .skill-row:hover .skill-row-use,
@@ -796,60 +840,53 @@
 
      Brightness above 1: without it the panel darkens what is behind it and the
      pill reads as a shadow. Real glass brightens. */
-  .nav-pill {
-    /* Driven by the glass slider like every other surface, rather than the
-       fixed 84%/32px it carried before — a control over "the material the
-       interface is made of" that the most prominent piece of glass on the page
-       ignores is not a control over the material.
+  /* Nav pill — invisible at the top of the page, glass once you scroll.
 
-       The floor keeps the guarantee above intact: even at frost 0, where
-       --glass-alpha is 0.10, the pill never drops below 78% fill, because THIS
-       surface has type sitting directly on it and passing content directly
-       under it. Everything else may go fully clear; the nav may not. */
-    background-color: color-mix(
-      in srgb,
-      var(--bg-surface-1) max(78%, calc(var(--glass-alpha) * 100%)),
-      transparent
-    );
-    border: 1px solid var(--separator);
-    -webkit-backdrop-filter: blur(max(16px, var(--glass-blur))) saturate(180%)
-      brightness(1.25);
-    backdrop-filter: blur(max(16px, var(--glass-blur))) saturate(180%)
-      brightness(1.25);
-    box-shadow:
-      0 1px 0 0 rgba(255, 255, 255, 0.07) inset,
-      0 4px 24px -8px rgba(0, 0, 0, 0.5);
+     RESTORED to the original behaviour. It was briefly made opaque at rest, on
+     the reasoning that content passing underneath had to stay unreadable. That
+     is true while scrolling, which is exactly when the condensed state applies
+     — but at the top of a page there is nothing behind the pill to obscure, so
+     a solid bar there just draws a lozenge across the hero for no reason.
+
+     Sitting on nothing at rest, and becoming a material only when it has
+     something to sit on, is the quieter and more considered behaviour. */
+  .nav-pill {
+    background-color: transparent;
+    border: 1px solid transparent;
     transition:
       background-color var(--dur-base) var(--ease-out-expo),
       border-color var(--dur-base) var(--ease-out-expo),
       box-shadow var(--dur-base) var(--ease-out-expo);
   }
 
-  /* Scrolled: a touch denser and a deeper shadow, so the pill lifts off the
-     page. Still glass — the fill only moves 84% → 90%. */
+  /* Scrolled: properly frosted.
+
+     The structure was already right — nothing at the very top, glass once you
+     move — but at blur(12px) the "glass" was barely doing anything, so it read
+     as a slightly grey bar rather than as a material. 24px of blur with the
+     saturation and brightness lift is what makes it look like a pane with the
+     page behind it, and 76% fill keeps text passing underneath from resolving
+     into readable words. */
   .nav-pill-condensed {
-    background-color: color-mix(
-      in srgb,
-      var(--bg-surface-1) max(88%, calc(var(--glass-alpha) * 100%)),
-      transparent
-    );
-    border-color: var(--separator);
+    background-color: color-mix(in srgb, var(--bg-surface-1) 76%, transparent);
+    border-color: var(--border-glass);
+    -webkit-backdrop-filter: blur(24px) saturate(180%) brightness(1.15);
+    backdrop-filter: blur(24px) saturate(180%) brightness(1.15);
     box-shadow:
-      0 1px 0 0 rgba(255, 255, 255, 0.09) inset,
-      0 10px 36px -10px rgba(0, 0, 0, 0.75);
+      0 1px 0 0 rgba(255, 255, 255, 0.06) inset,
+      0 8px 28px -12px rgba(0, 0, 0, 0.6);
   }
 
-  /* No backdrop-filter support: go fully solid rather than leaving 16%
-     bleeding through with nothing blurring it. */
+  /* No backdrop-filter support: the fill alone cannot carry it at 72%, so the
+     condensed state goes solid. The resting state stays transparent — there is
+     nothing behind it to hide. */
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .nav-pill,
     .nav-pill-condensed {
       background-color: var(--bg-surface-1);
     }
   }
 
   @media (prefers-reduced-transparency: reduce) {
-    .nav-pill,
     .nav-pill-condensed {
       background-color: var(--bg-surface-1);
       -webkit-backdrop-filter: none;
@@ -1618,7 +1655,18 @@
      --brand is set inline per mark by TechLogo, and is absent when the brand
      ships no hex, in which case the mark simply keeps currentColor. */
   .tech-logo {
-    transition: color var(--dur-fast) var(--ease-out-expo);
+    transition: color var(--dur-hover) var(--ease-hover);
+  }
+
+  /* Always brand-coloured, no hover required.
+
+     The hover-to-reveal behaviour below is right for the Skills LIST, where
+     twenty static marks in twenty palettes beside body text would be a ransom
+     note. It is wrong for the ticker: that row is already moving, the marks
+     are the whole point of it, and a colour you have to chase a moving target
+     to see is a colour nobody ever sees. */
+  .tech-logo-always {
+    color: var(--brand, currentColor);
   }
 
   /* Pointer devices only. :hover on a touchscreen sticks after a tap and
