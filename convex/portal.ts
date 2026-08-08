@@ -199,6 +199,61 @@ export const invoices = query({
 /* --------------------------------------------------------------- admin --- */
 
 /** Clients with their projects, so the admin list is one round trip. */
+/**
+ * The caller's own signed contracts. Permanent.
+ *
+ * Contracts are scoped to the CLIENT, not to a project, because one is signed
+ * before any project exists — deliverables could not host them. No id is taken
+ * from the request: the client is resolved from the session and by_client does
+ * the rest, so there is nothing in the URL to tamper with.
+ *
+ * The storage id is deliberately NOT returned. It would be a permanent bearer
+ * credential in the browser; the PDF is fetched through a route that checks
+ * the session every time.
+ */
+export const contracts = query({
+  args: {},
+  handler: async (ctx) => {
+    const client = await requireClient(ctx);
+
+    const rows = await ctx.db
+      .query("contracts")
+      .withIndex("by_client", (q) => q.eq("clientId", client._id))
+      .collect();
+
+    return rows
+      .filter((row) => row.signedAt && !row.voidedAt)
+      .sort((a, b) => (b.signedAt ?? 0) - (a.signedAt ?? 0))
+      .map((row) => ({
+        _id: row._id,
+        signedAt: row.signedAt,
+        clientName: row.clientName,
+        amount: row.amount,
+        currency: row.currency,
+        templateVersion: row.templateVersion,
+        hasPdf: Boolean(row.signedPdfFileId),
+      }));
+  },
+});
+
+/** Ownership check for the portal's PDF route. Same rule: no id is trusted. */
+export const mayReadContract = query({
+  args: { id: v.id("contracts") },
+  handler: async (ctx, args) => {
+    const client = await requireClient(ctx);
+    const contract = await ctx.db.get(args.id);
+    // Same answer for "not yours" and "does not exist".
+    if (!contract || contract.clientId !== client._id) return null;
+    if (!contract.signedPdfFileId || contract.voidedAt) return null;
+
+    return {
+      storageId: contract.signedPdfFileId,
+      clientName: contract.clientName,
+      signedAt: contract.signedAt,
+    };
+  },
+});
+
 export const listClients = query({
   args: {},
   handler: async (ctx) => {
@@ -254,6 +309,25 @@ export const createClient = mutation({
         name: args.name,
         company: args.company,
       });
+    }
+
+    /*
+     * Adopt any contracts this person already signed.
+     *
+     * A contract is almost always signed BEFORE the portal account exists —
+     * signing is what starts the engagement, and the account is created after.
+     * So contracts.clientId is left unset at signature when there is nobody to
+     * point at, and claimed here. Without this the signed contract would sit
+     * in the admin, invisible to the one person entitled to a permanent copy.
+     */
+    const unclaimed = await ctx.db
+      .query("contracts")
+      .withIndex("by_client", (q) => q.eq("clientId", undefined))
+      .collect();
+    for (const contract of unclaimed) {
+      if (contract.clientEmail.toLowerCase() === email) {
+        await ctx.db.patch(contract._id, { clientId });
+      }
     }
 
     const projectId = await ctx.db.insert("clientProjects", {

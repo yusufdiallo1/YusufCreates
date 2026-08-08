@@ -112,7 +112,8 @@ export function CommandPalette() {
       { id: "nav:invoices", label: "Proposals and invoices", group: "Go to", keywords: "money billing vat", run: () => go(`${ADMIN_PATH}/invoices`) },
       { id: "nav:promos", label: "Promotions", group: "Go to", keywords: "discount code sale offer", run: () => go(`${ADMIN_PATH}/promos`) },
       { id: "nav:clients", label: "Clients", group: "Go to", keywords: "portal access", run: () => go(`${ADMIN_PATH}/clients`) },
-      { id: "nav:proposals", label: "Proposals", group: "Go to", keywords: "quote scope contract", run: () => go(`${ADMIN_PATH}/proposals`) },
+      { id: "nav:proposals", label: "Proposals", group: "Go to", keywords: "quote scope", run: () => go(`${ADMIN_PATH}/proposals`) },
+      { id: "nav:contracts", label: "Contracts", group: "Go to", keywords: "sign signature agreement terms audit", run: () => go(`${ADMIN_PATH}/contracts`) },
       { id: "nav:settings", label: "Settings", group: "Go to", keywords: "profile availability config", run: () => go(`${ADMIN_PATH}/settings`) },
     ];
 

@@ -8,6 +8,11 @@ import { BuildOverdue } from "@emails/BuildOverdue";
 import { DepositReminder } from "@emails/DepositReminder";
 import { RequestExpired } from "@emails/RequestExpired";
 import { AdminAlert } from "@emails/AdminAlert";
+import { ContractStale } from "@emails/ContractStale";
+import { ContractExpired } from "@emails/ContractExpired";
+import { ContractSigned } from "@emails/ContractSigned";
+import { issueInvoiceToStripe } from "@/lib/issueInvoice";
+import { storeSignedPdf } from "@/lib/contractPdf";
 import { ADMIN_PATH } from "@/lib/constants";
 
 /**
@@ -266,13 +271,153 @@ export async function POST(request: Request) {
     }
   }
 
+  /* ---------------------------------------------------------- contracts --- */
+
+  /*
+   * Three queues, all stamped by convex/contracts.sweepContracts.
+   *
+   * The signed-contract copy is here rather than sent inline at signature
+   * precisely so it never lands between accepting and paying — the client is
+   * on their way to Stripe, and an email in that window is a step.
+   */
+  const contractQueues = await fetchQuery(api.contracts.pendingContractEmails, {
+    secret,
+  });
+
+  for (const row of contractQueues.stale) {
+    const admin = adminEmail();
+    if (!admin) break;
+    const subject = `Read, not signed — ${row.clientName}`;
+    const result = await sendEmail({
+      to: admin,
+      subject,
+      react: ContractStale({
+        clientName: row.clientName,
+        amount: row.amount,
+        currency: row.currency,
+        viewedAt: row.viewedAt,
+        hoursSinceViewed: row.viewedAt
+          ? Math.round((Date.now() - row.viewedAt) / (60 * 60 * 1000))
+          : null,
+        adminUrl: `${siteUrl()}${ADMIN_PATH}/contracts`,
+      }),
+    });
+    await logEmailSend({ to: admin, template: "ContractStale", subject, result });
+    if (result.status === "sent") sent.push(`contract-stale:${row.clientName}`);
+    else failed.push(`contract-stale:${row.clientName}:${result.status}`);
+  }
+
+  for (const row of contractQueues.expired) {
+    if (!row.clientEmail) continue;
+    const subject = "Your contract link has expired";
+    const result = await sendEmail({
+      to: row.clientEmail,
+      subject,
+      react: ContractExpired({ name: row.clientName }),
+    });
+    await logEmailSend({
+      to: row.clientEmail,
+      template: "ContractExpired",
+      subject,
+      result,
+    });
+    if (result.status === "sent") {
+      await fetchMutation(api.contracts.markContractEmailed, {
+        secret,
+        id: row.id,
+        kind: "expired",
+      });
+      sent.push(`contract-expired:${row.clientName}`);
+    } else {
+      failed.push(`contract-expired:${row.clientName}:${result.status}`);
+    }
+  }
+
+  for (const row of contractQueues.signed) {
+    if (!row.clientEmail) continue;
+    const subject = "Your signed contract";
+    const result = await sendEmail({
+      to: row.clientEmail,
+      subject,
+      react: ContractSigned({
+        name: row.clientName,
+        signedAt: row.signedAt ?? Date.now(),
+        bodyHash: row.bodyHash ?? "",
+        portalUrl: `${siteUrl()}/portal`,
+      }),
+    });
+    await logEmailSend({
+      to: row.clientEmail,
+      template: "ContractSigned",
+      subject,
+      result,
+    });
+    if (result.status === "sent") {
+      await fetchMutation(api.contracts.markContractEmailed, {
+        secret,
+        id: row.id,
+        kind: "signed",
+      });
+      sent.push(`contract-signed:${row.clientName}`);
+    } else {
+      failed.push(`contract-signed:${row.clientName}:${result.status}`);
+    }
+  }
+
+  /*
+   * Finish what a signature started but Stripe or the renderer did not.
+   *
+   * A client who signed and never received an invoice is the worst failure
+   * this feature has, because from their side they did everything right.
+   */
+  const retries = await fetchQuery(api.contracts.pendingRetries, { secret });
+  const recovered: string[] = [];
+
+  for (const row of retries) {
+    if (row.needsDeposit && row.depositInvoiceId) {
+      const invoice = await fetchQuery(api.contracts.invoiceForRetry, {
+        secret,
+        id: row.depositInvoiceId,
+      });
+      if (invoice) {
+        const issued = await issueInvoiceToStripe(invoice, secret);
+        if (issued.ok) {
+          await fetchMutation(api.contracts.clearPending, {
+            secret,
+            contractId: row.id,
+            which: "deposit",
+          });
+          recovered.push(`deposit:${row.id}`);
+        } else {
+          failed.push(`contract-deposit:${row.id}:${issued.error}`);
+        }
+      }
+    }
+
+    if (row.needsPdf) {
+      try {
+        await storeSignedPdf(row.id, secret);
+        recovered.push(`pdf:${row.id}`);
+      } catch (err) {
+        failed.push(
+          `contract-pdf:${row.id}:${err instanceof Error ? err.message : "render failed"}`,
+        );
+      }
+    }
+  }
+
   /* ------------------------------------------------------------- digest --- */
 
   // Logged only when something happened. A line every fifteen minutes saying
   // "nothing to report" trains you to scroll past the one that does.
-  if (sent.length > 0 || raised.length > 0 || failed.length > 0) {
+  if (
+    sent.length > 0 ||
+    raised.length > 0 ||
+    recovered.length > 0 ||
+    failed.length > 0
+  ) {
     console.info(
-      `[cron/notify] sent=${sent.length} invoices=${raised.length} failed=${failed.length}`,
+      `[cron/notify] sent=${sent.length} invoices=${raised.length} recovered=${recovered.length} failed=${failed.length}`,
     );
   }
 
@@ -280,6 +425,7 @@ export async function POST(request: Request) {
     ok: true,
     sent: sent.length,
     invoicesRaised: raised.length,
+    contractsRecovered: recovered.length,
     failed,
   });
 }
