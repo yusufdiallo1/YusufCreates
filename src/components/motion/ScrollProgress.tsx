@@ -9,6 +9,13 @@ import { motion, useScroll, useSpring } from "motion/react";
  * scaleX is used rather than width because transform is compositor-only; an
  * animated width would trigger layout on every frame of every scroll.
  *
+ * ⚠ MOUNT THIS ONCE, in the marketing layout. It was previously rendered
+ * there AND in five individual pages, so about, blog, blog/[slug], services
+ * and work each stacked two identical fixed bars — indistinguishable on
+ * screen, and each one running its own useScroll subscription and spring on
+ * every frame of every scroll. The layout already covers every marketing
+ * route, so a page never needs its own.
+ *
  * REDUCED MOTION IS A CSS CONCERN HERE, not a render branch.
  *
  * This used to `return null` under prefers-reduced-motion. useReducedMotion

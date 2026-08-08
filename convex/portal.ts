@@ -2,6 +2,8 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { requireAdmin } from "./lib/auth";
+import { purgeForClient } from "./credentials";
+import { completion } from "./intakeSections";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 
@@ -306,7 +308,36 @@ export const listClients = query({
           .query("clientProjects")
           .withIndex("by_client", (q) => q.eq("clientId", client._id))
           .collect();
-        return { ...client, projects };
+
+        /*
+         * Intake completion joined here rather than fetched per row.
+         *
+         * It belongs on the project line because that is where the decision
+         * is made — "this one has started and I am still missing half the
+         * assets" is only obvious when the two facts sit together.
+         */
+        const withIntake = await Promise.all(
+          projects.map(async (project) => {
+            const intake = await ctx.db
+              .query("intakes")
+              .withIndex("by_project", (q) => q.eq("projectId", project._id))
+              .unique();
+
+            return {
+              ...project,
+              // null means no form has been sent, which is a different state
+              // from 0% and needs a different prompt.
+              intake: intake
+                ? {
+                    ...completion(intake.sections),
+                    complete: Boolean(intake.completedAt),
+                  }
+                : null,
+            };
+          }),
+        );
+
+        return { ...client, projects: withIntake };
       }),
     );
   },
@@ -424,6 +455,17 @@ export const removeClient = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
 
+    /*
+     * Credentials first, and immediately — regardless of any deleteAfter
+     * timer still running on them.
+     *
+     * "The client is gone but I still hold their passwords" is not a state
+     * that should be reachable for even a moment, and a 30-day timer on a
+     * relationship that has already ended is just an expiry date on a
+     * liability nobody is watching.
+     */
+    await purgeForClient(ctx, args.id);
+
     // Cascade, or the projects, milestones and messages become unreachable
     // rows that still hold the client's data.
     const projects = await ctx.db
@@ -439,6 +481,26 @@ export const removeClient = mutation({
           .collect();
         for (const row of rows) await ctx.db.delete(row._id);
       }
+
+      // Intakes and their uploaded files go too. An orphaned intake is still
+      // a live token pointing at a form full of their answers.
+      const intakes = await ctx.db
+        .query("intakes")
+        .withIndex("by_project", (q) => q.eq("projectId", project._id))
+        .collect();
+
+      for (const intake of intakes) {
+        const files = await ctx.db
+          .query("intakeFiles")
+          .withIndex("by_intake", (q) => q.eq("intakeId", intake._id))
+          .collect();
+        for (const file of files) {
+          await ctx.storage.delete(file.storageId);
+          await ctx.db.delete(file._id);
+        }
+        await ctx.db.delete(intake._id);
+      }
+
       await ctx.db.delete(project._id);
     }
 

@@ -5,7 +5,6 @@ import Image from "next/image";
 import { fetchQuery } from "convex/nextjs";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 import { SITE } from "@/lib/constants";
-import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { renderMarkdown } from "@/lib/markdown";
 import { VideoPlayer } from "@/components/ui/VideoPlayer";
@@ -65,7 +64,6 @@ export default async function BlogPostPage({
 
   return (
     <>
-      <ScrollProgress />
 
       <article className="mx-auto max-w-2xl px-6 py-24">
         {/* BlogPosting structured data, so the post can appear as an article

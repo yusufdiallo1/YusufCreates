@@ -93,14 +93,13 @@ export function SkillChip({
           /* noreferrer alongside noopener: noopener alone still leaks the
              referring URL, and these are third-party sites. */
           rel="noopener noreferrer"
-          data-cursor="link"
           aria-label={`${skill.name} — opens in a new tab`}
           className={`${shared} hover:bg-surface-2/60 focus-visible:bg-surface-2/60`}
         >
           {content}
         </a>
       ) : (
-        <div data-cursor="link" className={shared}>
+        <div className={shared}>
           {content}
         </div>
       )}

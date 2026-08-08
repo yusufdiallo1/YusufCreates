@@ -43,8 +43,6 @@ export function Nav() {
   const pathname = usePathname();
   const [condensed, setCondensed] = useState(false);
   const [open, setOpen] = useState(false);
-  /** Which nav item the pointer or focus is on, for the sliding indicator. */
-  const [hovered, setHovered] = useState<string | null>(null);
   // Set when pointerdown has already toggled the menu, so the click that
   // follows on a mouse does not toggle it straight back.
   const pointerHandled = useRef(false);
@@ -108,8 +106,7 @@ export function Nav() {
      * allowed to finish.
      *
      * Driven straight from here rather than through React state: this fires
-     * per scroll event, and a setState per event would re-render a nav that
-     * carries a `layout` animation, which re-measures its box on every render.
+     * per scroll event, and a setState per event would re-render the nav.
      */
     const expand = () => {
       if (reduceMotion) return;
@@ -145,17 +142,6 @@ export function Nav() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, [reduceMotion, overshoot]);
-
-  /*
-   * Which item the indicator rests on when nothing is hovered.
-   *
-   * `startsWith` rather than an exact match, so /blog/some-post still marks
-   * Blog. null on a route that is in none of them — the homepage, /start,
-   * /express — where the indicator correctly shows nothing rather than
-   * defaulting to the first item.
-   */
-  const activeHref =
-    NAV_ITEMS.find((item) => pathname.startsWith(item.href))?.href ?? null;
 
   // Close the overlay on navigation. Adopting the new pathname during render
   // avoids a setState in an effect body, which would cascade an extra render.
@@ -203,146 +189,78 @@ export function Nav() {
         style={{ viewTransitionName: "site-nav" }}
         className="fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-4"
       >
-        {/*
-          The pill MORPHS between its two states rather than resizing.
-
-          `layout`, not two animated numbers. Animating paddingTop and
-          paddingBottom moved the right pixels but told Motion nothing about the
-          box, so the corners and the width snapped between states while the
-          padding eased — the glass appeared to be resized rather than to reflow.
-          With `layout` the whole shape interpolates as one thing, and the
-          padding is a class again, which is where padding belongs.
-
-          `layout` on one node, not `layoutId`: layoutId is for matching two
-          different elements across a mount boundary. There is one pill here and
-          it never unmounts.
-
-          borderRadius in style, and layout="position" on the two groups inside,
-          so Motion applies its inverse-scale correction — without it a layout
-          animation distorts the corners and the type as it interpolates.
-        */}
         <motion.nav
           aria-label="Main"
-          layout={!reduceMotion}
-          style={{ borderRadius: 9999, maxWidth: pillMaxWidth }}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          animate={
+            reduceMotion
+              ? undefined
+              : { paddingTop: condensed ? 8 : 14, paddingBottom: condensed ? 8 : 14 }
+          }
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          /* max-w-3xl as a motion value rather than a class, so the overshoot
+             above has something to drive. PILL_WIDTH is that same 768px. */
+          style={{ maxWidth: pillMaxWidth }}
           className={cn(
             "nav-pill flex w-full items-center justify-between gap-6 rounded-full px-5",
-            condensed ? "nav-pill-condensed py-2" : "py-3.5",
+            condensed && "nav-pill-condensed",
           )}
         >
-          {/* Always returns to the homepage, from any route.
-
-              layout="position" so the wordmark is carried to its new place
-              rather than being scaled with the box — a layout animation fakes
-              the size change with a transform, and without the correction the
-              type squashes for the length of the morph. */}
-          <motion.div layout={reduceMotion ? false : "position"} className="shrink-0">
-            <Link
-              href="/"
-              aria-label="YusufCreates, back to home"
-              onClick={() => setOpen(false)}
-            >
-              <AnimatedLogo className="h-5 w-auto sm:h-6" />
-            </Link>
-          </motion.div>
+          {/* Always returns to the homepage, from any route. */}
+          <Link
+            href="/"
+            aria-label="YusufCreates, back to home"
+            className="shrink-0"
+            onClick={() => setOpen(false)}
+          >
+            <AnimatedLogo className="h-5 w-auto sm:h-6" />
+          </Link>
 
           {/*
-            The indicator physically slides between items rather than fading
-            out here and in there. One element with a shared layoutId is what
-            produces that: Motion sees the same node in a new place and animates
-            the gap. Fading two separate markers reads as two things blinking;
-            this reads as one thing moving.
+            The underline is CSS — see `.nav-link` in globals.css.
 
-            It RESTS on the active route and travels on hover, returning there
-            when the pointer leaves. Previously it existed only while hovering
-            and the current route carried a separate static hairline, which
-            meant the one element that could have shown you where you were and
-            where you are pointing was instead two elements that never met.
+            It was a Motion element with a shared `layoutId` that mounted on
+            hover and slid between items. That needed a `hovered` state up
+            here, which re-rendered the whole nav on every pointer-enter and
+            did nothing at all before hydration. The CSS version reads the
+            same, costs nothing, and works on a page that has not booted yet.
 
-            A surface fill under the label as well as the accent line: a single
-            hairline is the right weight for a hover hint and too quiet to say
-            "you are here" from across the pill.
+            `aria-current` now drives both the marker and what a screen reader
+            announces, so the two cannot disagree — previously the current
+            page was conveyed only by a decorative span.
           */}
-          <motion.ul
-            layout={reduceMotion ? false : "position"}
-            className="hidden items-center gap-7 md:flex"
-            onPointerLeave={() => setHovered(null)}
-          >
+          <ul className="hidden items-center gap-7 md:flex">
             {NAV_ITEMS.map((item) => {
               const active = pathname.startsWith(item.href);
-              const marked = (hovered ?? activeHref) === item.href;
+              /*
+               * The active/hover marker is a CSS underline on .nav-link now —
+               * see globals.css.
+               *
+               * It replaced a Motion element with a shared layoutId, and that
+               * had a side benefit worth recording: the old element was chosen
+               * with `marked && !reduceMotion`, and useReducedMotion is null on
+               * the server and a boolean on the client, so every route with a
+               * matching nav item hydrated against markup the server had not
+               * sent. CSS cannot have that bug.
+               */
               return (
-                <li key={item.href} className="relative">
-                  {/*
-                    ONE INDICATOR, and reduced motion only changes how it
-                    travels.
-
-                    There used to be two of these — a motion.span with the
-                    shared layoutId, and a plain span for reduced motion —
-                    chosen with `marked && !reduceMotion` / `marked &&
-                    reduceMotion`. useReducedMotion is null on the server and a
-                    boolean on the client, so the server rendered the animated
-                    one and a reduced-motion visitor rendered the plain one.
-
-                    That only bit when an item was actually marked, which is
-                    why it looked route-dependent: the homepage was fine and
-                    /about, /work, /services, /pricing, /enterprise, /start and
-                    /blog all failed, because those are the ones with a nav
-                    item matching the path.
-
-                    A zero-duration transition gives the reduced-motion
-                    behaviour the old branch was reaching for — the marker
-                    appears where it belongs rather than sliding there — with
-                    one element in both passes.
-                  */}
-                  {marked ? (
-                    <motion.span
-                      layoutId="nav-indicator"
-                      aria-hidden="true"
-                      className="absolute -inset-x-3 -inset-y-1 -z-10 rounded-full"
-                      style={{
-                        background: "var(--bg-surface-2)",
-                        boxShadow: "inset 0 -1px 0 0 var(--accent)",
-                      }}
-                      transition={
-                        reduceMotion
-                          ? { duration: 0 }
-                          : {
-                              type: "spring",
-                              stiffness: 420,
-                              damping: 34,
-                            }
-                      }
-                    />
-                  ) : null}
-
+                <li key={item.href}>
                   <Link
                     href={item.href}
-                    onPointerEnter={() => setHovered(item.href)}
-                    onFocus={() => setHovered(item.href)}
-                    className={cn(
-                      "relative block py-1 text-sm transition-colors duration-hover ease-hover",
-                      active || marked
-                        ? "text-primary"
-                        : "text-secondary hover:text-primary",
-                    )}
+                    aria-current={active ? "page" : undefined}
+                    className="nav-link text-sm"
                   >
                     {item.label}
                   </Link>
                 </li>
               );
             })}
-          </motion.ul>
+          </ul>
 
-          <motion.div
-            layout={reduceMotion ? false : "position"}
-            className="flex items-center gap-2"
-          >
+          <div className="flex items-center gap-2">
             <Magnetic className="hidden sm:inline-flex">
               <Link
                 href={ctaHref}
-                className="rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
+                className="rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
               >
                 {ctaLabel}
               </Link>
@@ -392,19 +310,19 @@ export function Nav() {
               <span className="relative block h-3 w-4">
                 <span
                   className={cn(
-                    "absolute left-0 block h-px w-4 bg-current transition-transform duration-hover ease-hover",
+                    "absolute left-0 block h-px w-4 bg-current transition-transform duration-fast",
                     open ? "top-1.5 rotate-45" : "top-0",
                   )}
                 />
                 <span
                   className={cn(
-                    "absolute left-0 block h-px w-4 bg-current transition-transform duration-hover ease-hover",
+                    "absolute left-0 block h-px w-4 bg-current transition-transform duration-fast",
                     open ? "top-1.5 -rotate-45" : "top-3",
                   )}
                 />
               </span>
             </button>
-          </motion.div>
+          </div>
         </motion.nav>
       </header>
 

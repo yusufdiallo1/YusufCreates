@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireAdmin } from "./lib/auth";
+import { makeToken } from "./lib/token";
 
 /**
  * Newsletter subscribers.
@@ -9,13 +10,6 @@ import { requireAdmin } from "./lib/auth";
  * email is clicked. Re-subscribing an existing address updates the row rather
  * than creating a duplicate, and clears any previous unsubscribe.
  */
-
-/** 128 bits, URL-safe. Used for both the confirm and unsubscribe links. */
-function makeToken(): string {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 export const subscribe = mutation({
   args: { email: v.string(), source: v.optional(v.string()) },

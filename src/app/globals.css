@@ -756,17 +756,6 @@
     }
   }
 
-  /* When the custom cursor is mounted it replaces the system pointer, so the
-     native one is hidden on interactive elements too. The class is applied by
-     CustomCursor only when it actually renders, so touch and reduced-motion
-     users keep their normal cursor. */
-  .has-custom-cursor,
-  .has-custom-cursor a,
-  .has-custom-cursor button,
-  .has-custom-cursor [role="button"] {
-    cursor: none;
-  }
-
   /* Skill rows. The hover affordance is the use line resolving from quiet to
      full strength.
 
@@ -897,6 +886,94 @@
       background-color: var(--bg-surface-1);
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
+    }
+  }
+
+  /*
+   * Nav link underline.
+   *
+   * Was a Motion element with a shared `layoutId` that mounted on hover and
+   * physically slid between items. This does the same job in CSS: no hover
+   * state in React, no re-render on every pointer-enter, no shared layout
+   * tree — and it still works before hydration, which the old one did not.
+   *
+   * The direction is the point. At rest the origin is `right`; on hover it
+   * flips to `left`. So the line grows IN from the left and retreats back OUT
+   * to the right, which reads as one gesture. Keeping a single origin makes
+   * leaving look like the arrival being rewound.
+   *
+   * Space is reserved by the padding rather than by the line, so nothing on
+   * the row shifts when it appears.
+   */
+  .nav-link {
+    position: relative;
+    display: block;
+    padding-block: 0.25rem;
+    color: var(--text-secondary);
+    transition: color var(--dur-hover) var(--ease-hover);
+  }
+
+  .nav-link:hover,
+  .nav-link:focus-visible,
+  .nav-link[aria-current="page"] {
+    color: var(--text-primary);
+  }
+
+  .nav-link::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 1px;
+    border-radius: 9999px;
+    background-color: var(--accent);
+    transform: scaleX(0);
+    transform-origin: right;
+    /* Out is quicker than in. A line that leaves at exactly the speed it
+       arrived feels like it is being dragged back rather than released.
+       --dur-hover is the shared hover timing; the exit undercuts it. */
+    transition: transform 180ms var(--ease-hover);
+  }
+
+  .nav-link:hover::after,
+  .nav-link:focus-visible::after {
+    transform: scaleX(1);
+    transform-origin: left;
+    transition-duration: var(--dur-hover);
+  }
+
+  /*
+   * The current page holds its line while the pointer is elsewhere.
+   *
+   * Replaces a separate span at `opacity-40`, which broke the rule stated at
+   * the top of this file: there is no dimmer third tier here, and hierarchy
+   * is carried by size, weight and case rather than by fading text toward the
+   * background. It is also now driven by aria-current, so the marker and what
+   * a screen reader announces cannot disagree.
+   */
+  .nav-link[aria-current="page"]::after {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nav-link,
+    .nav-link::after {
+      /*
+       * Transitions off, END STATE KEPT. Collapsing a duration must never
+       * become a way of hiding something — the current page's underline still
+       * has to be visible, it simply arrives without travelling.
+       */
+      transition: none;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .nav-link::after {
+      /* --accent is discarded in forced-colours mode, which would leave the
+         marker invisible. LinkText is the system's own "this is navigation"
+         colour. */
+      background-color: LinkText;
     }
   }
 
@@ -1151,14 +1228,6 @@
     overflow: visible !important;
   }
 
-  [data-custom-cursor] {
-    display: none !important;
-  }
-
-  /* Restore the system cursor when the custom one is suppressed. */
-  [data-cursor-hidden] {
-    cursor: auto !important;
-  }
 }
 
 /* Stillness: the page stops while a section wrapped in <Quiet> holds the

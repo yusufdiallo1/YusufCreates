@@ -6,10 +6,14 @@ import { api } from "@/lib/convex-api";
 import { FileUpload,
   DeleteSlide,
 } from "@/components/admin/shared/Fields";
+import { CredentialsPanel } from "@/components/admin/CredentialsPanel";
+import { IntakePanel } from "@/components/admin/IntakePanel";
+import { MonitoringPanel } from "@/components/admin/MonitoringPanel";
 import type { Id } from "@convex/_generated/dataModel";
 
 /**
- * Runs one client project: milestones, files and the chat thread.
+ * Runs one client project: progress, onboarding, credentials, monitoring,
+ * files and the chat thread.
  *
  * This is the other half of the portal. Everything the client sees there —
  * the progress bar, the milestone list, their files, my replies — is written
@@ -44,7 +48,15 @@ export function ProjectPanel({
   projectName: string;
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<"progress" | "files" | "chat">("progress");
+  /*
+   * One tab mounts at a time, and that is not only a performance choice here.
+   * Credentials and intake both hold live queries over sensitive data, and an
+   * unopened tab that keeps a subscription running is data pulled to the
+   * browser for a panel nobody is looking at.
+   */
+  const [tab, setTab] = useState<
+    "progress" | "intake" | "credentials" | "monitoring" | "files" | "chat"
+  >("progress");
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -84,10 +96,16 @@ export function ProjectPanel({
           </button>
         </div>
 
-        <div role="tablist" className="mt-6 flex gap-2">
+        {/* Wraps rather than scrolls: six pills at 12px fit two rows on a
+            phone, and a horizontally-scrolling tab strip hides the tabs at
+            the end from anyone who does not think to swipe it. */}
+        <div role="tablist" className="mt-6 flex flex-wrap gap-2">
           {(
             [
               ["progress", "Progress"],
+              ["intake", "Intake"],
+              ["credentials", "Credentials"],
+              ["monitoring", "Monitoring"],
               ["files", "Files"],
               ["chat", "Chat"],
             ] as const
@@ -109,6 +127,13 @@ export function ProjectPanel({
 
         <div className="mt-6">
           {tab === "progress" ? <Milestones projectId={projectId} /> : null}
+          {tab === "intake" ? <IntakePanel projectId={projectId} /> : null}
+          {tab === "credentials" ? (
+            <CredentialsPanel projectId={projectId} />
+          ) : null}
+          {tab === "monitoring" ? (
+            <MonitoringPanel projectId={projectId} />
+          ) : null}
           {tab === "files" ? <Files projectId={projectId} /> : null}
           {tab === "chat" ? <Chat projectId={projectId} /> : null}
         </div>

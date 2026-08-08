@@ -583,7 +583,6 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
                 arrival gets and why. */}
             <Link
               href={primary.href}
-              data-cursor="link"
               onClick={() => track("cta_click", { cta: primary.cta })}
               className="rounded-full bg-[color:var(--accent-solid)] px-6 py-3 text-center text-sm font-medium text-white transition-opacity duration-hover ease-hover hover:opacity-90"
             >
@@ -591,7 +590,6 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
             </Link>
             <Link
               href={secondary.href}
-              data-cursor="link"
               onClick={
                 resume
                   ? () => track("cta_click", { cta: "hero-resume" })
@@ -963,7 +961,6 @@ function Slab({
         >
           <Link
             href={`/work/${project.slug}`}
-            data-cursor="view"
             aria-label={`${project.title} — view case study`}
             className="group block"
           >
@@ -1162,7 +1159,6 @@ function SlabStack({
       >
         <Link
           href={`/work/${front.slug}`}
-          data-cursor="view"
           aria-label={`${front.title} — view case study`}
           className="block"
         >

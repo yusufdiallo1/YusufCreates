@@ -85,7 +85,6 @@ export function CaseStudy({
                     href={project.liveUrl}
                     target="_blank"
                     rel="noreferrer noopener"
-                    data-cursor="link"
                     className="text-accent hover:text-primary"
                   >
                     Visit live site
@@ -220,7 +219,6 @@ export function CaseStudy({
         <Reveal className="mt-24">
           <Link
             href={`/work/${next.slug}`}
-            data-cursor="view"
             className="hairline-t block pt-8"
           >
             <span className="text-sm text-secondary">Next project</span>

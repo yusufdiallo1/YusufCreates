@@ -1,6 +1,7 @@
 "use client";
 
 import { Breadcrumbs } from "@/components/admin/Breadcrumbs";
+import { PushToggle } from "@/components/admin/PushToggle";
 import { useDensity, type Density } from "@/components/admin/useDensity";
 
 /**
@@ -8,11 +9,14 @@ import { useDensity, type Density } from "@/components/admin/useDensity";
  *
  * Was a breadcrumb on the left and a ⌘K hint on the right, with the entire
  * width between them empty. It now carries the controls that belong to the
- * whole admin rather than to any one page: search, density, and the hint.
+ * whole admin rather than to any one page: search, push alerts, density, and
+ * the hint.
  *
  * Density lives here rather than in Settings because it is a view preference
  * you change while looking at the thing it affects, not a configuration value
- * you set once and forget.
+ * you set once and forget. Push is here for the opposite reason — it is
+ * per-DEVICE, so it has to be somewhere you reach from whichever machine you
+ * want the 3am outage alert on.
  *
  * Mobile: the search collapses to an icon that opens the palette, and the
  * density toggle hides — it is a pointer-precision preference, and a phone is
@@ -59,6 +63,7 @@ export function TopBar({
         </kbd>
       </button>
 
+      <PushToggle />
       <DensityToggle density={density} onDensity={onDensity} />
     </div>
   );

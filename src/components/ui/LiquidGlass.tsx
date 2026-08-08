@@ -248,11 +248,6 @@ export function LiquidGlass({
         ref={hostRef}
         data-depth={depth}
         data-shape={shape}
-        /* What CustomCursor looks for on pointerover to know it is over glass
-           and should switch from a difference blend to a lens. A data attribute
-           rather than a class because the cursor lives in a different tree and
-           only needs the answer, not the styling. */
-        data-glass-surface=""
         data-refracting={useRefraction ? "true" : undefined}
         className={cn(
           "glass-depth",

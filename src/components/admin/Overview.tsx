@@ -28,6 +28,8 @@ const KIND_MARK: Record<string, string> = {
   lead: "●",
   testimonial: "★",
   feedback: "✉",
+  intake: "◧",
+  site: "◉",
 };
 
 export function Overview() {

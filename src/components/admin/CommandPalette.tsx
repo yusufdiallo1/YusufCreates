@@ -136,6 +136,7 @@ export function CommandPalette() {
       { id: "nav:clients", label: "Clients", group: "Go to", keywords: "portal access", run: () => go(`${ADMIN_PATH}/clients`) },
       { id: "nav:proposals", label: "Proposals", group: "Go to", keywords: "quote scope", run: () => go(`${ADMIN_PATH}/proposals`) },
       { id: "nav:contracts", label: "Contracts", group: "Go to", keywords: "sign signature agreement terms audit", run: () => go(`${ADMIN_PATH}/contracts`) },
+      { id: "nav:monitoring", label: "Monitoring", group: "Go to", keywords: "uptime ssl domain lighthouse care plan down status", run: () => go(`${ADMIN_PATH}/monitoring`) },
       { id: "nav:settings", label: "Settings", group: "Go to", keywords: "profile availability config", run: () => go(`${ADMIN_PATH}/settings`) },
     ];
 

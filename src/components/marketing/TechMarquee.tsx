@@ -55,7 +55,6 @@ export function TechMarquee({ names }: { names: string[] }) {
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  data-cursor="link"
                   aria-label={`${name} — opens in a new tab`}
                   className="flex items-center transition-colors duration-hover ease-hover hover:text-primary"
                 >

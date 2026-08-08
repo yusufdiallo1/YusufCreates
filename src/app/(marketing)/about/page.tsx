@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Reveal } from "@/components/motion/Reveal";
 import { TextReveal } from "@/components/motion/TextReveal";
-import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { WordReveal } from "@/components/motion/WordReveal";
 import { NameMark } from "@/components/ui/NameMark";
 import { Skills } from "@/components/marketing/Skills";
@@ -41,7 +40,6 @@ export default function AboutPage() {
     <>
       <JsonLd data={personJsonLd} />
 
-      <ScrollProgress />
 
       {/* pb-0: Skills follows this column and carries its own py-24, so a
           bottom padding here would double the gap. */}

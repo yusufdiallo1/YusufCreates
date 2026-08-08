@@ -6,6 +6,7 @@ import { AuditFailed } from "@emails/AuditFailed";
 import { adminEmail, sendEmail } from "@/lib/email";
 import { logEmailSend } from "@/lib/emailLog";
 import { SITE } from "@/lib/constants";
+import { normaliseUrl } from "@convex/lib/url";
 
 /**
  * Free site audit.
@@ -14,8 +15,10 @@ import { SITE } from "@/lib/constants";
  *
  * 1. SSRF. It fetches a URL the visitor supplies. Without a guard, someone
  *    points it at 169.254.169.254 and reads cloud instance metadata, or at an
- *    internal address to map a private network. The allowlist below is
- *    deny-by-default: only public http(s) hosts pass.
+ *    internal address to map a private network. `normaliseUrl` is
+ *    deny-by-default: only public http(s) hosts pass. It lives in
+ *    convex/lib/url.ts because the monitoring sweep needs the same guard,
+ *    and two copies of an SSRF filter is one copy that will drift.
  * 2. Quota. PageSpeed is metered. Per-email limits live in Convex; this
  *    handler also refuses obviously abusive input before spending a call.
  *
@@ -33,44 +36,6 @@ export const runtime = "nodejs";
  * from the caller's point of view.
  */
 export const maxDuration = 120;
-
-/** Private ranges, loopback, link-local and anything not obviously public. */
-function isPrivateHost(hostname: string): boolean {
-  const h = hostname.toLowerCase();
-
-  if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".local")) {
-    return true;
-  }
-  if (h === "metadata.google.internal") return true;
-
-  // IPv6 loopback and unique-local.
-  if (h === "::1" || h.startsWith("fc") || h.startsWith("fd")) return true;
-
-  const parts = h.split(".");
-  if (parts.length === 4 && parts.every((p) => /^\d+$/.test(p))) {
-    const [a, b] = parts.map(Number);
-    if (a === 10 || a === 127 || a === 0) return true;
-    if (a === 192 && b === 168) return true;
-    if (a === 172 && b >= 16 && b <= 31) return true;
-    // AWS/GCP instance metadata.
-    if (a === 169 && b === 254) return true;
-  }
-
-  return false;
-}
-
-function normaliseUrl(raw: string): URL | null {
-  try {
-    const url = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
-    // Only http(s). file:, gopher: and data: are all SSRF vectors.
-    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
-    if (!url.hostname.includes(".")) return null;
-    if (isPrivateHost(url.hostname)) return null;
-    return url;
-  } catch {
-    return null;
-  }
-}
 
 /** Plain-English rewrites of the Lighthouse audits worth acting on. */
 const FIX_COPY: Record<string, { title: string; detail: string }> = {

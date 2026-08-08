@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { fetchQuery } from "convex/nextjs";
 import { api, isConvexConfigured } from "@/lib/convex-api";
-import { CustomCursor } from "@/components/ui/CustomCursor";
 import { SmoothScroll } from "@/components/motion/SmoothScroll";
 import { ScrollTriggerProvider } from "@/components/motion/ScrollTriggerProvider";
 import { AmbientTemperature } from "@/components/motion/AmbientTemperature";
@@ -61,7 +60,6 @@ export default async function MarketingLayout({
           {/* First-party, cookieless. See src/lib/track.ts. */}
           <Tracker />
           <ScrollProgress />
-          <CustomCursor />
           <PromoBanner />
           <Nav />
 

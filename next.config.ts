@@ -50,9 +50,16 @@ const csp = [
   // attaches to <video> elements during a call.
   "media-src 'self' https://*.convex.cloud blob:",
   /*
-   * Agora spawns its audio processing in a worker created from a blob URL.
-   * Without worker-src the worker is blocked, and the failure surfaces as
-   * silent audio rather than as an error anyone would connect to the CSP.
+   * Two workers need this, and 'self' blob: covers both.
+   *
+   * Agora spawns its audio processing in a worker created from a blob URL —
+   * blocked without the blob: source, and it surfaces as silent audio rather
+   * than as anything anyone would connect to the CSP. The push service worker
+   * at /sw.js is the 'self' half.
+   *
+   * Stated rather than left to fall through child-src to default-src. This
+   * policy is report-only and will eventually be enforced, and a service
+   * worker that silently fails to register takes the outage alerts with it.
    */
   "worker-src 'self' blob:",
   "frame-ancestors 'none'",

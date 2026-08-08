@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireAdmin } from "./lib/auth";
+import { makeToken } from "./lib/token";
 import { proposalStatus } from "./schema";
 import { generateContract } from "./contracts";
 
@@ -46,13 +47,6 @@ export const setStatus = mutation({
     });
   },
 });
-
-/** 128 bits. The token is the only credential on a hosted proposal. */
-function makeToken(): string {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 /**
  * Public read by token, and it records the first open.

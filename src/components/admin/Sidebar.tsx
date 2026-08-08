@@ -58,6 +58,9 @@ const GROUPS: { heading: string; items: { href: string; label: string }[] }[] = 
       // actual sequence: quote, sign, bill.
       { href: `${ADMIN_PATH}/contracts`, label: "Contracts" },
       { href: `${ADMIN_PATH}/invoices`, label: "Invoices" },
+      /* Under Clients rather than Tools: this is the Care Plan, which is a
+         paid relationship with a client, not a utility I run occasionally. */
+      { href: `${ADMIN_PATH}/monitoring`, label: "Monitoring" },
     ],
   },
   {

@@ -48,6 +48,11 @@ export function ClientsAdmin() {
     name: string;
   } | null>(null);
   const [removing, setRemoving] = useState<Id<"clients"> | null>(null);
+  /** Project just marked complete, awaiting the "delete credentials?" answer. */
+  const [closing, setClosing] = useState<{
+    id: Id<"clientProjects">;
+    name: string;
+  } | null>(null);
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
@@ -142,6 +147,17 @@ export function ClientsAdmin() {
                             {project.description}
                           </p>
                         ) : null}
+
+                        {/*
+                          Intake completion, on the row where the decision
+                          gets made. A started project sitting at 2/6 is the
+                          shape of every delayed project, and it is only
+                          obvious when the two facts are next to each other.
+                        */}
+                        <IntakeMeter
+                          intake={project.intake}
+                          started={Boolean(project.startedAt)}
+                        />
                       </div>
                       <button
                         type="button"
@@ -158,13 +174,24 @@ export function ClientsAdmin() {
                       <select
                         value={project.status}
                         aria-label={`Status for ${project.name}`}
-                        onChange={(e) =>
-                          void setStatus({
-                            id: project._id,
-                            status: e.target
-                              .value as (typeof STATUSES)[number],
-                          })
-                        }
+                        onChange={(e) => {
+                          const status = e.target
+                            .value as (typeof STATUSES)[number];
+                          void setStatus({ id: project._id, status });
+
+                          /*
+                           * Finishing a project is the moment to ask about
+                           * the credentials, because it is the only moment
+                           * anyone is thinking about them. Left to a timer
+                           * they sit there for a year.
+                           */
+                          if (status === "complete") {
+                            setClosing({
+                              id: project._id,
+                              name: project.name,
+                            });
+                          }
+                        }}
                         className="hairline shrink-0 rounded-md bg-surface-2 px-2 py-1 text-xs text-secondary"
                       >
                         {STATUSES.map((s) => (
@@ -193,6 +220,14 @@ export function ClientsAdmin() {
             await create(d);
             setAdding(false);
           }}
+        />
+      ) : null}
+
+      {closing ? (
+        <CloseOutDialog
+          projectId={closing.id}
+          projectName={closing.name}
+          onClose={() => setClosing(null)}
         />
       ) : null}
 
@@ -489,6 +524,158 @@ function RemoveClientDialog({
           className="mt-4 w-full text-center text-sm text-secondary transition-colors duration-hover ease-hover hover:text-primary"
         >
           Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------- intake --- */
+
+/**
+ * Intake completion, on the project row.
+ *
+ * Three states, and they are genuinely different things:
+ *
+ *   - no form sent      → the fix is to send it
+ *   - sent, incomplete  → the fix is to chase what is missing
+ *   - complete          → say nothing
+ *
+ * The last one renders nothing at all. A green tick on every finished project
+ * is visual noise on the rows that are fine, which makes the rows that are
+ * not fine harder to see.
+ */
+function IntakeMeter({
+  intake,
+  started,
+}: {
+  intake: { done: number; total: number; percent: number; complete: boolean } | null;
+  started: boolean;
+}) {
+  if (intake === null) {
+    return (
+      <p className="mt-1 text-xs text-[color:var(--text-notice)]">
+        No onboarding form sent
+      </p>
+    );
+  }
+
+  if (intake.complete) return null;
+
+  return (
+    <div className="mt-1.5 flex items-center gap-2">
+      <div className="h-1 w-16 shrink-0 overflow-hidden rounded-full bg-surface-2">
+        <div
+          className="h-full rounded-full bg-[color:var(--accent)]"
+          style={{ width: `${intake.percent}%` }}
+        />
+      </div>
+      <span
+        className={`text-xs ${
+          /* Only flagged once work has actually STARTED. An unfinished intake
+             on a project that has not begun is just a form nobody has got to
+             yet, and colouring it amber cries wolf. */
+          started
+            ? "text-[color:var(--text-notice)]"
+            : "text-secondary"
+        }`}
+      >
+        Onboarding {intake.done}/{intake.total}
+        {started ? " · project has started" : ""}
+      </span>
+    </div>
+  );
+}
+
+/* --------------------------------------------------------- close out --- */
+
+/**
+ * The prompt when a project is marked complete.
+ *
+ * Asked here because this is the only moment anybody is thinking about it.
+ * Left to a timer, stored credentials sit for a year; asked at handover, the
+ * answer is usually yes.
+ *
+ * Deleting is the default-looking option and declining sets a 30-day timer
+ * rather than "keep forever" — the best credential store is an empty one, and
+ * every prompt around it should push that way.
+ */
+function CloseOutDialog({
+  projectId,
+  projectName,
+  onClose,
+}: {
+  projectId: Id<"clientProjects">;
+  projectName: string;
+  onClose: () => void;
+}) {
+  const count = useQuery(api.credentials.countForProject, { projectId });
+  const purge = useMutation(api.credentials.purgeProject);
+  const schedule = useMutation(api.credentials.scheduleDeletion);
+  const [busy, setBusy] = useState(false);
+
+  // Nothing stored, or still loading: there is no question to ask.
+  if (count === undefined || count === 0) {
+    if (count === 0) onClose();
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <button
+        type="button"
+        aria-label="Not now"
+        onClick={onClose}
+        className="absolute inset-0 bg-[color:var(--bg-canvas)]/70 backdrop-blur-sm"
+      />
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="closeout-title"
+        className="glass-depth glass-near glass-panel relative w-full max-w-sm p-6"
+      >
+        <h2 id="closeout-title" className="admin-section-title">
+          Delete the stored credentials?
+        </h2>
+        <p className="mt-2 text-[13px] leading-relaxed text-secondary">
+          {projectName} is finished, and I am still holding {count} credential
+          {count === 1 ? "" : "s"} for it. Deleting them now is the right
+          default — if something is needed later, they can reset it at the
+          source.
+        </p>
+
+        <button
+          type="button"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await purge({ projectId });
+              onClose();
+            } finally {
+              setBusy(false);
+            }
+          }}
+          className="mt-5 min-h-10 w-full rounded-full bg-[color:var(--danger-solid)] px-4 text-sm font-medium text-white transition-[filter,opacity] duration-fast hover:brightness-110 disabled:opacity-50"
+        >
+          {busy ? "Deleting…" : `Delete all ${count}`}
+        </button>
+
+        <button
+          type="button"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await schedule({ projectId, days: 30 });
+              onClose();
+            } finally {
+              setBusy(false);
+            }
+          }}
+          className="mt-2.5 min-h-10 w-full text-[13px] text-secondary transition-colors duration-fast hover:text-primary disabled:opacity-50"
+        >
+          Keep for 30 days, then delete automatically
         </button>
       </div>
     </div>

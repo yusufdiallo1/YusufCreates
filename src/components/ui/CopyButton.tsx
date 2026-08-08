@@ -71,7 +71,6 @@ export function CopyButton({
     <button
       type="button"
       onClick={copy}
-      data-cursor="link"
       aria-label={copied ? "Copied" : label}
       className={cn(
         "inline-flex items-center gap-2 rounded-md px-2 py-1",

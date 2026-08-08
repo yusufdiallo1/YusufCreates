@@ -1281,6 +1281,296 @@ export default defineSchema({
     ts: v.number(),
   }).index("by_session", ["sessionId", "ts"]),
 
+  /* ==================================================================== *
+   *  ONBOARDING INTAKE                                                   *
+   * ==================================================================== */
+
+  /**
+   * The onboarding questionnaire, sent the moment a deposit clears.
+   *
+   * Missing assets is the single largest cause of project delay, and the
+   * reason is almost never that the client refused — it is that they were
+   * asked for eleven things in one email and answered none of them.
+   *
+   * So this is six independently-completable sections, not one form. The
+   * per-section state is what makes that real: a client can finish Brand
+   * today and Content next week, and the nudge three days from now can name
+   * exactly what is still missing instead of saying "please complete your
+   * form", which everybody ignores.
+   *
+   * Reached by token, like invoices and proposals. There is no client
+   * sign-in on this deployment, and a form that needs an account to open is
+   * a form that gets filled in late or not at all.
+   */
+  intakes: defineTable({
+    projectId: v.id("clientProjects"),
+    clientId: v.id("clients"),
+    /** The credential on the URL. See convex/lib/token.ts. */
+    token: v.string(),
+    /**
+     * Per-section completion, keyed by section id.
+     *
+     * `skipped` is a first-class state and NOT a synonym for outstanding.
+     * Every question is skippable by design — a client who cannot answer one
+     * thing must never be blocked from submitting the rest — and a nudge
+     * that keeps asking for something already declined reads as not
+     * listening.
+     */
+    sections: v.record(
+      v.string(),
+      v.object({
+        status: v.union(
+          v.literal("outstanding"),
+          v.literal("complete"),
+          v.literal("skipped"),
+        ),
+        completedAt: v.optional(v.number()),
+        /** True when I ticked it off after a call rather than them filling it. */
+        markedByAdmin: v.optional(v.boolean()),
+      }),
+    ),
+    /**
+     * The answers, keyed by field id. v.any() because the shape is owned by
+     * the section definitions in convex/intakeSections.ts, which will change
+     * far more often than this schema should.
+     */
+    responses: v.any(),
+    completedAt: v.optional(v.number()),
+    lastSavedAt: v.number(),
+    /** Which nudges have gone out, by day number. Prevents double-sending. */
+    nudgedDays: v.optional(v.array(v.number())),
+    createdAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_token", ["token"])
+    .index("by_client", ["clientId"]),
+
+  /**
+   * Files attached to an intake, kept out of `responses` deliberately.
+   *
+   * They need their own rows because the admin has to zip all of them, and
+   * because a storage id buried in a v.any() blob is invisible to any cleanup
+   * that ever needs to find orphaned files.
+   */
+  intakeFiles: defineTable({
+    intakeId: v.id("intakes"),
+    sectionId: v.string(),
+    /** The field within the section, so an upload lands back where it came from. */
+    fieldId: v.string(),
+    storageId: v.id("_storage"),
+    name: v.string(),
+    size: v.number(),
+    contentType: v.optional(v.string()),
+    uploadedAt: v.number(),
+  }).index("by_intake", ["intakeId"]),
+
+  /* ==================================================================== *
+   *  CREDENTIALS                                                         *
+   * ==================================================================== */
+
+  /**
+   * Client credentials, encrypted in the application layer.
+   *
+   * Convex has no field-level encryption, so this is AES-256-GCM done in a
+   * Node action before the row is ever written. The key lives only in
+   * CREDENTIAL_ENCRYPTION_KEY and never in the database — a database dump on
+   * its own is therefore useless, which is the entire point.
+   *
+   * `authTag` is a separate column rather than concatenated onto the
+   * ciphertext. It is what makes the ciphertext tamper-evident, and burying
+   * it in a string hides that contract from anyone reading this later.
+   *
+   * WRITE-ONLY for the client. Once submitted the portal shows a label and a
+   * mask. If they lose it they reset it at the source — that is correct
+   * behaviour, not a limitation.
+   *
+   * The best version of this table is an empty one. Every prompt around it
+   * should push toward delegated access instead, and toward deletion after.
+   */
+  credentials: defineTable({
+    projectId: v.id("clientProjects"),
+    clientId: v.id("clients"),
+    label: v.string(),
+    kind: v.union(
+      v.literal("registrar"),
+      v.literal("hosting"),
+      v.literal("cms"),
+      v.literal("analytics"),
+      v.literal("email"),
+      v.literal("api_key"),
+      v.literal("other"),
+    ),
+    username: v.optional(v.string()),
+    /** Base64. The secret, and nothing legible without the env key. */
+    ciphertext: v.string(),
+    /** Base64, 12 bytes, unique per record. Reusing one across records breaks GCM. */
+    iv: v.string(),
+    /** Base64, 16 bytes. GCM's integrity tag. */
+    authTag: v.string(),
+    /** So a key rotation can decrypt old rows rather than orphaning them. */
+    keyVersion: v.number(),
+    /** Plaintext, and non-sensitive only. "The 2FA goes to Sam's phone." */
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    lastAccessedAt: v.optional(v.number()),
+    rotatedAt: v.optional(v.number()),
+    /** When the purge cron may delete this. Default 30 days past completion. */
+    deleteAfter: v.optional(v.number()),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_client", ["clientId"])
+    .index("by_deleteAfter", ["deleteAfter"]),
+
+  /**
+   * One row per decryption, written BEFORE the plaintext is produced.
+   *
+   * Before, not after, because an access log that can be skipped by an error
+   * on the decrypt path is not a log. The reason is typed by hand and
+   * required: "why did I need this" is the only question this table exists to
+   * answer, and a dropdown of canned reasons would answer it uselessly.
+   */
+  credentialAccess: defineTable({
+    credentialId: v.id("credentials"),
+    accessedAt: v.number(),
+    accessedBy: v.string(),
+    reason: v.string(),
+  }).index("by_credential", ["credentialId", "accessedAt"]),
+
+  /* ==================================================================== *
+   *  MONITORING                                                          *
+   * ==================================================================== */
+
+  /**
+   * A shipped site under watch.
+   *
+   * `careplanActive` is separate from existence on purpose: a site can be
+   * monitored without a paid plan, which is what makes it useful for my own
+   * projects and for showing a prospect real numbers before they buy.
+   *
+   * The consecutive counters live here rather than being derived from
+   * uptimeChecks because the open/close rule needs them on every single
+   * five-minute tick, and re-deriving that from a growing table 288 times a
+   * day per site is the shape of query that quietly becomes the bill.
+   */
+  monitoredSites: defineTable({
+    projectId: v.optional(v.id("clientProjects")),
+    clientId: v.optional(v.id("clients")),
+    url: v.string(),
+    careplanActive: v.boolean(),
+    sslExpiresAt: v.optional(v.number()),
+    domainExpiresAt: v.optional(v.number()),
+    lastCheckAt: v.optional(v.number()),
+    lastStatus: v.optional(v.number()),
+    /** Rolled up daily. Never computed by scanning 30 days of checks on read. */
+    uptimePercent30d: v.optional(v.number()),
+    /** An incident opens at 2. One timeout is noise, not an outage. */
+    consecutiveFailures: v.number(),
+    /** An incident closes at 2, for the same reason in reverse. */
+    consecutiveSuccesses: v.number(),
+    lastLighthouseAt: v.optional(v.number()),
+    /** Which expiry warnings have already gone out, so they send once each. */
+    expiryAlertsSent: v.optional(v.array(v.string())),
+    createdAt: v.number(),
+  })
+    .index("by_client", ["clientId"])
+    .index("by_active", ["careplanActive"])
+    .index("by_project", ["projectId"]),
+
+  /**
+   * Raw check results. Purged past 35 days by the daily sweep.
+   *
+   * 288 rows per site per day, so this is the one table here that grows
+   * fast enough to matter. Nothing on a page reads it directly — the portal
+   * bar comes from `incidents` and the percentage comes from the rollup on
+   * monitoredSites. It exists for the response-time record and for working
+   * out what actually happened after the fact.
+   */
+  uptimeChecks: defineTable({
+    siteId: v.id("monitoredSites"),
+    ts: v.number(),
+    statusCode: v.optional(v.number()),
+    responseMs: v.optional(v.number()),
+    ok: v.boolean(),
+  }).index("by_site_ts", ["siteId", "ts"]),
+
+  /**
+   * An outage, from the second consecutive failure to the second consecutive
+   * success.
+   *
+   * This is what the client actually sees, which is why `resolutionNote`
+   * matters as much as the timestamps: "down for 6 minutes" is a fact, and
+   * "down for 6 minutes, their host had a network incident, I confirmed
+   * recovery" is the thing they are paying for.
+   *
+   * `clientNotifiedAt` enforces the 15-minute rule. A blip they never noticed
+   * should not arrive as an alarm; a real outage should never arrive as a
+   * surprise.
+   */
+  incidents: defineTable({
+    siteId: v.id("monitoredSites"),
+    openedAt: v.number(),
+    closedAt: v.optional(v.number()),
+    cause: v.string(),
+    clientNotifiedAt: v.optional(v.number()),
+    resolutionNote: v.optional(v.string()),
+  })
+    .index("by_site", ["siteId", "openedAt"])
+    .index("by_open", ["closedAt"]),
+
+  /** Weekly PageSpeed run. All four categories, plus the three field metrics. */
+  lighthouseRuns: defineTable({
+    siteId: v.id("monitoredSites"),
+    ts: v.number(),
+    performance: v.optional(v.number()),
+    accessibility: v.optional(v.number()),
+    bestPractices: v.optional(v.number()),
+    seo: v.optional(v.number()),
+    lcp: v.optional(v.number()),
+    inp: v.optional(v.number()),
+    cls: v.optional(v.number()),
+  }).index("by_site_ts", ["siteId", "ts"]),
+
+  /* ==================================================================== *
+   *  NOTIFICATIONS                                                       *
+   * ==================================================================== */
+
+  /**
+   * Outbox. Convex decides that something should be said; Next.js says it.
+   *
+   * The split already existed for the express flow — see the header of
+   * src/app/api/cron/notify/route.ts — because Convex cannot reach Resend
+   * and the Resend key must stay behind `server-only`. What is new is the
+   * push: a row that needs sending NOW also pokes /api/notify/dispatch
+   * directly, instead of waiting for the daily Vercel cron.
+   *
+   * The poke is best-effort and the row is the truth. If the fetch fails,
+   * nothing is lost — the next cron drain picks it up. That ordering is
+   * deliberate: an alert that is late is recoverable, an alert that was
+   * marked sent and never went is not.
+   */
+  notifications: defineTable({
+    kind: v.string(),
+    /** Everything the template needs, resolved at enqueue time. */
+    payload: v.any(),
+    /** Scheduled sends (the 15-minute client delay) sit in the future. */
+    dueAt: v.number(),
+    sentAt: v.optional(v.number()),
+    attempts: v.number(),
+    lastError: v.optional(v.string()),
+  }).index("by_due", ["sentAt", "dueAt"]),
+
+  /**
+   * Web push endpoints. Mine only — this is never offered to a client.
+   *
+   * An outage at 3am is the case this exists for: email is where I look when
+   * I am already looking, and push is what makes me look.
+   */
+  pushSubscriptions: defineTable({
+    endpoint: v.string(),
+    p256dh: v.string(),
+    auth: v.string(),
+    createdAt: v.number(),
+  }).index("by_endpoint", ["endpoint"]),
   /**
    * Contracts. The step between "yes" and "paid".
    *
