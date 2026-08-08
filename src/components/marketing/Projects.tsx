@@ -1,9 +1,15 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion, useMotionValueEvent, useReducedMotion, useScroll } from "motion/react";
+import {
+  motion,
+  useReducedMotion,
+  useScroll,
+  useSpring,
+  useTransform,
+} from "motion/react";
 import { usePreloadedQuery, type Preloaded } from "convex/react";
 import type { api } from "@/lib/convex-api";
 import { Reveal } from "@/components/motion/Reveal";
@@ -11,25 +17,24 @@ import {
   SharedElement,
   sharedNames,
 } from "@/components/motion/SharedElement";
+import { PhoneMockup } from "@/components/ui/PhoneMockup";
 import { cn } from "@/lib/utils";
 
 /**
  * Projects — a scroll-driven showcase.
  *
- * The old asymmetric grid gave the first project a full-width 2:1 frame, which
- * on a wide screen made a single card taller than the viewport and left the
- * section feeling broken. This replaces it with a pinned panel: the media stays
- * fixed while the page scrolls, and the active project changes underneath it.
+ * The section pins and the track travels sideways: one panel per project,
+ * copy on the left and the product on the right, moving with the scroll rather
+ * than swapping underneath it.
  *
- * Scroll position is the only source of truth for which project is active. The
- * text and image crossfade together, so the pairing can never drift.
+ * It crossfaded in place before — pinned panel, content swapped by scroll
+ * progress — which reads as a slideshow wired to the wheel. Moving the track
+ * means the gesture and the thing on screen point the same way.
  *
  * Reduced motion and small screens both fall back to an ordinary stacked list,
  * because pinning depends on the viewport being tall enough to hold the panel
  * and on movement being welcome in the first place.
  */
-
-const EASE = [0.16, 1, 0.3, 1] as const;
 
 /** Shape consumed by the card. The generated Convex type is a superset. */
 export type Project = {
@@ -95,40 +100,64 @@ export function Projects({ preloaded }: ProjectsProps) {
 }
 
 /**
- * The pinned variant. One tall spacer per project drives the scroll range;
- * the panel sits sticky inside it.
+ * Phone screenshots, by slug.
+ *
+ * Explicit rather than derived from the slug, because a convention like
+ * `/work/{slug}-phone.png` 404s silently for every project that has not been
+ * shot yet — and most have not. A missing key here simply falls back to the
+ * cover, which is the honest behaviour: this site itself is a desktop piece
+ * of work and putting it in a phone would misrepresent it.
+ *
+ * When enough projects have one, this belongs on the projects table as an
+ * optional phoneUrl. Three does not justify a migration.
+ */
+const PHONE_SHOTS: Record<string, string> = {
+  "docutrackr-family": "/work/docutrackr-family-phone.png",
+  "docutrackr-business": "/work/docutrackr-business-phone.png",
+  "the-curated-route": "/work/curated-route-phone.png",
+};
+
+/**
+ * The pinned variant. One viewport of scroll per project drives the range, and
+ * the track travels SIDEWAYS across it.
+ *
+ * It used to crossfade in place: the panel was pinned and the content swapped
+ * underneath it. That reads as a slideshow that happens to be wired to the
+ * wheel. Moving the track instead means the scroll gesture and the thing on
+ * screen point the same way, so the page feels dragged rather than stepped.
+ *
+ * The travel is expressed as a PERCENTAGE of the track rather than in pixels,
+ * so nothing has to be measured and nothing has to be re-measured on resize.
+ * The track is one panel per project, each the full width of the container, so
+ * moving it by (n-1)/n of its own width lands exactly on the last panel.
  */
 function PinnedShowcase({ projects }: { projects: Project[] }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [active, setActive] = useState(0);
-
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start start", "end end"],
   });
 
-  useMotionValueEvent(scrollYProgress, "change", (p) => {
-    // Map progress onto an index. Clamped because scroll can overshoot at
-    // both ends, and a rubber-band bounce must not select a project that
-    // does not exist.
-    const next = Math.min(
-      projects.length - 1,
-      Math.max(0, Math.floor(p * projects.length)),
-    );
-    // Guarded so a scroll event that lands in the same band does not
-    // re-render on every frame.
-    setActive((current) => (current === next ? current : next));
+  const travel = useTransform(
+    scrollYProgress,
+    [0, 1],
+    ["0%", `-${((projects.length - 1) / projects.length) * 100}%`],
+  );
+  /* Smoothed, so the track glides instead of tracking wheel jitter exactly.
+     Same shape as ScrollProgress uses, for the same reason. */
+  const x = useSpring(travel, {
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001,
   });
-
-  const project = projects[active];
 
   return (
     <div
       ref={ref}
       className="relative mt-8"
       /*
-       * One viewport of scroll per project. Any less and the crossfades run
-       * into each other; any more and it feels like the page has stalled.
+       * One viewport of scroll per project. Any less and a panel is gone
+       * before it has been read; any more and it feels like the page stalled.
        *
        * dvh, not vh: on mobile Safari vh is the tallest possible viewport, so
        * the container is taller than what is actually on screen and the last
@@ -136,143 +165,167 @@ function PinnedShowcase({ projects }: { projects: Project[] }) {
        */
       style={{ height: `${projects.length * 100}dvh` }}
     >
-      {/*
-       * Offset by the heading's height rather than sticking to top-0.
-       *
-       * At top-0 with h-screen the panel centres itself in the full viewport,
-       * which sits BELOW the heading that is already occupying the top of the
-       * section — leaving most of a screen of dead space before the first card
-       * appears. Sticking below the heading and subtracting it from the height
-       * centres the panel in the space that is actually free.
-       */}
-      {/*
-       * min-h with a cap, not a fixed h-screen box.
-       *
-       * A full-height container centring content that is only about half that
-       * tall leaves a large void above and below the card. Sizing to the
-       * content and capping it keeps the panel pinned without the panel being
-       * mostly empty.
-       */}
-      <div className="sticky top-24 flex max-h-[calc(100dvh-7rem)] items-start py-4">
-        <div className="grid w-full grid-cols-12 items-center gap-10">
-          {/* Text column. Keyed on slug so Motion treats each project as a
-              new element and runs the exit animation. */}
-          <div className="col-span-4">
-            <motion.div
-              key={project.slug}
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: EASE }}
-            >
-              <p className="text-xs text-secondary tabular-nums">
-                {String(active + 1).padStart(2, "0")} /{" "}
-                {String(projects.length).padStart(2, "0")}
-              </p>
+      <div className="sticky top-0 flex h-[100dvh] items-center">
+        {/*
+          The clip lives INSIDE the sticky element, not around it.
+          `overflow: hidden` on an ancestor makes that ancestor the scroll
+          container, and a sticky descendant then sticks to it rather than to
+          the viewport — which is to say, it stops sticking at all.
+        */}
+        <div className="w-full overflow-hidden">
+          {/*
+            The track is explicitly n panels WIDE, and that is what makes the
+            percentage travel correct.
 
-              <h3 className="mt-5 text-3xl text-primary">{project.title}</h3>
-
-              <p className="mt-4 text-sm text-secondary">
-                {project.result ?? project.summary}
-              </p>
-
-              <div className="mt-6 flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-[color:var(--border-hairline)] px-2.5 py-1 text-xs text-secondary">
-                  {project.category}
-                </span>
-                <span className="text-xs text-secondary">{project.client}</span>
-                <span className="text-xs text-secondary tabular-nums">
-                  {project.year}
-                </span>
-              </div>
-
-              <Link
-                href={`/work/${project.slug}`}
-                className="mt-8 inline-block text-sm text-accent transition-colors duration-hover ease-hover hover:text-primary"
-              >
-                View case study
-              </Link>
-            </motion.div>
-
-            {/* Progress rail. Also the accessible way to jump between
-                projects without scrolling — each is a real link. */}
-            <ol className="mt-10 space-y-1">
-              {projects.map((p, i) => (
-                <li key={p.slug}>
-                  <Link
-                    href={`/work/${p.slug}`}
-                    className={cn(
-                      "flex items-center gap-3 py-1 text-xs transition-colors duration-hover ease-hover",
-                      i === active
-                        ? "text-primary"
-                        : "text-secondary hover:text-primary",
-                    )}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        "h-px transition-all duration-slow",
-                        i === active
-                          ? "w-8 bg-[color:var(--accent)]"
-                          : "w-4 bg-[color:var(--border-hairline)]",
-                      )}
-                    />
-                    {p.title}
-                  </Link>
-                </li>
-              ))}
-            </ol>
-          </div>
-
-          {/* Media column. Every image stays mounted and opacity does the
-              work — mounting on scroll would decode mid-transition and flash
-              an empty frame. */}
-          <div className="col-span-8">
-            {/* Height-driven, not aspect-driven.
-                aspect-[16/10] derives height from width, so on a wide viewport
-                the box grew past the pinned panel and the screenshot was cut
-                off at the fold. Fixing the height and letting object-cover
-                crop keeps the whole card on screen. */}
-            <div className="relative h-[min(52dvh,26rem)] w-full overflow-hidden rounded-xl bg-surface-2">
-              {projects.map((p, i) => (
-                <motion.div
-                  key={p.slug}
-                  className="absolute inset-0"
-                  initial={false}
-                  animate={{
-                    opacity: i === active ? 1 : 0,
-                    scale: i === active ? 1 : 1.03,
-                  }}
-                  transition={{ duration: 0.6, ease: EASE }}
-                  style={{ pointerEvents: i === active ? "auto" : "none" }}
-                >
-                  <Link
-                    href={`/work/${p.slug}`}
-                    aria-hidden={i !== active}
-                    tabIndex={i === active ? 0 : -1}
-                    /* `relative` is load-bearing, not cosmetic: next/image
-                       with `fill` absolutely positions itself against the
-                       nearest positioned ancestor, and this Link sat at
-                       `static` — so the cover resolved against the section
-                       instead of the card and Next logged a warning for every
-                       featured project on first paint. */
-                    className="relative block h-full w-full"
-                  >
-                    {p.coverUrl ? (
-                      <Image
-                        src={p.coverUrl}
-                        alt={p.title}
-                        fill
-                        sizes="(max-width: 1024px) 100vw, 66vw"
-                        className="object-cover object-top"
-                        priority={i === 0}
-                      />
-                    ) : null}
-                  </Link>
-                </motion.div>
-              ))}
-            </div>
-          </div>
+            A percentage x translates against the element's OWN width. With
+            `w-full` the track measured one container across — the shrink-0
+            panels overflowed it rather than widening it — so -75% moved 75% of
+            ONE panel and the run ended around the second project. Sizing the
+            track to n × 100% and each panel to 100/n of it means -(n-1)/n
+            lands exactly on the last one, still without measuring anything.
+          */}
+          <motion.div
+            style={{ x, width: `${projects.length * 100}%` }}
+            className="flex"
+          >
+            {projects.map((p, i) => (
+              <ShowcasePanel
+                key={p.slug}
+                project={p}
+                index={i}
+                total={projects.length}
+                priority={i === 0}
+              />
+            ))}
+          </motion.div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * One project, filling the width of the track.
+ *
+ * shrink-0 is load-bearing: these are flex children of a track that is itself
+ * only as wide as the container, so without it they would compress to a fifth
+ * of a screen each rather than queueing up off to the right.
+ */
+function ShowcasePanel({
+  project,
+  index,
+  total,
+  priority,
+}: {
+  project: Project;
+  index: number;
+  total: number;
+  priority: boolean;
+}) {
+  const phone = PHONE_SHOTS[project.slug];
+  /*
+   * Not every featured project has a picture — this site's own entry has an
+   * empty coverUrl. Reserving the media half anyway left a panel that was
+   * fifty per cent void and read as a failed image load rather than a
+   * deliberate layout, so the copy takes the whole panel instead.
+   */
+  const hasMedia = Boolean(phone || project.coverUrl);
+
+  return (
+    <div
+      className="flex shrink-0 items-center gap-12 px-1"
+      /* A share of the track, not of the viewport — see the note on the track
+         itself. shrink-0 so this width is honoured rather than negotiated. */
+      style={{ width: `${100 / total}%` }}
+    >
+      {/* Centred when there is no media, so the panel reads as a deliberate
+          statement rather than as a split layout missing its right half. */}
+      <div className={cn("min-w-0", hasMedia ? "flex-1" : "mx-auto max-w-2xl")}>
+        <p className="text-xs tracking-[0.18em] text-secondary uppercase">
+          {project.category}
+        </p>
+
+        <h3 className="mt-5 text-4xl leading-[1.05] text-primary">
+          {project.title}
+        </h3>
+
+        <p className="mt-5 max-w-md text-sm leading-relaxed text-secondary">
+          {project.result ?? project.summary}
+        </p>
+
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <span className="text-xs text-secondary">{project.client}</span>
+          <span className="text-xs text-secondary tabular-nums">
+            {project.year}
+          </span>
+        </div>
+
+        <Link
+          href={`/work/${project.slug}`}
+          className="mt-8 inline-block text-sm text-accent transition-colors duration-hover ease-hover hover:text-primary"
+        >
+          View case study
+        </Link>
+
+        {/*
+          Position, not navigation. The rail that used to be here was a list of
+          links to every project, which duplicated the "View case study" above
+          and gave a keyboard user five targets per panel to tab past. These are
+          aria-hidden dots; the accessible route through the work is the link
+          above and /work.
+        */}
+        <div aria-hidden="true" className="mt-10 flex items-center gap-1.5">
+          {Array.from({ length: total }, (_, i) => (
+            <span
+              key={i}
+              className={cn(
+                "h-1 rounded-full transition-all duration-slow",
+                i === index
+                  ? "w-6 bg-[color:var(--accent)]"
+                  : "w-1 bg-[color:var(--border-hairline)]",
+              )}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Media column. A phone for the products that are phone products; the
+          cover for anything else. Absent entirely when there is neither,
+          rather than an empty box holding open half a panel. */}
+      <div className={cn("shrink-0 justify-center", hasMedia ? "flex" : "hidden")}>
+        {phone ? (
+          <Link
+            href={`/work/${project.slug}`}
+            aria-label={`${project.title} — view case study`}
+            tabIndex={-1}
+          >
+            <PhoneMockup
+              src={phone}
+              alt={`${project.title} on a phone`}
+              priority={priority}
+            />
+          </Link>
+        ) : project.coverUrl ? (
+          <Link
+            href={`/work/${project.slug}`}
+            aria-label={`${project.title} — view case study`}
+            tabIndex={-1}
+            className="relative block overflow-hidden rounded-xl bg-surface-2"
+            /* Shorter than the phone deliberately. At the phone's height a
+               16:10 cover is nearly a thousand pixels wide and leaves the
+               copy beside it a column too narrow to set type in. */
+            style={{ height: "min(46dvh, 400px)", aspectRatio: "16 / 10" }}
+          >
+            <Image
+              src={project.coverUrl}
+              alt={project.title}
+              fill
+              sizes="(max-width: 1024px) 100vw, 55vw"
+              className="object-cover object-top"
+              priority={priority}
+            />
+          </Link>
+        ) : null}
       </div>
     </div>
   );

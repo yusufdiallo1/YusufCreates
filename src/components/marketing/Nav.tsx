@@ -230,9 +230,16 @@ export function Nav() {
           </ul>
 
           <div className="flex items-center gap-2">
-            <Magnetic className="hidden sm:inline-flex">
+            {/* Hidden on a phone until the menu is open, then shown beside the
+                close button. The menu is the one moment on mobile where the
+                CTA is not competing with the page for the same strip of
+                width — off-menu it would crowd the wordmark. */}
+            <Magnetic
+              className={cn(open ? "inline-flex" : "hidden sm:inline-flex")}
+            >
               <Link
                 href="/pricing"
+                onClick={() => setOpen(false)}
                 className="rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
               >
                 Start a project
@@ -323,7 +330,10 @@ export function Nav() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: reduceMotion ? 0.12 : 0.45 }}
-              className="fixed inset-0 z-40 bg-[color:var(--canvas)]/55 backdrop-blur-xl md:hidden"
+              /* bg-canvas for the same reason as the panel below: --canvas is
+                 not a token that exists, so this scrim has been rendering with
+                 no fill at all and only its blur. */
+              className="fixed inset-0 z-40 bg-canvas/55 backdrop-blur-xl md:hidden"
             />
           <motion.div
             id="mobile-nav"
@@ -338,9 +348,46 @@ export function Nav() {
               duration: reduceMotion ? 0.12 : 0.62,
               ease: [0.16, 1, 0.3, 1],
             }}
-            className="fixed inset-0 z-40 flex flex-col bg-[color:var(--canvas)]/80 px-6 pt-28 pb-10 backdrop-blur-2xl md:hidden"
+            /*
+             * bg-canvas, not bg-[color:var(--canvas)].
+             *
+             * THERE IS NO --canvas. The token is --bg-canvas, surfaced to
+             * Tailwind as --color-canvas, which is what makes `bg-canvas`
+             * work. `bg-[color:var(--canvas)]/80` referenced a variable that
+             * has never existed, so it resolved to an invalid colour and was
+             * dropped — computed background rgba(0,0,0,0).
+             *
+             * Which means this panel never had a fill at all. Everything that
+             * made it look opaque was backdrop-blur, and backdrop-blur is the
+             * part that is allowed to fail: it is dropped entirely under
+             * prefers-reduced-transparency and unsupported on older engines.
+             * Page text was already reading through underneath the CTA.
+             *
+             * 92% rather than the 80% that was intended, because the lower
+             * glow lightens the panel exactly where that text showed.
+             */
+            className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-canvas/92 px-6 pt-28 pb-10 backdrop-blur-2xl md:hidden"
           >
-            <ul className="flex flex-col gap-2">
+            {/*
+              Ambient light behind the list.
+
+              Two pools rather than one: the indigo sits behind the links where
+              it reads as brand, and a soft neutral one below it lifts the
+              bottom edge so the CTA has something to sit on instead of ending
+              in flat black. Both are --accent and --text-primary at low alpha,
+              so a theme change carries them rather than stranding a hardcoded
+              purple on a palette that moved.
+            */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  "radial-gradient(72% 40% at 50% 46%, color-mix(in oklab, var(--accent) 46%, transparent), transparent 72%), radial-gradient(62% 32% at 50% 88%, color-mix(in oklab, var(--text-primary) 24%, transparent), transparent 74%)",
+              }}
+            />
+
+            <ul className="relative flex flex-col gap-2">
               {NAV_ITEMS.map((item, index) => (
                 <motion.li
                   key={item.href}
@@ -356,9 +403,16 @@ export function Nav() {
                     ease: [0.16, 1, 0.3, 1],
                   }}
                 >
+                  {/* Large enough to be the page rather than a list on it.
+                      At text-2xl these read as a dropdown that happened to go
+                      full-screen; the overlay covers everything, so the type
+                      should behave like it owns the space. */}
                   <Link
                     href={item.href}
-                    className="hairline-b block py-4 text-2xl text-primary"
+                    aria-current={
+                      pathname.startsWith(item.href) ? "page" : undefined
+                    }
+                    className="hairline-b block py-5 text-[2rem] leading-none text-primary"
                   >
                     {item.label}
                   </Link>
@@ -368,7 +422,7 @@ export function Nav() {
 
             <Link
               href="/pricing"
-              className="mt-auto rounded-full bg-primary py-3 text-center text-sm font-medium text-canvas"
+              className="relative mt-auto rounded-full bg-primary py-3 text-center text-sm font-medium text-canvas"
             >
               Start a project
             </Link>
