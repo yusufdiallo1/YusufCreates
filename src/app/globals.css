@@ -1141,6 +1141,109 @@
     animation: none !important;
   }
 
+  /* The parallax TRACK, not just its wrapper.
+     The scroll-linked transform is written to the inner element, so pinning
+     only `[data-parallax]` left the offset running — and the offset is not
+     zero at rest: the range starts at +distance and travels to -distance, so
+     an unpinned track sits visibly displaced. This is what actually holds the
+     content still. */
+  [data-parallax-track] {
+    transform: none !important;
+  }
+
+  /* Scroll-linked focus falloff on the blog index: every card fully legible,
+     none of them dimmed or blurred by scroll position. Same reasoning as the
+     parallax track — the resting value is 0.65 opacity rather than 1, so this
+     could not be gated in JS without changing the server-rendered attribute. */
+  [data-focus-track] {
+    opacity: 1 !important;
+    filter: none !important;
+  }
+
+  /* SlideToConfirm's decorative layers — the drag residue, the mark's glow,
+     the confirmation flash and the rim light. All aria-hidden and
+     pointer-events:none, so hiding them costs nothing but the flourish. They
+     used to be conditionally rendered, which mismatched hydration across the
+     whole of /pricing; the control itself stays exactly where it was. */
+  [data-slide-decor] {
+    display: none !important;
+  }
+
+  /*
+     The marquee's resting state, and it lives HERE rather than in the
+     component on purpose.
+
+     Marquee used to render a different element tree under reduced motion — a
+     flat scrollable row instead of host → track → two rows. useReducedMotion
+     is null on the server and a boolean on the client, so the two passes
+     disagreed and React discarded the subtree on every page carrying a ticker.
+
+     A media query cannot have that bug. The browser evaluates it against
+     server-rendered HTML exactly as it does client-rendered HTML, so the
+     preference never reaches React at all. The track stays put because the
+     component's own rAF loop returns early on reduceMotion; these two rules
+     are what turn a stopped ticker into something readable.
+
+     The inner track must go static too — it is a flex row sized to two copies,
+     and scrolling the host past a track that is still `display:flex` at double
+     width would let the reader scroll into the hidden duplicate's dead space. */
+  [data-marquee] {
+    overflow-x: auto !important;
+  }
+
+  [data-marquee] [data-marquee-clone] {
+    display: none !important;
+  }
+
+  /*
+     Featured work: the stacked list, never the pinned showcase.
+
+     Same story as the marquee above — Projects used to pick between two
+     subtrees from useReducedMotion and mismatched hydration doing it. Both are
+     rendered now and this overrides the `lg:` breakpoint that would otherwise
+     show the pinned variant on a desktop.
+
+     Pinning is exactly the thing someone asking for reduced motion does not
+     want: it detaches scroll position from page movement, which is the
+     vestibular trigger, and it is worth overriding at any width. */
+  [data-projects-stacked] {
+    display: block !important;
+  }
+
+  [data-projects-pinned] {
+    display: none !important;
+  }
+
+  /* Scroll-pinned sections release: the tall scroll track collapses and the
+     sticky panel goes back into flow. Same reason as the two above — Pin used
+     to swap trees on useReducedMotion and could not do so without mismatching
+     hydration. */
+  [data-pin] {
+    height: auto !important;
+  }
+
+  [data-pin-sticky] {
+    position: static !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+}
+
+/* Stillness: the page stops while a section wrapped in <Quiet> holds the
+   viewport centre. Set on <html> by src/components/motion/Quiet.tsx.
+
+   This covers the CSS-animated case only. The marquee's translation is driven
+   per-frame from useAnimationFrame and cannot be paused from here — it reads
+   useQuiet() directly and freezes its own loop mid-cycle, which is what lets
+   it resume from the same offset instead of snapping back to the start.
+
+   Deliberately alongside the reduced-motion block above and not inside it:
+   these are different questions. Reduced motion is a standing preference about
+   the whole site; this is a momentary property of one section. */
+[data-quiet="1"] [data-marquee],
+[data-quiet="1"] [data-parallax] {
+  animation-play-state: paused;
 }
 
 /* Increased contrast: stronger borders and text, brighter focus ring. */

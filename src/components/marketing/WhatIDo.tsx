@@ -47,6 +47,7 @@ const LINES = [
 export function WhatIDo() {
   return (
     <section
+      id="services"
       aria-labelledby="what-i-do-heading"
       className="mx-auto max-w-5xl px-6 py-24"
     >

@@ -96,6 +96,8 @@ export const rollupDay = internalMutation({
       if (e.type === "form_start") add("form_starts", "all");
       if (e.type === "form_error" && label) add("form_errors", String(label));
       if (e.type === "faq_open" && label) add("faq", String(label));
+      // How the audience splits between first-timers, returners and referrals.
+      if (e.type === "entry_state" && label) add("entry_states", String(label));
       if (e.type === "pricing_tier_click" && label) add("tier_clicks", String(label));
       if (e.type === "pricing_currency" && label) add("currencies", String(label));
       if (e.type === "scroll_depth" && typeof e.meta?.value === "number") {

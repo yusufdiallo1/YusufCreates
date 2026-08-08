@@ -84,7 +84,12 @@ export type EventType =
   | "faq_open"
   | "chat_open"
   | "chat_message"
-  | "web_vital";
+  | "web_vital"
+  /* How the visitor arrived — cold, returning, referred, high-intent, lead.
+     Fired once per session with the state in meta.label. Adding a type here
+     is not enough on its own: it must also be allowed in the API route and in
+     the Convex validator, or it is dropped without a trace. */
+  | "entry_state";
 
 /**
  * Everything about the browser worth knowing, computed per call.

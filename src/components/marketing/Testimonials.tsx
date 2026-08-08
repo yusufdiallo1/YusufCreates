@@ -54,9 +54,14 @@ export function Testimonials({
   const rowTwo = items.slice(midpoint);
 
   return (
+    /* py-32 — the loosest section on the page. The argument is over by now;
+       this is other people talking, and it should drift rather than march.
+       The extra air is what makes the close feel like a decompression instead
+       of one more thing being sold. */
     <section
+      id="testimonials"
       aria-labelledby="testimonials-heading"
-      className="overflow-hidden py-24"
+      className="overflow-hidden py-32"
     >
       <div className="mx-auto max-w-5xl px-6">
         <Reveal>

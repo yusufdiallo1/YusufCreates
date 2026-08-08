@@ -10,6 +10,7 @@ import {
 } from "motion/react";
 import { motion } from "motion/react";
 import { Children, useEffect, useRef, useState } from "react";
+import { useQuiet } from "@/components/motion/Quiet";
 
 /**
  * Marquee — seamless infinite horizontal loop.
@@ -82,6 +83,17 @@ export function Marquee({
   const reduceMotion = useReducedMotion();
   const items = Children.toArray(children);
 
+  /*
+   * The pricing band went quiet, so this stops too.
+   *
+   * Fed into the SAME `paused` guard the keyboard-focus path uses, rather than
+   * having a stillness path of its own — that guard already does exactly the
+   * right thing, which is to freeze the per-frame loop mid-cycle and resume
+   * from the identical offset. CSS cannot do this: the translation is driven
+   * by useAnimationFrame below, so animation-play-state has nothing to pause.
+   */
+  const quiet = useQuiet();
+
   const hostRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const offset = useMotionValue(0);
@@ -148,7 +160,7 @@ export function Marquee({
   }, [reduceMotion, gap, items.length]);
 
   useAnimationFrame((_, delta) => {
-    if (reduceMotion || paused) return;
+    if (reduceMotion || paused || quiet) return;
     const track = trackRef.current;
     if (!track) return;
 
@@ -174,6 +186,9 @@ export function Marquee({
   const row = (ariaHidden: boolean, indexBase: number) => (
     <div
       aria-hidden={ariaHidden || undefined}
+      /* Tagged so the reduced-motion CSS can drop the duplicate copy without
+         this component having to know the preference. See globals.css. */
+      data-marquee-clone={ariaHidden || undefined}
       style={{ display: "flex", gap, paddingRight: gap, flexShrink: 0 }}
     >
       {items.map((child, index) => {
@@ -201,22 +216,28 @@ export function Marquee({
     </div>
   );
 
-  // Resting state: a static, scrollable row. No motion, no duplicate content.
-  if (reduceMotion) {
-    return (
-      <div
-        className={className}
-        style={{ display: "flex", gap, overflowX: "auto" }}
-      >
-        {items.map((child, index) => (
-          <div key={index} style={{ flexShrink: 0 }}>
-            {child}
-          </div>
-        ))}
-      </div>
-    );
-  }
-
+  /*
+   * ONE TREE FOR BOTH PREFERENCES — the reduced-motion resting state is CSS.
+   *
+   * This used to return a completely different element here: a single static
+   * scrollable row with no duplicate. useReducedMotion is null on the server
+   * and a boolean on the client, so the server rendered the animated structure
+   * (host → track → two rows) and a reduced-motion client wanted a flat row of
+   * children. Nothing about those two trees is patchable, so React threw the
+   * subtree away — on the homepage that is the tech ticker, and on every
+   * marketing page it is the closing ticker inside ContactCTA.
+   *
+   * The resting state is now produced by `@media (prefers-reduced-motion)` in
+   * globals.css, keyed off `data-marquee` and `data-marquee-clone`: the host
+   * becomes scrollable and the decorative duplicate is hidden. A media query is
+   * evaluated by the browser against server-rendered HTML identically to
+   * client-rendered HTML, so it cannot participate in a hydration mismatch at
+   * all — which makes it strictly the better tool for this than a hook.
+   *
+   * The per-frame loop is already inert: useAnimationFrame above returns early
+   * on `reduceMotion`, so the track never translates and the row simply sits
+   * where it started.
+   */
   return (
     <div
       ref={hostRef}

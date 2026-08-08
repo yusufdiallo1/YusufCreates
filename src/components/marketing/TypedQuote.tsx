@@ -26,7 +26,10 @@ export function TypedQuote({
   attribution?: string;
 }) {
   return (
-    <section className="mx-auto max-w-5xl px-6 py-20">
+    /* Closes the reassurance beat, so it carries the beat's bottom padding.
+       No top padding — it is the last line of the movement above it, not a
+       new one starting. */
+    <section className="mx-auto max-w-5xl px-6 pt-0 pb-28">
       <div className="mx-auto max-w-2xl text-center">
         <WordReveal
           as="blockquote"

@@ -81,17 +81,20 @@ export function RippleNumber({
     return () => window.clearTimeout(id);
   }, [text, holdMs, reduceMotion]);
 
-  if (reduceMotion) {
-    return (
-      <span
-        className={className}
-        style={{ fontVariantNumeric: "tabular-nums" }}
-      >
-        {text}
-      </span>
-    );
-  }
-
+  /*
+   * NO EARLY RETURN FOR REDUCED MOTION.
+   *
+   * This used to render a single plain <span> containing the text, against a
+   * per-character structure otherwise — completely different subtrees from a
+   * hook that is null on the server and a boolean on the client. Every price on
+   * /pricing is one of these, so a reduced-motion visitor failed hydration hard
+   * enough that React regenerated the whole route rather than patching it.
+   *
+   * The per-character structure renders identically at rest; what reduced
+   * motion removes is the ripple, and that is already handled above — the
+   * effect returns early, so `shown` tracks `text` immediately and no character
+   * ever animates. See motion/Reveal.tsx for the rule.
+   */
   return (
     <span
       className={className}
@@ -124,13 +127,20 @@ export function RippleNumber({
               initial={{ y: "-70%", opacity: 0 }}
               animate={{ y: "0%", opacity: 1 }}
               exit={{ y: "70%", opacity: 0 }}
-              transition={{
-                duration: 0.28,
-                // The ripple. Index-derived, so the leftmost position moves
-                // first and the change travels along the number.
-                delay: index * 0.04,
-                ease: [0.16, 1, 0.3, 1],
-              }}
+              /* Instant under reduced motion — the figure changes without the
+                 travel. The markup is identical either way; only the timing
+                 differs, which is what keeps this hydration-safe. */
+              transition={
+                reduceMotion
+                  ? { duration: 0 }
+                  : {
+                      duration: 0.28,
+                      // The ripple. Index-derived, so the leftmost position
+                      // moves first and the change travels along the number.
+                      delay: index * 0.04,
+                      ease: [0.16, 1, 0.3, 1],
+                    }
+              }
               style={{ display: "inline-block" }}
             >
               {character === " " ? " " : character}

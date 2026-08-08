@@ -35,9 +35,14 @@ const FAQ = [
 
 export function Faq() {
   return (
+    /* py-16 — tight, like the proof beat. Objections are answered briskly or
+       they read as excuses; a spacious FAQ makes each doubt look bigger than
+       it is. This is the highest-contrast, lowest-padding section on the page
+       after Projects. */
     <section
+      id="faq"
       aria-labelledby="home-faq-heading"
-      className="mx-auto max-w-3xl px-6 py-24"
+      className="mx-auto max-w-3xl px-6 py-16"
     >
       <TextReveal as="h2" by="word" className="block text-3xl">
         Questions people ask first

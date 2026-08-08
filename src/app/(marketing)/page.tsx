@@ -3,7 +3,6 @@ import { convexAuthNextjsToken } from "@convex-dev/auth/nextjs/server";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 import { Hero } from "@/components/marketing/Hero";
 import { Projects } from "@/components/marketing/Projects";
-import { Skills } from "@/components/marketing/Skills";
 import { About } from "@/components/marketing/About";
 import { Process } from "@/components/marketing/Process";
 import { HowIWork } from "@/components/marketing/HowIWork";
@@ -13,7 +12,10 @@ import { ContactCTA } from "@/components/marketing/ContactCTA";
 import { TechMarquee } from "@/components/marketing/TechMarquee";
 import { WhatIDo } from "@/components/marketing/WhatIDo";
 import { Faq } from "@/components/marketing/Faq";
+import { PricingPreview } from "@/components/marketing/PricingPreview";
+import { ClosingBeats } from "@/components/marketing/ClosingBeats";
 import { SectionSeam } from "@/components/motion/SectionSeam";
+import { Quiet } from "@/components/motion/Quiet";
 import { ALL_SKILL_NAMES } from "@/lib/skills";
 import { professionalServiceJsonLd } from "@/lib/jsonld";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -50,13 +52,32 @@ export default async function HomePage() {
    * promise, so a Convex failure blanks one section rather than 500ing the
    * front page.
    */
+  /*
+   * limit: 3 on the showcase, and it is load-bearing.
+   *
+   * Projects renders PinnedShowcase on desktop, whose container height is
+   * literally `projects.length * 100dvh` — one full viewport of scroll per
+   * project. listFeatured returns up to twelve, so featuring a handful of
+   * work used to put several screens of pinned scrolling between the visitor
+   * and everything below it.
+   *
+   * That was survivable when Projects sat fifth. It is not now that it is the
+   * FIRST thing after the hero: the beat is meant to read dense and fast, and
+   * twelve screens of anything is the opposite of fast. Three is what the
+   * composition wants and what the hero already shows — everything else is a
+   * click away behind "All work".
+   */
   const [preloadedProjects, preloadedTestimonials, featured] = isConvexConfigured
     ? await Promise.all([
-        preloadQuery(api.projects.listFeatured, {}, { token }).catch(() => null),
+        preloadQuery(api.projects.listFeatured, { limit: 3 }, { token }).catch(
+          () => null,
+        ),
         preloadQuery(api.testimonials.listFeatured, {}, { token }).catch(
           () => null,
         ),
-        fetchQuery(api.projects.listFeatured, {}, { token }).catch(() => []),
+        fetchQuery(api.projects.listFeatured, { limit: 3 }, { token }).catch(
+          () => [],
+        ),
       ])
     : [null, null, []];
 
@@ -73,6 +94,28 @@ export default async function HomePage() {
     <>
       <JsonLd data={professionalServiceJsonLd} />
 
+      {/*
+        THE ARC. Eight beats, and the order is the argument.
+
+        This page used to run Hero → Marquee → About → WhatIDo → Projects,
+        which introduced me before it had shown a single reason to care, and
+        buried the proof fifth. It now answers the questions in the order they
+        are actually asked:
+
+          1 Hero          curiosity      is this for me
+          2 Projects      dense, fast    is it any good
+          3 WhatIDo       recognition    do you do my thing
+          4 Process/About slow           how does it work, who are you
+          5 Pricing       precise, calm  what does it cost
+          6 Faq           terse          yes but what about
+          7 Testimonials  loose          does anyone else agree
+          8 ContactCTA    wide, quiet    all right, then
+
+        The padding map is the pacing instrument and it lives on each section's
+        own root className, not here — see the comment on each. Beats 2 and 6
+        are the tightest (py-16); 7 and 8 the loosest (py-32).
+      */}
+
       {/* The hero's slabs hold real project screenshots. Fetched separately
           from the preload the Projects section uses, because the hero needs
           plain values on the server rather than a client-hydrated query. */}
@@ -82,28 +125,43 @@ export default async function HomePage() {
           reading as one phrase. */}
       <TechMarquee names={ALL_SKILL_NAMES} />
 
-      <About />
+      {/* ---- 2 · PROOF. Renders nothing when no projects are published.
+
+          Straight after the marquee with no seam between them: TechMarquee is
+          `hairline-y`, so it already closes with a line of its own. */}
+      {preloadedProjects ? <Projects preloaded={preloadedProjects} /> : null}
 
       {/* Seams between sections. A 1px join that brightens as it arrives and
           settles back — enough to say two things meet here, not enough to read
           as a divider. Native scroll timeline, no JS; see SectionSeam.
 
-          Not after the marquee or before the CTA: both already have their own
-          hairline, and two lines a few pixels apart read as a mistake. */}
+          THE RULE: never adjacent to a section that already has its own
+          hairline. That rules out after TechMarquee and before ContactCTA, and
+          it is also why the four sections of beat 4 have no seams between them
+          — they are one movement, and lines through it would make it four. */}
       <SectionSeam />
 
+      {/* ---- 3 · SERVICES */}
       <WhatIDo />
 
       <SectionSeam />
 
-      {/* Renders nothing when no projects are published. */}
-      {preloadedProjects ? <Projects preloaded={preloadedProjects} /> : null}
+      {/*
+        ---- 4 · REASSURANCE. Four sections, ONE beat.
 
-      <SectionSeam />
+        Process, About, HowIWork and TypedQuote run together with no seams and
+        no internal top padding: how the work goes, who is doing it, what
+        happens after, and a line to close on. About lost its own <h2> to join
+        this — it is the prose in the middle of the movement now, not a
+        biography sitting on its own.
 
+        About stays an async server component awaiting publishedCount, which is
+        why this is composed as four siblings rather than wrapped in a beat
+        container. A client wrapper would break the await.
+      */}
       <Process />
 
-      <SectionSeam />
+      <About />
 
       {/* Trust. Answers the two questions nobody asks out loud: will this
           person disappear, and can I reach them. */}
@@ -117,17 +175,45 @@ export default async function HomePage() {
 
       <SectionSeam />
 
-      <Skills />
+      {/*
+        ---- 5, 6, 7 · PRICING, OBJECTIONS, TESTIMONIALS.
 
-      {/* Renders nothing when the table is empty. */}
-      {preloadedTestimonials ? (
-        <Testimonials preloaded={preloadedTestimonials} />
-      ) : null}
+        Grouped because their ORDER is not fixed. A returning visitor gets the
+        FAQ above the price: they are past wondering whether the work is good
+        and are stuck on something specific, and a price is only ever weighed
+        against an unanswered doubt.
 
-      <SectionSeam />
+        Reordered with CSS `order` over a DOM order that never changes — see
+        ClosingBeats for why that is the only safe way to do this.
 
-      <Faq />
+        Pricing is wrapped in Quiet: while it holds the viewport centre the
+        marquees stop and the ambient wash dims. This is the one beat where
+        someone is doing arithmetic, and everything else gets out of the way.
+      */}
+      <ClosingBeats
+        pricing={
+          <Quiet>
+            <PricingPreview />
+          </Quiet>
+        }
+        objections={
+          <>
+            <SectionSeam />
+            <Faq />
+          </>
+        }
+        testimonials={
+          <>
+            <SectionSeam />
+            {/* Renders nothing when the table is empty. */}
+            {preloadedTestimonials ? (
+              <Testimonials preloaded={preloadedTestimonials} />
+            ) : null}
+          </>
+        }
+      />
 
+      {/* ---- 8 · CTA. No seam: the band carries its own accent hairline. */}
       <ContactCTA />
     </>
   );

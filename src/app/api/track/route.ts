@@ -35,6 +35,7 @@ const TYPES = [
   "chat_open",
   "chat_message",
   "web_vital",
+  "entry_state",
 ] as const;
 
 type EventType = (typeof TYPES)[number];

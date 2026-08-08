@@ -30,9 +30,19 @@ export function ImageReveal({
   const reduceMotion = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
 
-  if (reduceMotion) {
-    return <div className={className}>{children}</div>;
-  }
+  /*
+   * One tree, and reduced motion only changes the durations.
+   *
+   * Returning a plain <div> here changed the element type and dropped an inner
+   * wrapper, from a hook that is null on the server and a boolean on the
+   * client — the same hydration failure fixed across the other primitives in
+   * this directory. See Reveal.tsx for the rule in full.
+   *
+   * `whileInView` stays unconditional in both wrappers below: it is what
+   * animates away from the clip-path and the scale, and gating it would leave
+   * the image permanently clipped out of view.
+   */
+  const instant = { duration: 0 };
 
   return (
     <motion.div
@@ -42,7 +52,11 @@ export function ImageReveal({
       initial={{ clipPath: "inset(100% 0 0 0)" }}
       whileInView={{ clipPath: "inset(0% 0 0 0)" }}
       viewport={{ once: true, margin: "0px", amount: "some" }}
-      transition={{ duration: 1, delay, ease: [0.16, 1, 0.3, 1] }}
+      transition={
+        reduceMotion
+          ? instant
+          : { duration: 1, delay, ease: [0.16, 1, 0.3, 1] }
+      }
     >
       {/*
         Must fill the frame. A next/image with `fill` resolves against its
@@ -59,7 +73,11 @@ export function ImageReveal({
         initial={{ scale: 1.15 }}
         whileInView={{ scale: 1 }}
         viewport={{ once: true, margin: "0px", amount: "some" }}
-        transition={{ duration: 1.2, delay, ease: [0.16, 1, 0.3, 1] }}
+        transition={
+          reduceMotion
+            ? instant
+            : { duration: 1.2, delay, ease: [0.16, 1, 0.3, 1] }
+        }
       >
         {children}
       </motion.div>

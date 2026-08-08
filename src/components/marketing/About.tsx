@@ -11,6 +11,23 @@ import { api, isConvexConfigured } from "@/lib/convex-api";
  * Text only. There was a photo in a square frame beside this, on a fixed
  * 280px grid track; both are gone, so the copy runs to the section's own
  * measure rather than being squeezed into the remaining column.
+ *
+ * IT IS NOT A SECTION OF ITS OWN ANY MORE.
+ *
+ * This used to sit second on the homepage under its own <h2>About</h2>, which
+ * put a biography above the work — the page introduced itself before it had
+ * shown any reason to care. It now sits inside the reassurance beat, between
+ * Process and HowIWork: the same three questions in one movement, in the order
+ * someone actually asks them. How does this work, who is doing it, what
+ * happens after.
+ *
+ * So it has no heading and no vertical padding of its own. The beat around it
+ * owns both, and a second <h2> in the middle of it would break the run into
+ * two again — which is the thing being fixed.
+ *
+ * It stays an ASYNC SERVER COMPONENT. It awaits the published count below, so
+ * it cannot be wrapped in a client beat container; it is composed as a sibling
+ * on the page instead.
  */
 
 /**
@@ -34,16 +51,19 @@ export async function About() {
     : null;
 
   return (
+    /*
+     * pt-0 pb-16, not py-24. The beat's own spacing does the separating; this
+     * is a paragraph inside it, not a new section arriving.
+     *
+     * aria-label rather than aria-labelledby, since there is no longer a
+     * heading to point at. The section still needs a name — an unnamed region
+     * is announced as "section" and nothing else.
+     */
     <section
-      aria-labelledby="about-heading"
-      className="mx-auto max-w-5xl px-6 py-24"
+      id="about"
+      aria-label="About Yusuf"
+      className="mx-auto max-w-5xl px-6 pt-0 pb-16"
     >
-      <Reveal>
-        <h2 id="about-heading" className="text-3xl">
-          About
-        </h2>
-      </Reveal>
-
       {/* Capped at prose width. Without this the paragraphs would run the
           full 5xl and become hard to track line to line. */}
       <div className="max-w-2xl">
