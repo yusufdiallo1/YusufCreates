@@ -140,7 +140,22 @@ const PHONE_SHOTS: Record<string, string> = {
  * The track is one panel per project, each the full width of the container, so
  * moving it by (n-1)/n of its own width lands exactly on the last panel.
  */
-function PinnedShowcase({ projects }: { projects: Project[] }) {
+export function PinnedShowcase({
+  projects,
+  /**
+   * Viewports of scroll each project gets.
+   *
+   * One is right for the homepage, where four featured projects cost four
+   * screens. The index is a different problem: every published project is in
+   * there, so at one apiece the section became eight screens long and pushed
+   * everything after it out of reach. Shortening the travel keeps the whole
+   * body of work in one gesture without any panel flashing past.
+   */
+  viewportsPerProject = 1,
+}: {
+  projects: Project[];
+  viewportsPerProject?: number;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -172,7 +187,7 @@ function PinnedShowcase({ projects }: { projects: Project[] }) {
        * the container is taller than what is actually on screen and the last
        * project never reaches full progress.
        */
-      style={{ height: `${projects.length * 100}dvh` }}
+      style={{ height: `${projects.length * viewportsPerProject * 100}dvh` }}
     >
       <div className="sticky top-0 flex h-[100dvh] items-center">
         {/*

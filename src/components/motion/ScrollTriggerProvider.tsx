@@ -24,10 +24,17 @@ import { useCapability } from "@/components/providers/CapabilityProvider";
  *   at all, and ScrollTrigger's own window listener is already correct. It
  *   must not be given a Lenis-shaped configuration it has no Lenis for.
  *
- * MOUNTED ABOVE SmoothScroll so this claims the ticker before Lenis is
- * constructed. SmoothScroll checks the claim and self-drives if it is absent,
- * so the ordering is an optimisation rather than a correctness requirement —
- * but getting it right means the fallback never has to fire.
+ * THIS NO LONGER OWNS THE TICKER, and should not try to.
+ *
+ * SmoothScroll drives Lenis itself, unconditionally. It is a CHILD of this
+ * component and React runs child effects first, so its claim always lands
+ * before the claimTicker() call below — which therefore returns false, and the
+ * GSAP ticker branch never runs. That is deliberate: the negotiation this file
+ * used to take part in is exactly what left the page unscrollable twice.
+ *
+ * The `lenis.on("scroll", ScrollTrigger.update)` wiring below still matters
+ * and still runs. GSAP is told about scroll positions; it just is not the
+ * thing calling raf. See the note in motion/SmoothScroll.tsx.
  *
  * Not initialised at all below `full`: nothing scrubbed runs there, and an
  * idle ScrollTrigger still costs listeners and refresh work.

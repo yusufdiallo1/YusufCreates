@@ -1,9 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useReducedMotion } from "motion/react";
 import { usePreloadedQuery, type Preloaded } from "convex/react";
 import type { api } from "@/lib/convex-api";
-import { ProjectCard, type Project } from "@/components/marketing/Projects";
+import {
+  PinnedShowcase,
+  ProjectCard,
+  type Project,
+} from "@/components/marketing/Projects";
 import { Reveal } from "@/components/motion/Reveal";
 import { TextReveal } from "@/components/motion/TextReveal";
 import { WordReveal } from "@/components/motion/WordReveal";
@@ -51,6 +56,7 @@ export function WorkIndex({
   preloaded: Preloaded<typeof api.projects.listPublished>;
 }) {
   const projects = usePreloadedQuery(preloaded);
+  const reduceMotion = useReducedMotion();
 
   return (
     <>
@@ -116,7 +122,31 @@ export function WorkIndex({
               Falls back to the plain grid at one project, where a "lead" with
               nothing following it is just a big card.
             */}
-            <SpotlightGroup className="mt-6 grid grid-cols-1 gap-8 sm:grid-cols-2">
+            {/*
+              DESKTOP TRAVELS, SMALL SCREENS READ.
+
+              The same pinned sideways showcase the homepage uses, and for the
+              same reason: on a page whose whole job is "here is the work", the
+              scroll gesture and the work should move together rather than the
+              page stepping through a contact sheet.
+
+              The grid below is not a lesser version of it — it is the index,
+              and it is what a phone gets, what reduced motion gets, and what
+              anyone gets who wants to see everything at once rather than one
+              at a time. Pinning needs viewport height to work against and
+              fights the only gesture a phone has, which is why it is lg-only.
+            */}
+            {!reduceMotion ? (
+              <div className="mt-6 hidden lg:block">
+                <PinnedShowcase projects={projects} viewportsPerProject={0.7} />
+              </div>
+            ) : null}
+
+            <SpotlightGroup
+              className={`mt-6 grid grid-cols-1 gap-8 sm:grid-cols-2 ${
+                reduceMotion ? "" : "lg:hidden"
+              }`}
+            >
               {projects.map((project: Project, index: number) => {
                 const lead = index === 0 && projects.length > 1;
                 return (

@@ -38,11 +38,15 @@ export default async function MarketingLayout({
     : [];
 
   return (
-    /* ScrollTriggerProvider sits ABOVE SmoothScroll so it claims the RAF
-       ticker before Lenis is constructed, letting GSAP and Lenis share one
-       clock. SmoothScroll self-drives if the claim never arrives, so the
-       ordering is an optimisation rather than a correctness requirement —
-       but getting it right means that fallback never has to fire. */
+    /* ScrollTriggerProvider sits ABOVE SmoothScroll, and that nesting is now a
+       CORRECTNESS REQUIREMENT rather than an optimisation.
+
+       React runs child effects before parent effects, so SmoothScroll's claim
+       on the RAF ticker lands first and ScrollTriggerProvider's returns false.
+       That is what guarantees exactly one thing calls lenis.raf() per frame.
+       Swap these two and GSAP claims it instead — which is not broken, but it
+       reopens the negotiation that left the page unscrollable twice before.
+       See the long note in motion/SmoothScroll.tsx. */
     <ScrollTriggerProvider>
       {/* Smoothing is deliberately scoped to marketing pages. The admin layout
           scrolls natively — smoothing a data table is hostile. */}
