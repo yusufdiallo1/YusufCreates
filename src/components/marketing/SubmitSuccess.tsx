@@ -212,7 +212,6 @@ export function SubmitSuccess({
           <h2 className="text-xs text-secondary uppercase">While you wait</h2>
           <Link
             href={`/work/${suggestion.slug}`}
-            data-cursor="view"
             onClick={() => track("cta_click", { cta: "success-case-study" })}
             className="hairline group mt-3 flex items-baseline justify-between gap-4 rounded-[var(--radius-lg)] bg-surface-1 p-5 transition-colors duration-hover ease-hover hover:bg-surface-2"
           >

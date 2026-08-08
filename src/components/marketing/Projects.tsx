@@ -7,11 +7,9 @@ import { motion, useScroll, useSpring, useTransform } from "motion/react";
 import { usePreloadedQuery, type Preloaded } from "convex/react";
 import type { api } from "@/lib/convex-api";
 import { Reveal } from "@/components/motion/Reveal";
-import {
-  SharedElement,
-  sharedNames,
-} from "@/components/motion/SharedElement";
+import { SharedElement, sharedNames } from "@/components/motion/SharedElement";
 import { PhoneMockup } from "@/components/ui/PhoneMockup";
+import { Tilt } from "@/components/motion/Tilt";
 import { cn } from "@/lib/utils";
 import { useEntryContext } from "@/components/providers/EntryStateProvider";
 
@@ -303,7 +301,9 @@ function ShowcasePanel({
       {/* Media column. A phone for the products that are phone products; the
           cover for anything else. Absent entirely when there is neither,
           rather than an empty box holding open half a panel. */}
-      <div className={cn("shrink-0 justify-center", hasMedia ? "flex" : "hidden")}>
+      <div
+        className={cn("shrink-0 justify-center", hasMedia ? "flex" : "hidden")}
+      >
         {phone ? (
           <Link
             href={`/work/${project.slug}`}
@@ -390,105 +390,122 @@ export function ProjectCard({
   const isNew = lastVisitAt > 0 && project._creationTime > lastVisitAt;
 
   return (
-    <Link
-      href={`/work/${project.slug}`}
-      data-spotlight=""
-      className={`project-card group relative block h-full overflow-hidden rounded-xl transition-transform duration-hover ease-hover hover:-translate-y-1 motion-reduce:hover:translate-y-0 ${
-        wide ? "sm:grid sm:grid-cols-[1.35fr_1fr] sm:items-stretch" : ""
-      }`}
-    >
-      <div /* transform-gpu on the clipping box as well as the image: the
+    /*
+     * Tilt on the outside, the card's own lift on the inside.
+     *
+     * The two are doing different jobs and compose rather than fight: the lift
+     * says "this is pressable", the tilt says "this is a pane". Tilt puts the
+     * perspective on a wrapper and rotates a child, so the card's translate
+     * lives inside the 3D context rather than replacing it.
+     *
+     * Tilt takes itself out entirely on touch and on the reduced tiers — it is
+     * gated on `canHover`, so a phone renders a plain div and the card behaves
+     * exactly as it did before.
+     */
+    <Tilt className="h-full rounded-xl">
+      <Link
+        href={`/work/${project.slug}`}
+        data-spotlight=""
+        className={`project-card group relative block h-full overflow-hidden rounded-xl transition-transform duration-hover ease-hover hover:-translate-y-1 motion-reduce:hover:translate-y-0 ${
+          wide ? "sm:grid sm:grid-cols-[1.35fr_1fr] sm:items-stretch" : ""
+        }`}
+      >
+        <div /* transform-gpu on the clipping box as well as the image: the
                 clip and the thing being clipped have to composite on the
                 same layer, or their edges disagree by a fraction of a pixel
                 for the length of the transition. */
-            className={`relative w-full transform-gpu overflow-hidden bg-surface-2 ${
-              wide ? "aspect-[3/2] sm:h-full sm:aspect-auto" : "aspect-[3/2]"
-            }`}>
-        {project.coverUrl ? (
-          /* Paired with the same name on the case study hero, so the card
+          className={`relative w-full transform-gpu overflow-hidden bg-surface-2 ${
+            wide ? "aspect-[3/2] sm:h-full sm:aspect-auto" : "aspect-[3/2]"
+          }`}
+        >
+          {project.coverUrl ? (
+            /* Paired with the same name on the case study hero, so the card
              becomes the hero rather than the two cross-fading. */
-          <SharedElement name={sharedNames.projectCover(project.slug)}>
-            <Image
-              src={project.coverUrl}
-              alt=""
-              fill
-              sizes="(max-width: 640px) 100vw, 480px"
-              className="transform-gpu object-cover object-top transition-transform duration-hover ease-hover group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
-            />
-          </SharedElement>
-        ) : (
-          /*
+            <SharedElement name={sharedNames.projectCover(project.slug)}>
+              <Image
+                src={project.coverUrl}
+                alt=""
+                fill
+                sizes="(max-width: 640px) 100vw, 480px"
+                className="transform-gpu object-cover object-top transition-transform duration-hover ease-hover group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+              />
+            </SharedElement>
+          ) : (
+            /*
             A project with no cover used to render a bare grey rectangle, which
             is indistinguishable from an image that failed to load — and that
             is exactly how it was being read. This says "no screenshot yet"
             rather than saying nothing.
           */
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[color:var(--bg-surface-2)] to-[color:var(--bg-surface-1)]">
-            <span className="font-mono text-[11px] tracking-[0.08em] text-muted uppercase">
-              {project.category ?? "Case study"}
-            </span>
-          </div>
-        )}
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[color:var(--bg-surface-2)] to-[color:var(--bg-surface-1)]">
+              <span className="font-mono text-[11px] tracking-[0.08em] text-muted uppercase">
+                {project.category ?? "Case study"}
+              </span>
+            </div>
+          )}
 
-        {/* Keeps the metadata legible over a bright screenshot. */}
+          {/* Keeps the metadata legible over a bright screenshot. */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-[color:var(--bg-surface-1)] to-transparent"
+          />
+        </div>
+
         <div
-          aria-hidden="true"
-          className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-[color:var(--bg-surface-1)] to-transparent"
-        />
-      </div>
-
-      <div className={`bg-surface-1 p-5 ${wide ? "sm:flex sm:flex-col sm:justify-center sm:p-8" : ""}`}>
-        <div className="flex items-baseline justify-between gap-4">
-          {/* Deliberately NOT a shared element. The case study heading is a
+          className={`bg-surface-1 p-5 ${wide ? "sm:flex sm:flex-col sm:justify-center sm:p-8" : ""}`}
+        >
+          <div className="flex items-baseline justify-between gap-4">
+            {/* Deliberately NOT a shared element. The case study heading is a
               TextReveal, which splits the title into per-word spans and
               animates them independently — morphing a single <h3> into that
               means the browser tweens one box toward a box whose contents are
               simultaneously moving, and the result reads as a glitch rather
               than as continuity. The cover carries the connection on its own. */}
-          <h3 className="text-base text-primary">{project.title}</h3>
-          <span className="flex shrink-0 items-center gap-2">
-            {/* Quiet on purpose. It is a courtesy to someone who has been
+            <h3 className="text-base text-primary">{project.title}</h3>
+            <span className="flex shrink-0 items-center gap-2">
+              {/* Quiet on purpose. It is a courtesy to someone who has been
                 here before, not a badge competing with the work. */}
-            <span
-              aria-hidden={!isNew}
-              className={
-                isNew
-                  ? "rounded-full bg-accent/15 px-2 py-0.5 text-[10px] tracking-[0.06em] text-accent uppercase"
-                  : "hidden"
-              }
-            >
-              New
+              <span
+                aria-hidden={!isNew}
+                className={
+                  isNew
+                    ? "rounded-full bg-accent/15 px-2 py-0.5 text-[10px] tracking-[0.06em] text-accent uppercase"
+                    : "hidden"
+                }
+              >
+                New
+              </span>
+              <span className="text-xs text-secondary tabular-nums">
+                {project.year}
+              </span>
             </span>
-            <span className="text-xs text-secondary tabular-nums">
-              {project.year}
+          </div>
+
+          <p className="mt-3 line-clamp-2 text-sm text-secondary">
+            {project.result ?? project.summary}
+          </p>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-[color:var(--border-hairline)] px-2.5 py-1 text-xs text-secondary">
+              {project.category}
             </span>
-          </span>
-        </div>
+            <span className="text-xs text-secondary">{project.client}</span>
 
-        <p className="mt-3 line-clamp-2 text-sm text-secondary">
-          {project.result ?? project.summary}
-        </p>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-[color:var(--border-hairline)] px-2.5 py-1 text-xs text-secondary">
-            {project.category}
-          </span>
-          <span className="text-xs text-secondary">{project.client}</span>
-
-          {/* A marker, not a link — the whole card is already an anchor to the
+            {/* A marker, not a link — the whole card is already an anchor to the
               case study, and an <a> inside an <a> is invalid. Saying the site
               is live is the useful part; the case study carries the link. */}
-          {project.liveUrl ? (
-            <span className="ml-auto flex items-center gap-1.5 text-xs text-accent">
-              <span
-                aria-hidden="true"
-                className="size-1.5 rounded-full bg-accent"
-              />
-              Live
-            </span>
-          ) : null}
+            {project.liveUrl ? (
+              <span className="ml-auto flex items-center gap-1.5 text-xs text-accent">
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 rounded-full bg-accent"
+                />
+                Live
+              </span>
+            ) : null}
+          </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </Tilt>
   );
 }

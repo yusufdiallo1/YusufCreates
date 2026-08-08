@@ -11,6 +11,7 @@ import { TypedQuote } from "@/components/marketing/TypedQuote";
 import { ContactCTA } from "@/components/marketing/ContactCTA";
 import { TechMarquee } from "@/components/marketing/TechMarquee";
 import { WhatIDo } from "@/components/marketing/WhatIDo";
+import { Skills } from "@/components/marketing/Skills";
 import { Faq } from "@/components/marketing/Faq";
 import { PricingPreview } from "@/components/marketing/PricingPreview";
 import { ClosingBeats } from "@/components/marketing/ClosingBeats";
@@ -141,8 +142,19 @@ export default async function HomePage() {
           — they are one movement, and lines through it would make it four. */}
       <SectionSeam />
 
-      {/* ---- 3 · SERVICES */}
+      {/* ---- 3 · SERVICES. Two sections, ONE beat.
+
+          WhatIDo says what the engagements are; Skills says what they are
+          built with. No seam between them for the same reason beat 4 has none
+          internally — they answer one question in two halves, and a line
+          through it would make it two.
+
+          Skills panels carry their own `hairline` border, so a seam directly
+          after would sit against an existing line. The seam below stays
+          because there is a full section of padding between them. */}
       <WhatIDo />
+
+      <Skills />
 
       <SectionSeam />
 

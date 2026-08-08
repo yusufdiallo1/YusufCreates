@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 import { Reveal } from "@/components/motion/Reveal";
+import { CountUp } from "@/components/motion/CountUp";
 import { useCurrency } from "@/lib/useCurrency";
 import {
   CURRENCY_SYMBOL,
@@ -95,7 +96,6 @@ export function PricingPreview() {
           </h2>
           <Link
             href="/pricing"
-            data-cursor="link"
             onClick={() => track("cta_click", { cta: "home-pricing-all" })}
             className="text-sm text-secondary transition-colors duration-hover ease-hover hover:text-primary"
           >
@@ -124,8 +124,25 @@ export function PricingPreview() {
                   {tier.from ? (
                     <span className="mr-1 text-sm text-secondary">from</span>
                   ) : null}
-                  {symbol}
-                  {tier.amount.toLocaleString("en-US")}
+                  {/*
+                    Counted, not printed.
+
+                    `format` rather than prefix/suffix so the symbol and the
+                    thousands separator move together with the number — a
+                    prefix would leave "£" sitting beside a bare digit run for
+                    the length of the count.
+
+                    tabular-nums is on the parent, which is what stops the row
+                    resizing on every frame as the digits change width. The
+                    final figure is in the markup from the first render, so a
+                    reader that never sees the animation still sees the price.
+                  */}
+                  <CountUp
+                    value={tier.amount}
+                    format={(n) =>
+                      `${symbol}${Math.round(n).toLocaleString("en-US")}`
+                    }
+                  />
                 </p>
                 <p className="mt-2 text-sm text-secondary">{tier.blurb}</p>
               </div>

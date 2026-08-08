@@ -78,7 +78,6 @@ export function CredibilityStrip() {
                 <li key={project._id}>
                   <Link
                     href={`/work/${project.slug}`}
-                    data-cursor="view"
                     aria-label={`${project.title} — view case study`}
                     className="block overflow-hidden rounded-[var(--radius-xs)] transition-transform duration-hover ease-hover hover:-translate-y-0.5"
                   >

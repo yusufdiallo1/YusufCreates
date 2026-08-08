@@ -829,60 +829,59 @@
 
      Brightness above 1: without it the panel darkens what is behind it and the
      pill reads as a shadow. Real glass brightens. */
-  /* Nav pill — invisible at the top of the page, glass once you scroll.
+  /* Nav pill — glass from the top of the page, firmer once you scroll.
 
-     RESTORED to the original behaviour. It was briefly made opaque at rest, on
-     the reasoning that content passing underneath had to stay unreadable. That
-     is true while scrolling, which is exactly when the condensed state applies
-     — but at the top of a page there is nothing behind the pill to obscure, so
-     a solid bar there just draws a lozenge across the hero for no reason.
+     It used to be fully transparent at rest, on the reasoning that there is
+     nothing behind the pill to obscure at the top of a page so a lozenge drawn
+     across the hero was noise. That is a defensible read, and it is not the one
+     wanted here: the nav is a material, and a material does not blink into
+     existence 24 pixels down. It is glass the whole way.
 
-     Sitting on nothing at rest, and becoming a material only when it has
-     something to sit on, is the quieter and more considered behaviour. */
+     28px of blur with the saturation and brightness lift is what makes it read
+     as a pane with the page travelling behind it. 12px was too little to see —
+     it looked like a slightly grey bar, which is what kept getting reported as
+     "not blurred".
+
+     THE FILL IS 68% AND THAT IS A FLOOR, not a preference. Blur is only visible
+     through the fill, so raising the opacity to feel more solid is exactly what
+     destroys the glass — but below 68% a paragraph scrolling underneath becomes
+     readable straight through the nav labels. The fill carries legibility; the
+     backdrop-filter never does, because it is the part allowed to fail.
+
+     Brightness above 1: without it the panel darkens what is behind it and the
+     pill reads as a shadow. Real glass brightens. */
   .nav-pill {
-    background-color: transparent;
-    border: 1px solid transparent;
+    background-color: color-mix(in srgb, var(--bg-surface-1) 68%, transparent);
+    border: 1px solid var(--border-glass);
+    -webkit-backdrop-filter: blur(28px) saturate(180%) brightness(1.12);
+    backdrop-filter: blur(28px) saturate(180%) brightness(1.12);
     transition:
       background-color var(--dur-base) var(--ease-out-expo),
       border-color var(--dur-base) var(--ease-out-expo),
       box-shadow var(--dur-base) var(--ease-out-expo);
   }
 
-  /* Scrolled: blurred glass, and unmistakably so.
+  /* Scrolled: the same material, sitting more definitely.
 
-     The two requirements are not in tension, they just have to be stated
-     together: NOTHING at the very top of the page, real frosted glass the
-     moment you move. The resting state above is transparent; this is the
-     material.
-
-     28px of blur with the saturation and brightness lift is what makes it read
-     as a pane with the page travelling behind it. The original 12px was too
-     little to see — it looked like a slightly grey bar, which is the thing
-     that kept getting reported as "not blurred".
-
-     The fill is 68%: LOWER than before, on purpose. Blur is only visible
-     through the fill, so raising the opacity to make it feel more solid is
-     exactly what destroys the glass. 68% is the floor at which content passing
-     underneath still cannot be read — the fill carries legibility, the blur
-     never does — so this is as transparent as it is allowed to get. */
+     The difference between resting and condensed is no longer presence versus
+     absence — both are glass. It is a shadow and a slightly firmer edge, which
+     is what separation from a page that is now moving behind it looks like.
+     The size change is animated in Nav.tsx and does the rest. */
   .nav-pill-condensed {
-    background-color: color-mix(in srgb, var(--bg-surface-1) 68%, transparent);
-    border-color: var(--border-glass);
-    -webkit-backdrop-filter: blur(28px) saturate(180%) brightness(1.12);
-    backdrop-filter: blur(28px) saturate(180%) brightness(1.12);
+    border-color: color-mix(in srgb, var(--border-glass) 100%, transparent);
+    box-shadow: 0 8px 30px -12px rgb(0 0 0 / 0.5);
   }
 
-  /* No backdrop-filter support: the fill alone cannot carry it at 72%, so the
-     condensed state goes solid. The resting state stays transparent — there is
-     nothing behind it to hide. */
+  /* No backdrop-filter support: the fill alone cannot carry the glass, so it
+     goes solid rather than letting the hero read through the labels. */
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .nav-pill-condensed {
+    .nav-pill {
       background-color: var(--bg-surface-1);
     }
   }
 
   @media (prefers-reduced-transparency: reduce) {
-    .nav-pill-condensed {
+    .nav-pill {
       background-color: var(--bg-surface-1);
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
