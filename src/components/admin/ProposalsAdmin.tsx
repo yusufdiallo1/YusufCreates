@@ -18,6 +18,15 @@ import {
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import type { Doc, Id } from "@convex/_generated/dataModel";
 
+/** Green means done, warm means it still wants something from you. */
+function statusTone(status: string): string {
+  if (status === "signed") return "badge-live";
+  if (status === "accepted") return "badge-warm";
+  if (status === "lost") return "badge-cold";
+  if (status === "draft") return "badge-cold";
+  return "";
+}
+
 /**
  * Proposals.
  *
@@ -98,7 +107,14 @@ export function ProposalsAdmin() {
       id: "status",
       header: "Status",
       sortValue: (p) => p.status,
-      cell: (p) => <span className="badge">{p.status}</span>,
+      /* "accepted" and "signed" are one step apart and mean very different
+         things — accepted is still waiting on a signature, signed is money
+         owed. They must not look alike at a glance. */
+      cell: (p) => (
+        <span className={`badge ${statusTone(p.status)}`}>
+          {p.status.replace(/_/g, " ")}
+        </span>
+      ),
     },
     {
       id: "sent",
@@ -201,6 +217,7 @@ export function ProposalsAdmin() {
               "sent",
               "security_review",
               "procurement",
+              "accepted",
               "signed",
               "lost",
             ].map((v) => ({ value: v, label: v.replace(/_/g, " ") })),
@@ -312,6 +329,8 @@ function Drawer({
     timeline?: string;
     paymentTerms?: string;
     assumptions?: string;
+    siteType?: string;
+    domain?: string;
   }) => Promise<void>;
 }) {
   const [leadId, setLeadId] = useState<string>(
@@ -344,6 +363,11 @@ function Drawer({
       proposal?.paymentTerms ??
       "40% to start, 60% on completion. Pay by card or Link from your portal.",
     assumptions: proposal?.assumptions ?? "",
+    // Both flow straight into the contract. siteType is its opening line and
+    // domain is its own clause, so they are captured here rather than being
+    // fished back out of the scope text later.
+    siteType: proposal?.siteType ?? "",
+    domain: proposal?.domain ?? "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -399,6 +423,19 @@ function Drawer({
           </div>
 
           <Field label="Amount" type="number" value={amount} onChange={setAmount} />
+
+          <Field
+            label="Site type"
+            value={fields.siteType}
+            onChange={(v) => setFields({ ...fields, siteType: v })}
+            help="The contract's opening line. e.g. “A five-page marketing site with a CMS”."
+          />
+          <Field
+            label="Domain"
+            value={fields.domain}
+            onChange={(v) => setFields({ ...fields, domain: v })}
+            help="Leave blank if it is not decided — the contract will say so."
+          />
 
           <TextArea
             label="What I understand"

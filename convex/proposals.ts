@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireAdmin } from "./lib/auth";
 import { proposalStatus } from "./schema";
+import { generateContract } from "./contracts";
 
 export const listByStatus = query({
   args: { status: v.optional(proposalStatus) },
@@ -40,6 +41,7 @@ export const setStatus = mutation({
     await ctx.db.patch(args.id, {
       status: args.status,
       ...(args.status === "sent" ? { sentAt: Date.now() } : {}),
+      ...(args.status === "accepted" ? { acceptedAt: Date.now() } : {}),
       ...(args.status === "signed" ? { signedAt: Date.now() } : {}),
     });
   },
@@ -78,7 +80,21 @@ export const getByToken = mutation({
   },
 });
 
-/** Client responds. Public by necessity — the token is the credential. */
+/**
+ * Client responds. Public by necessity — the token is the credential.
+ *
+ * Accepting GENERATES THE CONTRACT in this same transaction and hands back its
+ * token, so the client goes straight from the slider to signing. Not a
+ * scheduled follow-up, not an email: every step between accepting and paying
+ * is a place they cool off, and a scheduled job would leave a window where
+ * Accept visibly leads nowhere.
+ *
+ * If contract generation throws — no active template, governing law still
+ * unset — the whole mutation rolls back and the proposal stays unaccepted.
+ * That is the right failure: a client told "accepted, nothing further needed"
+ * who then receives a contract days later is worse than a slider that did not
+ * move.
+ */
 export const respond = mutation({
   args: {
     token: v.string(),
@@ -98,10 +114,24 @@ export const respond = mutation({
     if (!proposal || proposal.status === "draft") return { ok: false as const };
 
     if (args.action === "accept") {
+      // Already accepted: return the existing live contract rather than
+      // generating a second one. A double-tapped slider must not produce two.
+      const existing = await ctx.db
+        .query("contracts")
+        .withIndex("by_proposal", (q) => q.eq("proposalId", proposal._id))
+        .collect();
+      const live = existing.find((c) => !c.voidedAt);
+      if (live) {
+        return { ok: true as const, contractToken: live.token };
+      }
+
       await ctx.db.patch(proposal._id, {
-        status: "signed",
+        status: "accepted",
         acceptedAt: Date.now(),
       });
+
+      const { token } = await generateContract(ctx, proposal);
+      return { ok: true as const, contractToken: token };
     } else if (args.action === "decline") {
       await ctx.db.patch(proposal._id, {
         status: "lost",
@@ -140,6 +170,8 @@ export const upsert = mutation({
     timeline: v.optional(v.string()),
     paymentTerms: v.optional(v.string()),
     assumptions: v.optional(v.string()),
+    siteType: v.optional(v.string()),
+    domain: v.optional(v.string()),
   },
   handler: async (ctx, { id, ...fields }) => {
     await requireAdmin(ctx);
