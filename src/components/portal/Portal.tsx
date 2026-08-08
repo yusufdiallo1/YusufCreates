@@ -242,6 +242,8 @@ function PortalContent() {
         </>
       )}
 
+      <Contracts />
+
       {invoices && invoices.length > 0 ? (
         <div className="mt-12">
           <Invoices invoices={invoices} paying={paying} setPaying={setPaying} />
@@ -446,6 +448,64 @@ function Activity({
           </AnimatePresence>
         </ul>
       </LayoutGroup>
+    </section>
+  );
+}
+
+/**
+ * Signed contracts. Client-scoped, not project-scoped, and permanent.
+ *
+ * Outside the project block on purpose: a contract is signed before any
+ * project exists, so hanging it off a project would hide the one document the
+ * client is most entitled to keep.
+ *
+ * The link goes through a route that re-checks the session on every request
+ * rather than to a Convex storage URL, which would be a bearer credential
+ * anyone could pass on.
+ */
+function Contracts() {
+  const contracts = useQuery(api.portal.contracts, {});
+  if (!contracts || contracts.length === 0) return null;
+
+  return (
+    <section aria-labelledby="contracts-heading" className="mt-12">
+      <h2 id="contracts-heading" className="text-lg">
+        Contracts
+      </h2>
+      <ul className="mt-4 space-y-2">
+        {contracts.map((contract) => (
+          <li
+            key={contract._id}
+            className="hairline flex items-center justify-between gap-4 rounded-xl bg-surface-1 p-4"
+          >
+            <div className="min-w-0">
+              <p className="text-sm text-primary">Services Agreement</p>
+              <p className="mt-1 text-xs text-secondary">
+                Signed{" "}
+                {contract.signedAt
+                  ? new Date(contract.signedAt).toLocaleDateString("en-US", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })
+                  : "—"}
+              </p>
+            </div>
+            {contract.hasPdf ? (
+              <a
+                href={`/api/portal/contracts/${contract._id}/pdf`}
+                className="shrink-0 text-sm text-accent hover:text-primary"
+              >
+                Download
+              </a>
+            ) : (
+              <span className="shrink-0 text-xs text-secondary">
+                preparing…
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

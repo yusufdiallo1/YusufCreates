@@ -92,8 +92,45 @@ export function ProposalView({ token }: { token: string }) {
 
       {proposal.status === "signed" ? (
         <p className="mt-12 text-sm text-secondary">
-          Accepted. Nothing further is needed.
+          Signed. Nothing further is needed.
         </p>
+      ) : proposal.status === "accepted" ? (
+        /*
+         * Accepted but the contract is not signed yet — almost always because
+         * they closed the tab mid-redirect. The link back is the whole value
+         * of this branch: without it they are stranded, having said yes to
+         * something with no way to finish it.
+         */
+        <div className="mt-12">
+          <p className="text-sm text-secondary">
+            Accepted. One thing left — the contract needs signing.
+          </p>
+          <button
+            type="button"
+            onClick={async () => {
+              setFailed(null);
+              try {
+                const result = await respond({ token, action: "accept" });
+                if (result.ok && result.contractToken) {
+                  window.location.href = `/contract/${result.contractToken}`;
+                }
+              } catch {
+                setFailed("Couldn't open the contract. Try again in a moment.");
+              }
+            }}
+            className="mt-3 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas"
+          >
+            Open the contract
+          </button>
+          {failed ? (
+            <p
+              role="alert"
+              className="mt-4 text-sm text-[color:var(--text-notice)]"
+            >
+              {failed}
+            </p>
+          ) : null}
+        </div>
       ) : proposal.status === "lost" ? (
         <p className="mt-12 text-sm text-secondary">
           Declined. If that was a mistake, just reply to the email.
@@ -103,7 +140,7 @@ export function ProposalView({ token }: { token: string }) {
           <div>
             <p className="text-sm text-primary">Happy with this?</p>
             <p className="mt-1 text-xs text-secondary">
-              Accepting is not a signature — I&apos;ll send the contract next.
+              Accepting takes you straight to the contract to sign.
             </p>
             <div className="mt-3 max-w-sm">
               <SlideToConfirm
@@ -112,8 +149,24 @@ export function ProposalView({ token }: { token: string }) {
                 completedLabel="Accepted"
                 ariaLabel="Slide to accept this proposal"
                 onConfirm={async () => {
-                  await respond({ token, action: "accept" });
-                  setDone("Accepted — thank you.");
+                  const result = await respond({ token, action: "accept" });
+                  if (!result.ok || !result.contractToken) {
+                    // Throwing rolls the slider back, which is the honest
+                    // outcome: nothing was accepted.
+                    throw new Error("Could not open the contract.");
+                  }
+                  /*
+                   * Straight there, and deliberately not via setDone. A
+                   * confirmation screen with a link is one more decision
+                   * between saying yes and signing, and every step in that
+                   * window is a place to cool off.
+                   *
+                   * The await never resolves before the browser leaves, which
+                   * keeps the slider in its pending state rather than
+                   * flashing "Accepted" over a page that is already going.
+                   */
+                  window.location.href = `/contract/${result.contractToken}`;
+                  await new Promise((r) => setTimeout(r, 4000));
                 }}
               />
             </div>

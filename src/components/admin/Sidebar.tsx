@@ -54,6 +54,9 @@ const GROUPS: { heading: string; items: { href: string; label: string }[] }[] = 
     heading: "Clients",
     items: [
       { href: `${ADMIN_PATH}/proposals`, label: "Proposals" },
+      // Between proposals and invoices, because that is where it sits in the
+      // actual sequence: quote, sign, bill.
+      { href: `${ADMIN_PATH}/contracts`, label: "Contracts" },
       { href: `${ADMIN_PATH}/invoices`, label: "Invoices" },
     ],
   },

@@ -33,6 +33,7 @@ const LABELS: Record<string, string> = {
   kb: "AI",
   invoices: "Invoices",
   proposals: "Proposals",
+  contracts: "Contracts",
   clients: "Clients",
   content: "Content",
   promos: "Promotions",
