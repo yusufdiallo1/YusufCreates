@@ -135,6 +135,10 @@ export const summary = query({
       if (e.type === "form_start") bump("form_starts", "all");
       if (e.type === "form_submit") bump("submissions", "all");
       if (e.type === "faq_open" && label) bump("faq", String(label));
+      // How the audience splits between first-timers, returners and referrals.
+      if (e.type === "entry_state" && label) {
+        bump("entry_states", String(label));
+      }
       if (e.type === "pricing_tier_click" && label) {
         bump("tier_clicks", String(label));
       }
@@ -219,6 +223,9 @@ export const summary = query({
       tierClicks: top("tier_clicks", 8),
       currencies: top("currencies", 6),
       faq: top("faq", 8),
+      /* Five dimensions at most — the entry states are a closed set, so this
+         is the whole distribution rather than a top-N of something open. */
+      entryStates: top("entry_states", 5),
       scroll: top("scroll", 4),
 
       /* Whether the rollup has ever run. Without this, "no data yet" and

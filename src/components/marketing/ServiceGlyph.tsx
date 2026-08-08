@@ -25,7 +25,19 @@ const STROKE = {
   strokeLinejoin: "round" as const,
 };
 
-/** Draws itself in on reveal, then stays. */
+/**
+ * Draws itself in on reveal, then stays.
+ *
+ * ALWAYS a motion.path, even when still. Returning a plain <path> for reduced
+ * motion swapped both the element and four attributes — pathLength,
+ * stroke-dasharray, stroke-dashoffset and opacity are what Motion writes to
+ * animate a stroke, and the server emitted all four where a reduced-motion
+ * client emitted none. Each glyph is five paths and the services grid draws
+ * four glyphs, so a single page mismatched twenty times over.
+ *
+ * `still` now only collapses the duration. The stroke is at full length in the
+ * first painted frame either way; see Reveal.tsx for the rule.
+ */
 function Draw({
   d,
   delay = 0,
@@ -35,7 +47,6 @@ function Draw({
   delay?: number;
   still: boolean;
 }) {
-  if (still) return <path d={d} {...STROKE} />;
   return (
     <motion.path
       d={d}
@@ -43,7 +54,11 @@ function Draw({
       initial={{ pathLength: 0, opacity: 0 }}
       whileInView={{ pathLength: 1, opacity: 1 }}
       viewport={{ once: true, margin: "0px", amount: "some" }}
-      transition={{ duration: 0.9, delay, ease: [0.16, 1, 0.3, 1] }}
+      transition={
+        still
+          ? { duration: 0 }
+          : { duration: 0.9, delay, ease: [0.16, 1, 0.3, 1] }
+      }
     />
   );
 }

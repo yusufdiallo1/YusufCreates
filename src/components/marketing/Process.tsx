@@ -43,9 +43,14 @@ const STEPS = [
 
 export function Process() {
   return (
+    /* Opens the reassurance beat — Process, About, HowIWork, TypedQuote read
+       as ONE slow movement rather than four sections. So the beat's outer
+       padding lives here (pt-28) and at its close (TypedQuote), and the joins
+       inside it are only pb-16. See the beat comment in page.tsx. */
     <section
+      id="process"
       aria-labelledby="process-heading"
-      className="mx-auto max-w-5xl px-6 py-24"
+      className="mx-auto max-w-5xl px-6 pt-28 pb-16"
     >
       <Reveal>
         <h2 id="process-heading" className="text-3xl">

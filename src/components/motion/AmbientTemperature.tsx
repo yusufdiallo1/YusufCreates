@@ -2,6 +2,7 @@
 
 import { motion, useScroll, useTransform } from "motion/react";
 import { useCapability } from "@/components/providers/CapabilityProvider";
+import { useQuiet } from "@/components/motion/Quiet";
 
 /**
  * AmbientTemperature — the page warms as you descend it.
@@ -20,6 +21,7 @@ import { useCapability } from "@/components/providers/CapabilityProvider";
  */
 export function AmbientTemperature() {
   const { tier } = useCapability();
+  const quiet = useQuiet();
   const { scrollYProgress } = useScroll();
 
   // Cool blue-violet → neutral → warm amber. 214° to 32° the short way round
@@ -44,6 +46,16 @@ export function AmbientTemperature() {
         background: tier === "full" ? background : undefined,
         position: "fixed",
         inset: 0,
+        /*
+         * Dimmed, not removed, while the page is quiet.
+         *
+         * The wash is already almost subliminal; taking it to a third of
+         * itself is enough that the pricing band sits on a flat surface, and
+         * the CSS transition means it recedes rather than snapping off. An
+         * opacity change on a fixed, already-composited layer is free.
+         */
+        opacity: quiet ? 0.35 : 1,
+        transition: "opacity 600ms var(--ease-hover, ease-out)",
         // Behind everything, including the canvas content.
         zIndex: -1,
         pointerEvents: "none",

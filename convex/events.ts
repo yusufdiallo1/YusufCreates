@@ -34,6 +34,7 @@ export const track = mutation({
       v.literal("chat_open"),
       v.literal("chat_message"),
       v.literal("web_vital"),
+      v.literal("entry_state"),
     ),
     path: v.optional(v.string()),
     sessionId: v.optional(v.string()),

@@ -183,6 +183,14 @@ export function AnalyticsDashboard() {
                 empty="No country data yet."
                 rows={data.countries}
               />
+              {/* Who is arriving, in the terms the page adapts to. A referrer
+                  says which site sent them; this says whether they had already
+                  been here, and it is the one that decides what they see. */}
+              <Rows
+                title="How they arrived"
+                empty="No entry states yet."
+                rows={data.entryStates}
+              />
             </div>
           ) : null}
 

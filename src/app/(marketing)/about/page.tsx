@@ -4,6 +4,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { TextReveal } from "@/components/motion/TextReveal";
 import { WordReveal } from "@/components/motion/WordReveal";
 import { NameMark } from "@/components/ui/NameMark";
+import { Skills } from "@/components/marketing/Skills";
 import { personJsonLd } from "@/lib/jsonld";
 import { SITE } from "@/lib/constants";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -40,7 +41,9 @@ export default function AboutPage() {
       <JsonLd data={personJsonLd} />
 
 
-      <div className="mx-auto max-w-3xl px-6 pt-32 pb-24">
+      {/* pb-0: Skills follows this column and carries its own py-24, so a
+          bottom padding here would double the gap. */}
+      <div className="mx-auto max-w-3xl px-6 pt-32 pb-0">
         {/* The name is set with the Y and D drawn as marks. */}
         <h1 className="text-4xl">
           <NameMark />
@@ -144,8 +147,30 @@ export default function AboutPage() {
           </Reveal>
         </section>
 
+        {/*
+          MOVED HERE FROM THE HOMEPAGE, not deleted.
+
+          The full stack list sat between the reassurance beat and the
+          testimonials on the front page, where it interrupted the argument
+          with a specification: someone still deciding whether to enquire does
+          not need to know which ORM I use. Here it belongs — this is the page
+          people read when they have already decided they are interested and
+          want to know what they would be getting.
+
+          <Skills /> rendered ONLY on the homepage, so dropping that render
+          would have removed the section from the site entirely. SkillChip is
+          imported separately by CaseStudy.tsx and is unaffected either way.
+
+          Outside the max-w-3xl prose column, because the grouped list wants
+          the wider measure it was built for.
+        */}
+      </div>
+
+      <Skills />
+
+      <div className="mx-auto max-w-3xl px-6 pb-24">
         <Reveal>
-          <div className="hairline-t mt-16 pt-10">
+          <div className="hairline-t pt-10">
             <p className="text-lg">Working on something?</p>
             <Link
               href="/pricing"

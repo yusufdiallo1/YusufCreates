@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { fetchMutation } from "convex/nextjs";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 import { scoreLead, suspicionFromSignals } from "@/lib/leadScoring";
@@ -293,48 +293,68 @@ export async function POST(request: Request) {
    * the response. The enquiry is the thing that matters; a missing confirmation
    * is an annoyance, a lost enquiry is lost work. Both sends are logged so a
    * silent failure is still discoverable.
+   *
+   * AFTER THE RESPONSE, NOT BEFORE IT.
+   *
+   * This used to be awaited inline, which put two Resend round trips plus two
+   * Convex log writes inside the request — so the slide-to-confirm control sat
+   * spinning for the length of an email API call before the success panel
+   * could render. The lead is already durably stored by this point; nothing
+   * below can change what the visitor is told, so nothing below should be able
+   * to make them wait for it.
+   *
+   * `after` runs the callback once the response is finished, and on Vercel it
+   * is backed by waitUntil so the function stays alive until these settle. It
+   * runs even when the response failed, which is the behaviour we want: a
+   * saved lead should still be emailed about.
+   *
+   * Everything the callback needs is captured by closure. In a Route Handler
+   * `after` may also call cookies() and headers() directly — unlike in a
+   * Server Component — but it does not need to here.
    */
   const name = payload.name?.trim() || "there";
   const summary = buildSummary(payload);
 
-  await Promise.allSettled([
-    logged({
-      to: email,
-      template: "LeadConfirmation",
-      subject: "Thanks — I've got your enquiry",
-      leadId,
-      react: LeadConfirmation({
-        name,
-        planLabel: projectType,
-        summary,
-      }),
-    }),
-    (async () => {
-      const admin = adminEmail();
-      if (!admin) return;
-      await logged({
-        to: admin,
-        template: "LeadNotification",
-        subject: `${band ?? "new"} ${score} · ${projectType ?? "Enquiry"} · ${name}`,
+  after(async () => {
+    await Promise.allSettled([
+      logged({
+        to: email,
+        template: "LeadConfirmation",
+        subject: "Thanks — I've got your enquiry",
         leadId,
-        // Replying to the notification reaches the client directly, which is
-        // the fastest possible path from "I got a lead" to "I answered it".
-        replyTo: email,
-        react: LeadNotification({
+        react: LeadConfirmation({
           name,
-          email,
-          phone: trim(payload.phone),
-          contactPreference: trim(payload.contactPreference),
           planLabel: projectType,
-          score,
-          band,
-          fields: summary,
-          message: payload.message?.trim() || undefined,
-          adminUrl: `${siteUrl()}/admin`,
+          summary,
         }),
-      });
-    })(),
-  ]);
+      }),
+      (async () => {
+        const admin = adminEmail();
+        if (!admin) return;
+        await logged({
+          to: admin,
+          template: "LeadNotification",
+          subject: `${band ?? "new"} ${score} · ${projectType ?? "Enquiry"} · ${name}`,
+          leadId,
+          // Replying to the notification reaches the client directly, which is
+          // the fastest possible path from "I got a lead" to "I answered it".
+          replyTo: email,
+          react: LeadNotification({
+            name,
+            email,
+            phone: trim(payload.phone),
+            contactPreference: trim(payload.contactPreference),
+            planLabel: projectType,
+            score,
+            band,
+            fields: summary,
+            message: payload.message?.trim() || undefined,
+            adminUrl: `${siteUrl()}/admin`,
+          }),
+        });
+      })(),
+    ]);
+  });
 
   return NextResponse.json({ ok: true, score });
 }

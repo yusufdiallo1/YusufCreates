@@ -11,6 +11,7 @@ import {
   animate,
 } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useHydrated } from "@/lib/useHydrated";
 
 /**
  * SlideToConfirm — deliberate-friction control for irreversible actions.
@@ -182,6 +183,9 @@ export function SlideToConfirm({
   className,
 }: SlideToConfirmProps) {
   const reduceMotion = useReducedMotion();
+  /* Only the instruction copy at the bottom reads this — see there for why
+     that one string is allowed to arrive a commit late. */
+  const hydrated = useHydrated();
   const trackRef = useRef<HTMLDivElement>(null);
   const [maxX, setMaxX] = useState(0);
   /** Measured thumb width. Shrinks on narrow tracks; see the measure effect. */
@@ -466,7 +470,20 @@ export function SlideToConfirm({
   }, [done, reduceMotion, flash, glow]);
 
   const inert = disabled || done || busy;
-  const shimmering = !touched && !inert && !reduceMotion;
+  /*
+   * NOT gated on reduceMotion — SHIMMER_CSS already handles the preference.
+   *
+   * That stylesheet carries its own `@media (prefers-reduced-motion: reduce)`
+   * rule which stops the animation and restores the flat text fill, so ANDing
+   * `!reduceMotion` in here was doing the same job a second time and doing it
+   * wrongly: the hook is null on the server and a boolean on the client, so the
+   * className was present in the server HTML and absent on a reduced-motion
+   * client. Every SlideToConfirm on /pricing mismatched on that one attribute.
+   *
+   * The CSS was always the better half of the pair. This is now just "has it
+   * been touched yet".
+   */
+  const shimmering = !touched && !inert;
 
   const strokeProps = {
     fill: "none",
@@ -499,10 +516,24 @@ export function SlideToConfirm({
           userSelect: "none",
         }}
       >
-        {/* Residue first, so the live trail paints over it. */}
-        {!reduceMotion && !done ? (
+        {/*
+          Residue first, so the live trail paints over it.
+
+          ALL FOUR DECORATIVE LAYERS BELOW RENDER UNCONDITIONALLY.
+
+          They used to be gated on `!reduceMotion`, which is null on the server
+          and a boolean on the client — so the server emitted four absolutely
+          positioned overlays that a reduced-motion client did not, and React
+          regenerated the whole /pricing route rather than patching it.
+
+          They are aria-hidden, pointer-events:none decoration, so
+          `[data-slide-decor]` in the reduced-motion block of globals.css hides
+          them outright. A media query cannot mismatch hydration; a hook can.
+        */}
+        {!done ? (
           <motion.div
             aria-hidden
+            data-slide-decor
             style={{
               position: "absolute",
               top: 0,
@@ -532,36 +563,35 @@ export function SlideToConfirm({
         />
 
         {/* The mark's light falling on the track beneath it. */}
-        {!reduceMotion ? (
-          <motion.div
-            aria-hidden
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: glowBg,
-              opacity: glow,
-              pointerEvents: "none",
-            }}
-          />
-        ) : null}
+        <motion.div
+          aria-hidden
+          data-slide-decor
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: glowBg,
+            opacity: glow,
+            pointerEvents: "none",
+          }}
+        />
 
         {/* One confirmation pulse across the whole track. */}
-        {!reduceMotion ? (
-          <motion.div
-            aria-hidden
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: flashBg,
-              pointerEvents: "none",
-            }}
-          />
-        ) : null}
+        <motion.div
+          aria-hidden
+          data-slide-decor
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: flashBg,
+            pointerEvents: "none",
+          }}
+        />
 
         {/* The rim light, masked down to the groove's own edge. */}
-        {!reduceMotion && !done ? (
+        {!done ? (
           <motion.div
             aria-hidden
+            data-slide-decor
             style={{
               position: "absolute",
               inset: 0,
@@ -641,7 +671,17 @@ export function SlideToConfirm({
           aria-disabled={inert}
           aria-busy={busy}
           onKeyDown={onKeyDown}
-          drag={reduceMotion || inert ? false : "x"}
+          /*
+            `hydrated &&`, not a bare `reduceMotion`.
+
+            Motion's drag prop writes touch-action, user-select and draggable
+            onto the element, so turning it off during the first client render
+            stripped four attributes the server had emitted. Deferring by one
+            commit costs nothing real — nobody can drag anything before
+            hydration — and it keeps the first paint identical to the HTML.
+            See useHydrated for when this is and is not the right tool.
+          */
+          drag={(hydrated && reduceMotion) || inert ? false : "x"}
           dragConstraints={{ left: 0, right: maxX }}
           dragElastic={0}
           dragMomentum={false}
@@ -661,7 +701,7 @@ export function SlideToConfirm({
             if (reduceMotion) void complete();
           }}
           animate={done ? { scale: [1, 1.07, 1] } : undefined}
-          whileTap={reduceMotion || inert ? undefined : { scale: 1.045 }}
+          whileTap={(hydrated && reduceMotion) || inert ? undefined : { scale: 1.045 }}
           transition={{ duration: 0.45, ease: EASE }}
           style={{
             x,
@@ -677,7 +717,14 @@ export function SlideToConfirm({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            cursor: reduceMotion ? "pointer" : inert ? "default" : "grab",
+            /* Same one-commit deferral as `drag` above, for the same reason:
+               the cursor is part of the serialised style attribute. */
+            cursor:
+              hydrated && reduceMotion
+                ? "pointer"
+                : inert
+                  ? "default"
+                  : "grab",
           }}
         >
           <svg width={28} height={31} viewBox="40 30 140 155" aria-hidden>
@@ -720,7 +767,22 @@ export function SlideToConfirm({
           margin: "12px 0 0",
         }}
       >
-        {reduceMotion
+        {/*
+          The one place in this component that needs useHydrated.
+
+          Everything else here was made hydration-safe by rendering identical
+          markup and letting CSS or a duration carry the preference. This is
+          different: under reduced motion the control genuinely stops being a
+          drag target and becomes a press target, so the two strings are not
+          cosmetic variants — telling someone to drag something that does not
+          drag is a real failure.
+
+          So the server and the first paint both render the drag instruction,
+          and it corrects itself one commit later. A beat of the wrong hint is
+          the lesser cost against failing hydration for the whole route, which
+          is what branching on useReducedMotion here used to do.
+        */}
+        {hydrated && reduceMotion
           ? "Press to confirm."
           : "Drag the mark, or focus it and press Enter."}
       </p>

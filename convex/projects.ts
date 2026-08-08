@@ -159,3 +159,44 @@ export const publishedCount = query({
     return rows.length;
   },
 });
+
+/**
+ * Hostnames of the sites I have built, for recognising a referred visitor.
+ *
+ * Someone arriving from a client's own site has already seen the work — the
+ * homepage does not need to prove itself to them, and the site says so. This
+ * is the list that decision is made against.
+ *
+ * Derived from liveUrl rather than stored separately, so it cannot drift: a
+ * project that goes live is recognised the moment its URL is filled in, and
+ * one that is unpublished stops being recognised on the same read.
+ *
+ * Public, and safe to be: every one of these hostnames is already printed on
+ * the case study page it comes from. Only the HOST is returned — a full URL
+ * would be a longer string carrying nothing extra, since the match is on
+ * hostname either way.
+ *
+ * Deduplicated because one client can have several projects on one domain,
+ * and `www.` is stripped to match how src/lib/track.ts normalises a referrer.
+ */
+export const clientDomains = query({
+  args: {},
+  handler: async (ctx) => {
+    const rows = await ctx.db
+      .query("projects")
+      .withIndex("by_status", (q) => q.eq("status", "published"))
+      .collect();
+
+    const hosts = new Set<string>();
+    for (const row of rows) {
+      if (!row.liveUrl) continue;
+      try {
+        hosts.add(new URL(row.liveUrl).hostname.replace(/^www\./, ""));
+      } catch {
+        // A malformed liveUrl is an admin typo, not a reason to fail the
+        // query — every other project still resolves.
+      }
+    }
+    return Array.from(hosts);
+  },
+});

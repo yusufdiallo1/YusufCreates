@@ -14,6 +14,7 @@ import {
 import { AnimatedLogo } from "@/components/ui/AnimatedLogo";
 import { Magnetic } from "@/components/motion/Magnetic";
 import { cn } from "@/lib/utils";
+import { useEntryState } from "@/components/providers/EntryStateProvider";
 
 /**
  * Nav — fixed glass pill that condenses on scroll.
@@ -45,6 +46,21 @@ export function Nav() {
   // Set when pointerdown has already toggled the menu, so the click that
   // follows on a mouse does not toggle it straight back.
   const pointerHandled = useRef(false);
+
+  /*
+   * The nav's own call to action, for someone who has already enquired.
+   *
+   * This button is on every marketing page, so leaving it saying "start a
+   * project" to an existing client is the single most repeated way the site
+   * can fail to notice who it is talking to.
+   *
+   * Text and href only — the element, its position and its styling are
+   * identical in both states, which is what keeps it safe to resolve after
+   * hydration. See THE SSR RULE in lib/entryState.ts.
+   */
+  const isLead = useEntryState() === "lead";
+  const ctaHref = isLead ? "/portal" : "/pricing";
+  const ctaLabel = isLead ? "Project status" : "Start a project";
 
   /*
    * The expand overshoot.
@@ -215,6 +231,17 @@ export function Nav() {
           <ul className="hidden items-center gap-7 md:flex">
             {NAV_ITEMS.map((item) => {
               const active = pathname.startsWith(item.href);
+              /*
+               * The active/hover marker is a CSS underline on .nav-link now —
+               * see globals.css.
+               *
+               * It replaced a Motion element with a shared layoutId, and that
+               * had a side benefit worth recording: the old element was chosen
+               * with `marked && !reduceMotion`, and useReducedMotion is null on
+               * the server and a boolean on the client, so every route with a
+               * matching nav item hydrated against markup the server had not
+               * sent. CSS cannot have that bug.
+               */
               return (
                 <li key={item.href}>
                   <Link
@@ -232,10 +259,10 @@ export function Nav() {
           <div className="flex items-center gap-2">
             <Magnetic className="hidden sm:inline-flex">
               <Link
-                href="/pricing"
+                href={ctaHref}
                 className="rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
               >
-                Start a project
+                {ctaLabel}
               </Link>
             </Magnetic>
 
@@ -367,10 +394,10 @@ export function Nav() {
             </ul>
 
             <Link
-              href="/pricing"
+              href={ctaHref}
               className="mt-auto rounded-full bg-primary py-3 text-center text-sm font-medium text-canvas"
             >
-              Start a project
+              {ctaLabel}
             </Link>
           </motion.div>
           </>

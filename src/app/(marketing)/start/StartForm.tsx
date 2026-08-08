@@ -10,6 +10,8 @@ import {
 import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { storedReferralCode } from "@/lib/referral";
+import { clearDraft, readDraft, writeDraft } from "@/lib/formDraft";
+import { markLead } from "@/lib/journey";
 import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
 import { FocusSweep } from "@/components/ui/FocusSweep";
 import { SubmitSuccess } from "@/components/marketing/SubmitSuccess";
@@ -190,6 +192,76 @@ export function StartForm() {
     if (stored) setValues((v) => ({ ...v, promoCode: stored }));
   }, []);
 
+  /*
+   * Restore whatever was typed last time.
+   *
+   * IN AN EFFECT, never a lazy useState initialiser — the same rule the
+   * referral code above follows, for the same reason. The initialiser runs
+   * during the first client render, where the server has already committed to
+   * empty fields; returning a restored draft there is a hydration mismatch on
+   * every field at once.
+   *
+   * `restored` gates the writer below. Without it the writer's first run — on
+   * an empty form, before this effect has committed — would overwrite the very
+   * draft being read, so a reload would reliably wipe what it was meant to
+   * protect.
+   */
+  const [restored, setRestored] = useState(false);
+
+  /*
+   * react-hooks/set-state-in-effect is disabled here on purpose.
+   *
+   * The rule exists to stop cascading renders, and it explicitly permits
+   * effects that "subscribe for updates from some external system". That is
+   * what this is: localStorage is an external system, and reading it on mount
+   * is the only place it CAN be read, because it does not exist on the server.
+   *
+   * The alternatives are both worse. A lazy useState initialiser runs during
+   * the first client render, where the server has already committed to empty
+   * fields — a hydration mismatch on every field at once, which is the exact
+   * failure the referral-code effect above documents. Deriving the fields from
+   * an external store would work for reading and then have nowhere to put the
+   * typing.
+   *
+   * The cost is one extra render, once, on mount. That is the price of the
+   * form not throwing away what someone typed.
+   */
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    const draft = readDraft();
+    if (draft) {
+      if (Object.keys(draft.values).length > 0) {
+        setValues((v) => ({ ...v, ...draft.values }));
+      }
+      /*
+       * A plan in the URL wins over a stored one. Clicking a specific tier is
+       * a fresh, explicit statement of intent; a draft is a stale one.
+       */
+      if (draft.plan && !preselected) setPlan(draft.plan as PlanId);
+      if (draft.step >= 1 && draft.step <= 4 && !preselected) {
+        setStep(draft.step);
+      }
+    }
+    setRestored(true);
+  }, [preselected]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  /*
+   * Save, debounced.
+   *
+   * Every keystroke would be a JSON serialise and a synchronous localStorage
+   * write on the main thread while someone is typing — which is precisely the
+   * wrong moment to be doing either. 500ms is below the threshold at which a
+   * tab crash would lose a meaningful amount of typing.
+   */
+  useEffect(() => {
+    if (!restored) return;
+    const id = window.setTimeout(() => {
+      writeDraft({ values, plan, step });
+    }, 500);
+    return () => window.clearTimeout(id);
+  }, [restored, values, plan, step]);
+
   // Which fields have been left once. Errors show only after that, or after a
   // failed attempt to advance — nobody should be corrected mid-word.
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -305,7 +377,9 @@ export function StartForm() {
 
   if (sent) {
     const summary = buildSummary(values, activePlan?.label);
-    return <SubmitSuccess summary={summary} />;
+    // The plan goes through so the success panel can point at a case study of
+    // roughly the same kind of work, rather than a generic "meanwhile".
+    return <SubmitSuccess summary={summary} plan={plan || undefined} />;
   }
 
   const TOTAL = 4;
@@ -346,6 +420,29 @@ export function StartForm() {
         ))}
       </ol>
 
+      {/*
+        WHAT IS LEFT, not what is done.
+
+        Four filled bars out of four is a progress report; "one question left"
+        is a reason to finish. The distinction matters most at exactly the
+        point people abandon a form, which is two thirds of the way through —
+        "you have done three" invites stopping, "one to go" does not.
+
+        role="status" and aria-live so it is announced on each step change. A
+        screen reader user gets the count from aria-current on the bars
+        already, but as a position rather than as a remainder, and the
+        remainder is the encouraging half.
+      */}
+      <p
+        role="status"
+        aria-live="polite"
+        className="mt-3 font-mono text-[11px] tracking-[0.06em] text-secondary uppercase"
+      >
+        {step >= TOTAL
+          ? "Last one"
+          : `${TOTAL - step} question${TOTAL - step === 1 ? "" : "s"} left`}
+      </p>
+
       <AttentionContext.Provider value={attention}>
       <div className="mt-10">
         {/*
@@ -357,7 +454,18 @@ export function StartForm() {
           <motion.div
             key={step}
             custom={direction}
-            variants={reduceMotion ? undefined : STEP_VARIANTS}
+            /*
+              UNCONDITIONAL. Dropping the variants under reduced motion left
+              `initial="enter"` naming a variant that no longer existed, so the
+              server serialised the enter state onto the element and a
+              reduced-motion client serialised nothing — an attribute mismatch
+              that failed hydration for the whole /start route.
+
+              The transition below is where reduced motion is honoured: at
+              duration 0 the step is at `centre` in the frame it mounts, so
+              there is no travel to see. See motion/Reveal.tsx for the rule.
+            */
+            variants={STEP_VARIANTS}
             initial="enter"
             animate="centre"
             exit="exit"
@@ -585,6 +693,19 @@ export function StartForm() {
                     // means the enquiry actually landed.
                     playConfirmation();
                     track("form_submit", { step: plan || "unknown" });
+
+                    /*
+                     * Both of these are on the 2xx path DELIBERATELY.
+                     *
+                     * Clearing the draft optimistically would destroy the
+                     * answers in exactly the case they are needed — the send
+                     * having failed — and marking the lead early would greet
+                     * someone as a client on their next visit when nothing
+                     * ever reached me.
+                     */
+                    clearDraft();
+                    markLead();
+
                     setSent(true);
                   }}
                 />

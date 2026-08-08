@@ -58,22 +58,37 @@ export function Reveal({
   const reduceMotion = useReducedMotion();
 
   /*
-   * One element type in both passes.
+   * REDUCED MOTION CHANGES THE TIMING, NEVER THE MARKUP.
    *
-   * Returning a plain <div> for reduced motion and a motion.div otherwise
-   * broke hydration: useReducedMotion is null on the server and resolves to a
-   * boolean on the client, so the server sent a <div> where the client wanted
-   * a motion.div. React cannot patch a changed element type — it throws the
-   * subtree away and re-renders it, on every Reveal on the page.
+   * Two rounds of this bug have been fixed here. The first was returning a
+   * plain <div> for reduced motion and a motion.div otherwise, which changed
+   * the ELEMENT TYPE between the passes. The second — this one — kept the
+   * element stable but still varied `initial` and `whileInView`, which changes
+   * the ATTRIBUTES: `initial` is what Motion serialises into the style
+   * attribute, so the server sent `opacity:0;transform:translateY(16px)` where
+   * a reduced-motion client wanted no style at all.
    *
-   * Keeping the component stable and varying only the animation props means
-   * reduced motion still renders at rest, without the mismatch.
+   * Both failed for the same underlying reason. useReducedMotion returns null
+   * on the server and a boolean on the client, so ANYTHING derived from it that
+   * reaches the DOM disagrees between the two passes. There are dozens of
+   * Reveals on a page and every one of them mismatched, so React discarded the
+   * whole tree and re-rendered it client-side.
+   *
+   * So `initial` and `whileInView` are unconditional, and only `transition`
+   * varies — `transition` is read by Motion when the animation runs and never
+   * reaches the DOM. duration 0 is not a compromise: the element is at rest in
+   * the same frame it is observed, which is what "no animation" means to the
+   * person who asked for it.
+   *
+   * The one thing that must NOT be done is gating `whileInView` on its own.
+   * Leaving `initial` set while removing the thing that animates away from it
+   * leaves every element on the page permanently at opacity 0.
    */
   return (
     <motion.div
       className={className}
-      initial={reduceMotion ? false : { opacity: 0, y }}
-      whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y }}
+      whileInView={{ opacity: 1, y: 0 }}
       /*
        * `amount: "some"` — any intersection at all is enough.
        *
