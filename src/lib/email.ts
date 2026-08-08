@@ -28,7 +28,19 @@ export type SendResult =
 
 let client: Resend | null = null;
 
-function getClient(): Resend | null {
+/**
+ * The shared Resend client, or null when there is no key.
+ *
+ * Exported for the inbound webhook, which needs the same client to verify a
+ * signature and to fetch a received message's body — but must NOT go through
+ * sendEmail, because nothing about receiving is a send.
+ *
+ * It stays in this file rather than moving somewhere neutral so that
+ * `server-only` above keeps covering it. That import is the thing standing
+ * between RESEND_API_KEY and a client bundle, and a second module holding the
+ * key is a second place to forget it.
+ */
+export function getClient(): Resend | null {
   const key = process.env.RESEND_API_KEY;
   if (!key) return null;
   client ??= new Resend(key);

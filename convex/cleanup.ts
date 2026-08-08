@@ -278,6 +278,9 @@ export const purgeTestRecords = internalMutation({
     // Operational noise from the same runs: delivery records and rate-limit
     // rows for enquiries that no longer exist.
     await wipe("emailLog");
+    // Both directions, or the reset is a half one: replies to invoices and
+    // proposals that no longer exist are correspondence about nothing.
+    await wipe("inboundEmails");
     await wipe("chatLimits");
     await wipe("chatMessages");
     await wipe("events");

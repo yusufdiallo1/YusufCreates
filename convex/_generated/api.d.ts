@@ -31,6 +31,7 @@ import type * as express from "../express.js";
 import type * as feedback from "../feedback.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
+import type * as inboundEmails from "../inboundEmails.js";
 import type * as intake from "../intake.js";
 import type * as intakeSections from "../intakeSections.js";
 import type * as invoices from "../invoices.js";
@@ -91,6 +92,7 @@ declare const fullApi: ApiFromModules<{
   feedback: typeof feedback;
   files: typeof files;
   http: typeof http;
+  inboundEmails: typeof inboundEmails;
   intake: typeof intake;
   intakeSections: typeof intakeSections;
   invoices: typeof invoices;

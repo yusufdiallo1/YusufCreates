@@ -406,6 +406,7 @@ export const dashboard = query({
       clients,
       monitoredSites,
       openIncidents,
+      unreadMail,
     ] = await Promise.all([
       ctx.db.query("leads").order("desc").take(400),
       ctx.db.query("invoices").order("desc").take(300),
@@ -428,6 +429,16 @@ export const dashboard = query({
         .query("incidents")
         .withIndex("by_open", (q) => q.eq("closedAt", undefined))
         .collect(),
+      /*
+       * Unread mail only, straight off the index — the read ones are a record
+       * and this list is for tasks. Capped low because the feed shows twelve
+       * items in total; a busy inbox must not crowd out an open incident.
+       */
+      ctx.db
+        .query("inboundEmails")
+        .withIndex("by_read", (q) => q.eq("read", false))
+        .order("desc")
+        .take(20),
     ]);
 
     /*
@@ -536,6 +547,26 @@ export const dashboard = query({
           waited: Math.round((now - t._creationTime) / hour),
         });
       }
+    }
+
+    /*
+     * 6a. Unread mail.
+     *
+     * Priority 3 — above feedback and a cold lead, below money and a signed
+     * proposal. A stranger's enquiry could sit for a day, but this is also
+     * where every reply to an invoice or a contract lands, and those are
+     * answers to something I asked for.
+     */
+    for (const m of unreadMail) {
+      needsYou.push({
+        id: m._id,
+        priority: 3,
+        kind: "mail",
+        label: `${m.from} replied — ${m.subject}`,
+        detail: m.text.slice(0, 90),
+        href: "/inbox",
+        waited: Math.round((now - m.receivedAt) / hour),
+      });
     }
 
     // 6. Unread feedback from the site.

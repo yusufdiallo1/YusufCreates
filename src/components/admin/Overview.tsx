@@ -28,6 +28,9 @@ const KIND_MARK: Record<string, string> = {
   lead: "●",
   testimonial: "★",
   feedback: "✉",
+  // "@", not another envelope — feedback already holds ✉, and two identical
+  // marks in one list defeats the point of having them.
+  mail: "@",
   intake: "◧",
   site: "◉",
 };
