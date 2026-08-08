@@ -1557,6 +1557,15 @@ export default defineSchema({
     sentAt: v.optional(v.number()),
     attempts: v.number(),
     lastError: v.optional(v.string()),
+    /**
+     * When a drain took this row, so a second one running concurrently does
+     * not send it again.
+     *
+     * A LEASE rather than a lock: it expires (see CLAIM_LEASE_MS), because a
+     * drain that dies mid-send would otherwise strand the row forever, and an
+     * unsent notification nobody retries is worse than a rare duplicate.
+     */
+    claimedAt: v.optional(v.number()),
   }).index("by_due", ["sentAt", "dueAt"]),
 
   /**

@@ -173,13 +173,36 @@ export const dispatchNow = internalAction({
 /* ---------------------------------------------------------------- drain --- */
 
 /**
- * Everything due and unsent.
+ * How long a claim holds before another drain may take the row.
  *
- * Secret-gated and public rather than internal, because it is called with
- * `fetchQuery` from a Next route handler which has no Convex identity —
- * exactly the pattern api.automation.pendingNotificationsPublic already uses.
+ * Longer than any realistic send — a drain does up to 50 rows and each is a
+ * Resend round-trip — and short enough that a process killed mid-drain does
+ * not strand its rows past the next poke, which arrives every 20 minutes.
  */
-export const pendingPublic = query({
+const CLAIM_LEASE_MS = 5 * 60 * 1000;
+
+/**
+ * Everything due and unsent, CLAIMED for this caller.
+ *
+ * A MUTATION, not a query, and that is the whole point.
+ *
+ * It was a query, which in Convex structurally cannot write — so it could
+ * only ever read. Two drains overlapping therefore both saw the same unsent
+ * rows and both sent them: `drain()` reads, sends, and only then marks, so
+ * the window between read and mark is a full mail round-trip. That used to be
+ * near-theoretical when the only caller was a daily cron. It is not now —
+ * contracts.pokeNotify hits the same route every 20 minutes, and
+ * dispatchNow fires on runAfter(0) the moment a row is enqueued. The
+ * collision case is an incident: rows queue, dispatchNow fires, the poke
+ * lands on top of it, and the client gets the same outage email twice.
+ *
+ * Claiming here closes it. Convex mutations are transactional, so two callers
+ * cannot both take the same row — the second sees the claim the first wrote.
+ *
+ * Secret-gated and public rather than internal, because it is called from a
+ * Next route handler which has no Convex identity.
+ */
+export const pendingPublic = mutation({
   args: { secret: v.string() },
   handler: async (ctx, args) => {
     if (
@@ -203,14 +226,23 @@ export const pendingPublic = query({
      * the queue means every subsequent drain spends its budget on it first.
      * It stays in the table unsent, which is the record that it did not go.
      */
-    return rows
-      .filter((r) => r.attempts < 5)
-      .map((r) => ({
-        id: r._id,
-        kind: r.kind,
-        payload: r.payload as unknown,
-        attempts: r.attempts,
-      }));
+    const mine = rows.filter(
+      (r) =>
+        r.attempts < 5 &&
+        // Unclaimed, or the previous claimant's lease has run out.
+        (r.claimedAt === undefined || now - r.claimedAt > CLAIM_LEASE_MS),
+    );
+
+    for (const row of mine) {
+      await ctx.db.patch(row._id, { claimedAt: now });
+    }
+
+    return mine.map((r) => ({
+      id: r._id,
+      kind: r.kind,
+      payload: r.payload as unknown,
+      attempts: r.attempts,
+    }));
   },
 });
 
@@ -236,6 +268,11 @@ export const markSentPublic = mutation({
       await ctx.db.patch(args.id, {
         attempts: row.attempts + 1,
         lastError: args.error.slice(0, 500),
+        // Released, so the retry can happen on the next drain rather than
+        // waiting out CLAIM_LEASE_MS. The failure is already recorded in
+        // attempts; the claim has done its job and should not also be a
+        // five-minute penalty.
+        claimedAt: undefined,
       });
       return;
     }

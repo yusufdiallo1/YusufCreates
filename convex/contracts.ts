@@ -1330,7 +1330,41 @@ export const pokeNotify = internalAction({
       const response = await fetch(`${base}/api/cron/notify`, {
         method: "POST",
         headers: { "x-cron-secret": secret },
+        /*
+         * Redirects are NOT followed, for the same reason as the dispatcher
+         * poke in convex/notify.ts — see the longer note there.
+         *
+         * If SITE_URL is the apex and the site canonicalises to www (or the
+         * reverse), fetch drops the secret header on the cross-origin hop and
+         * the route answers 401 to a request carrying the correct secret.
+         * Refusing to follow turns that into a 308 named below.
+         */
+        redirect: "manual",
+        // The route drains queues and sends mail; this only starts it.
+        signal: AbortSignal.timeout(20_000),
       });
+
+      if (response.status >= 300 && response.status < 400) {
+        console.warn(
+          `[contracts] SITE_URL (${base}) redirects — it must be the canonical origin, or the secret header is dropped on the hop. Contract mail will only send on the daily cron until it is fixed.`,
+        );
+        return { poked: false as const, status: response.status };
+      }
+
+      /*
+       * A non-2xx is reported rather than returned as a success.
+       *
+       * This used to return `poked: true` on any response at all, so a 401
+       * from a misconfigured SITE_URL read as a healthy poke — the one state
+       * worth knowing about was the one it hid.
+       */
+      if (!response.ok) {
+        console.warn(
+          `[contracts] the notify route answered ${response.status}. Contract mail stays queued for the daily cron.`,
+        );
+        return { poked: false as const, status: response.status };
+      }
+
       return { poked: true as const, status: response.status };
     } catch (err) {
       // The daily Vercel cron is still the backstop, so a failed poke delays

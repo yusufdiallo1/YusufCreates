@@ -18,23 +18,34 @@ import { renderNotification } from "@/lib/notifications";
  * need it and a Next route file may only export handlers and config — an
  * extra named export there fails the build's route-type check.
  *
- * Called two ways, and the difference is the whole point:
+ * Called three ways, and the difference is the whole point:
  *
  *   1. /api/notify/dispatch, poked by a Convex action the moment a row is
  *      due. This is what makes an outage alert arrive in seconds.
- *   2. /api/cron/notify, on the daily Vercel cron, as the safety net for
- *      when the poke failed — a deploy, a cold start, a network blip.
+ *   2. /api/cron/notify, poked by convex/contracts.pokeNotify every twenty
+ *      minutes for the contract queues, which drains this one on the way past.
+ *   3. /api/cron/notify again, on the daily Vercel cron, as the backstop for
+ *      when both pokes failed — a deploy, a cold start, a network blip.
  *
- * Both are idempotent: a row is cleared only on a real Resend success, so a
- * double-call sends nothing twice, and a failure leaves the row queued rather
- * than marking someone as told when they were not.
+ * A failure leaves the row queued rather than marking someone as told when
+ * they were not.
+ *
+ * CONCURRENCY IS HANDLED BY CLAIMING, not by the mark-on-success above.
+ *
+ * This comment used to say a double-call sends nothing twice because a row is
+ * only cleared on a real Resend success. That is true of SEQUENTIAL calls and
+ * false of overlapping ones: the row is marked after the send returns, so two
+ * drains that both read before either marked would both send. With (1) firing
+ * on enqueue and (2) every twenty minutes, an incident is exactly when they
+ * overlap. pendingPublic is now a mutation that claims what it hands out.
  */
 export async function drain(
   secret: string,
 ): Promise<{ sent: number; failed: number; pushed: number }> {
-  const pending = await fetchQuery(api.notify.pendingPublic, { secret }).catch(
-    () => [],
-  );
+  // fetchMutation, not fetchQuery — pendingPublic writes the claim.
+  const pending = await fetchMutation(api.notify.pendingPublic, {
+    secret,
+  }).catch(() => []);
 
   if (pending.length === 0) return { sent: 0, failed: 0, pushed: 0 };
 
