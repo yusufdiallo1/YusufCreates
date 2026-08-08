@@ -287,7 +287,7 @@ function SectionButton({
       type="button"
       onClick={onClick}
       aria-current={active ? "page" : undefined}
-      className={`flex min-h-11 w-full items-center justify-between rounded-lg px-3.5 text-left text-sm transition-colors duration-fast ${
+      className={`flex min-h-11 w-full items-center justify-between rounded-lg px-3.5 text-left text-sm transition-colors duration-hover ease-hover ${
         active
           ? "bg-surface-2 text-primary"
           : "text-secondary hover:text-primary"
@@ -470,7 +470,7 @@ function Overview({
               href={build.previewUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-6 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+              className="mt-6 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
             >
               See it so far
             </a>
@@ -515,7 +515,7 @@ function Overview({
               href={build.previewUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="hairline mt-5 inline-block rounded-full px-5 py-2.5 text-sm text-primary transition-opacity duration-fast hover:opacity-80"
+              className="hairline mt-5 inline-block rounded-full px-5 py-2.5 text-sm text-primary transition-opacity duration-hover ease-hover hover:opacity-80"
             >
               See the preview
             </a>
@@ -526,7 +526,7 @@ function Overview({
               href={build.deliveredUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-5 inline-block rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+              className="mt-5 inline-block rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
             >
               Open your site
             </a>
@@ -581,7 +581,7 @@ function TestimonialInvite({ token }: { token: string }) {
             })
             .finally(() => setBusy(false));
         }}
-        className="mt-5 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+        className="mt-5 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-40"
       >
         {busy ? "Opening…" : "Leave a testimonial"}
       </button>
@@ -727,7 +727,7 @@ function Chat({ token }: { token: string }) {
         <button
           type="submit"
           disabled={busy || draft.trim() === ""}
-          className="shrink-0 rounded-full bg-primary px-4 py-2.5 text-xs font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+          className="shrink-0 rounded-full bg-primary px-4 py-2.5 text-xs font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-40"
         >
           Send
         </button>

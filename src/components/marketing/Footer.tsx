@@ -8,6 +8,7 @@ import { ShareWithFriendLink } from "@/components/marketing/ShareWithFriend";
 import { FeedbackModal } from "@/components/marketing/FeedbackModal";
 import { AvailabilityBadge } from "@/components/marketing/AvailabilityBadge";
 import { WorkingHours } from "@/components/marketing/WorkingHours";
+import { GlassControl } from "@/components/ui/GlassControl";
 
 /**
  * Footer — four columns collapsing to one on mobile.
@@ -21,6 +22,11 @@ const NAV = [
   { href: "/work", label: "Work" },
   { href: "/services", label: "Services" },
   { href: "/pricing", label: "Pricing" },
+  /* Here rather than in the header pill. The top nav is five items and a CTA
+     at its comfortable limit, and enterprise is a destination someone arrives
+     at deliberately — via search, via /pricing, or because procurement sent
+     them — not one they browse to. */
+  { href: "/enterprise", label: "Enterprise" },
   { href: "/about", label: "About" },
   { href: "/blog", label: "Blog" },
 ];
@@ -55,7 +61,7 @@ export function Footer() {
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    className="inline-flex min-h-11 items-center text-sm text-secondary transition-colors duration-fast hover:text-primary sm:min-h-0"
+                    className="inline-flex min-h-11 items-center text-sm text-secondary transition-colors duration-hover ease-hover hover:text-primary sm:min-h-0"
                   >
                     {item.label}
                   </Link>
@@ -77,7 +83,7 @@ export function Footer() {
               <div className="space-y-1.5">
                 <Link
                   href="/pricing"
-                  className="flex min-h-11 items-center text-sm text-accent transition-colors duration-fast hover:text-primary sm:min-h-0"
+                  className="flex min-h-11 items-center text-sm text-accent transition-colors duration-hover ease-hover hover:text-primary sm:min-h-0"
                 >
                   Start a project
                 </Link>
@@ -86,13 +92,13 @@ export function Footer() {
                     a list. */}
                 <Link
                   href="/waitlist"
-                  className="flex min-h-11 items-center text-sm text-secondary transition-colors duration-fast hover:text-primary sm:min-h-0"
+                  className="flex min-h-11 items-center text-sm text-secondary transition-colors duration-hover ease-hover hover:text-primary sm:min-h-0"
                 >
                   Hold a slot
                 </Link>
                 <Link
                   href="/audit"
-                  className="flex min-h-11 items-center text-sm text-secondary transition-colors duration-fast hover:text-primary sm:min-h-0"
+                  className="flex min-h-11 items-center text-sm text-secondary transition-colors duration-hover ease-hover hover:text-primary sm:min-h-0"
                 >
                   Free site audit
                 </Link>
@@ -126,9 +132,21 @@ export function Footer() {
               offer most visitors are not ready to act on was taking the same
               weight as the newsletter beside it. */}
           <div className="flex flex-col items-start gap-3 md:items-end">
-            <ShareWithFriendLink className="inline-flex min-h-11 items-center text-sm text-primary transition-colors duration-fast hover:text-accent sm:min-h-0" />
-            <FeedbackModal className="inline-flex min-h-11 items-center text-sm text-secondary transition-colors duration-fast hover:text-primary sm:min-h-0" />
+            <ShareWithFriendLink className="inline-flex min-h-11 items-center text-sm text-primary transition-colors duration-hover ease-hover hover:text-accent sm:min-h-0" />
+            <FeedbackModal className="inline-flex min-h-11 items-center text-sm text-secondary transition-colors duration-hover ease-hover hover:text-primary sm:min-h-0" />
           </div>
+        </div>
+      </div>
+
+      {/* The glass control.
+
+          In the footer rather than behind a settings icon: it is an
+          accessibility control, and burying those is how they go unused by the
+          people who need them. Kept quiet — a labelled block in the last band
+          before the legal line, not a floating widget. */}
+      <div className="hairline-t">
+        <div className="mx-auto max-w-5xl px-6 py-10">
+          <GlassControl className="max-w-md" />
         </div>
       </div>
 
@@ -151,7 +169,7 @@ export function Footer() {
                 /* These were the smallest targets on the site at 16px. The
                    row keeps its height on a pointer; only touch gets the
                    larger hit area. */
-                className="inline-flex min-h-11 items-center transition-colors duration-fast hover:text-primary sm:min-h-0"
+                className="inline-flex min-h-11 items-center transition-colors duration-hover ease-hover hover:text-primary sm:min-h-0"
               >
                 {item.label}
               </Link>

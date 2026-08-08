@@ -251,7 +251,7 @@ export function ExpressAdmin() {
                     <button
                       type="button"
                       onClick={() => void skipPayment({ id: row._id })}
-                      className="text-xs text-secondary transition-colors duration-fast hover:text-primary"
+                      className="text-xs text-secondary transition-colors duration-hover ease-hover hover:text-primary"
                     >
                       Skip payment & start
                     </button>
@@ -304,7 +304,7 @@ export function ExpressAdmin() {
                       href={row.deliveredUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-accent transition-opacity duration-fast hover:opacity-80"
+                      className="text-xs text-accent transition-opacity duration-hover ease-hover hover:opacity-80"
                     >
                       Open the site
                     </a>
@@ -316,7 +316,7 @@ export function ExpressAdmin() {
                       setOpenThread((t) => (t === row._id ? null : row._id))
                     }
                     aria-expanded={openThread === row._id}
-                    className="text-xs text-secondary transition-colors duration-fast hover:text-primary"
+                    className="text-xs text-secondary transition-colors duration-hover ease-hover hover:text-primary"
                   >
                     Messages
                   </button>
@@ -325,7 +325,7 @@ export function ExpressAdmin() {
                     href={`/portal/${row.token}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-secondary transition-colors duration-fast hover:text-primary"
+                    className="text-xs text-secondary transition-colors duration-hover ease-hover hover:text-primary"
                   >
                     Their view
                   </a>
@@ -335,7 +335,7 @@ export function ExpressAdmin() {
                     <button
                       type="button"
                       onClick={() => void cancel({ id: row._id })}
-                      className="text-xs text-secondary transition-colors duration-fast hover:text-[color:var(--text-notice)]"
+                      className="text-xs text-secondary transition-colors duration-hover ease-hover hover:text-[color:var(--text-notice)]"
                     >
                       Cancel
                     </button>
@@ -505,7 +505,7 @@ function PreviewField({
             setBusy(true);
             void onSave(value.trim()).finally(() => setBusy(false));
           }}
-          className="shrink-0 rounded-full bg-primary px-3.5 py-2 text-xs font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+          className="shrink-0 rounded-full bg-primary px-3.5 py-2 text-xs font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-40"
         >
           {busy ? "Saving…" : "Save"}
         </button>
@@ -588,7 +588,7 @@ function Thread({ id, name }: { id: Id<"expressBuilds">; name: string }) {
         <button
           type="submit"
           disabled={busy || draft.trim() === ""}
-          className="shrink-0 rounded-full bg-primary px-4 py-2 text-xs font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+          className="shrink-0 rounded-full bg-primary px-4 py-2 text-xs font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-40"
         >
           Send
         </button>

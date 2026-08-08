@@ -13,9 +13,30 @@ import { ContactCTA } from "@/components/marketing/ContactCTA";
 import { TechMarquee } from "@/components/marketing/TechMarquee";
 import { WhatIDo } from "@/components/marketing/WhatIDo";
 import { Faq } from "@/components/marketing/Faq";
+import { SectionSeam } from "@/components/motion/SectionSeam";
 import { ALL_SKILL_NAMES } from "@/lib/skills";
 import { professionalServiceJsonLd } from "@/lib/jsonld";
 import { JsonLd } from "@/components/seo/JsonLd";
+import { SITE } from "@/lib/constants";
+
+/*
+ * The homepage was the ONE page without a canonical — every other marketing
+ * route already declares one against SITE.url.
+ *
+ * That matters here because the site answers on both the apex and the www
+ * subdomain, and Google indexed the www copy while SITE.url (and therefore
+ * every icon href, OG URL and sitemap entry) points at the apex. A crawler
+ * fetching www saw icon links on a different origin, which is the likeliest
+ * reason the search listing renders a generic globe instead of the mark.
+ *
+ * This declares the apex as canonical. The other half of the fix is a
+ * permanent www→apex redirect, which belongs in the Vercel domain settings
+ * rather than here — adding it in next.config.ts as well would risk a loop
+ * against whatever the platform is already doing.
+ */
+export const metadata = {
+  alternates: { canonical: SITE.url },
+};
 
 export default async function HomePage() {
   const token = isConvexConfigured ? await convexAuthNextjsToken() : undefined;
@@ -63,12 +84,26 @@ export default async function HomePage() {
 
       <About />
 
+      {/* Seams between sections. A 1px join that brightens as it arrives and
+          settles back — enough to say two things meet here, not enough to read
+          as a divider. Native scroll timeline, no JS; see SectionSeam.
+
+          Not after the marquee or before the CTA: both already have their own
+          hairline, and two lines a few pixels apart read as a mistake. */}
+      <SectionSeam />
+
       <WhatIDo />
+
+      <SectionSeam />
 
       {/* Renders nothing when no projects are published. */}
       {preloadedProjects ? <Projects preloaded={preloadedProjects} /> : null}
 
+      <SectionSeam />
+
       <Process />
+
+      <SectionSeam />
 
       {/* Trust. Answers the two questions nobody asks out loud: will this
           person disappear, and can I reach them. */}
@@ -80,12 +115,16 @@ export default async function HomePage() {
         {"Anyone can make it look finished. The work is making it still work in a year, in someone else’s hands."}
       </TypedQuote>
 
+      <SectionSeam />
+
       <Skills />
 
       {/* Renders nothing when the table is empty. */}
       {preloadedTestimonials ? (
         <Testimonials preloaded={preloadedTestimonials} />
       ) : null}
+
+      <SectionSeam />
 
       <Faq />
 

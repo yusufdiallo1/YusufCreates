@@ -24,11 +24,54 @@
   --bg-surface-2: #161718;
   --bg-surface-3: #23252a;
 
-  --text-primary: #f7f8f8;
-  --text-secondary: #8a8f98;
+  /* Structure --------------------------------------------------------------
+     Shadow carries DEPTH. Separators carry STRUCTURE. They do different jobs
+     and the system needs both — depth-from-shadow alone left controls blending
+     into their surface, so it was genuinely hard to tell what was tappable.
 
-  --border-hairline: rgba(255, 255, 255, 0.08);
-  --border-glass: rgba(255, 255, 255, 0.13);
+     --separator divides surfaces that are already distinct: a top bar from a
+     canvas, a card header from its body, one table row from the next.
+
+     --outline bounds things you can interact with: buttons, inputs, selects,
+     chips, icon containers. This is the token that fixes the softness.
+
+     Both alphas are driven by the contrast axis of the glass slider, so they
+     strengthen together as someone asks for a firmer interface. The literals
+     here are the defaults the slider starts from.
+
+     Neutral white alpha, matching the existing --border-hairline / -glass
+     these sit alongside. This is a structural token, not a colour statement.
+
+     As with the glass literals below, these are the mapping's output at
+     contrast 30 rather than round numbers, so no-JS matches JS exactly. */
+  --separator-alpha: 0.152;
+  --outline-alpha: 0.233;
+  --separator: rgba(255, 255, 255, var(--separator-alpha));
+  --outline: rgba(255, 255, 255, var(--outline-alpha));
+
+  --text-primary: #f7f8f8;
+  /* Body copy across the whole site — 244 usages, so this one value is what
+     "the text is grey and hard to read" actually means.
+
+     Was #8a8f98, which measured 4.72:1 on --bg-surface-3 (the lightest surface
+     the admin uses) and only just cleared AA. On the near-black canvas most
+     marketing copy sits on, that reads as deliberately dimmed rather than
+     quiet. #b7bcc4 measures 10.44:1 on --bg-canvas and 8.03:1 on
+     --bg-surface-3, so it is comfortably readable everywhere without becoming
+     a second primary — --text-primary is 18.73:1 and still a clear step up. */
+  --text-secondary: #b7bcc4;
+
+  /* Derived from --separator so the contrast axis of the glass slider moves
+     them with everything else, rather than staying fixed while the surfaces
+     around them firm up.
+
+     0.85×, not 0.6×. `.hairline` is the class nearly every input, button and
+     card in the admin actually uses, so this multiplier is what decides
+     whether a control looks like a control. At 0.6 it computed to 0.09 alpha —
+     fainter than the separators dividing the rows behind it, which is the
+     softness problem exactly. */
+  --border-hairline: rgba(255, 255, 255, calc(var(--separator-alpha) * 0.85));
+  --border-glass: var(--separator);
 
   --accent: #5e6ad2;
   --accent-glow: rgba(94, 106, 210, 0.35);
@@ -56,18 +99,20 @@
 
   /* The third text tier — for meta rows, table labels and timestamps.
 
-     DELIBERATELY THE SAME COLOUR as --text-secondary, and that is the whole
-     point. A genuinely dimmer step is not available: --text-secondary is
-     already only 4.72:1 on --bg-surface-3, so anything darker fails AA on the
-     lightest surface the admin uses. Measured — #868b94 comes out at 4.48:1,
-     under the line.
+     This used to be THE SAME VALUE as --text-secondary, because there was no
+     room below it: secondary was #8a8f98 at 4.72:1 on --bg-surface-3, and
+     anything darker failed AA on the lightest surface the admin uses.
 
-     The admin was faking this tier with opacity-40 and opacity-50 on
-     secondary text, which measures 1.91:1. That is not a dim label, it is an
-     unreadable one. So the hierarchy is carried by SIZE, WEIGHT and CASE
-     (12px mono, uppercase, wide tracking) rather than by lowering contrast,
-     and this token exists so there is one name for it instead of an opacity
-     utility scattered through thirty files. */
+     Lifting secondary to #b7bcc4 opened that room. This is now the old
+     secondary value, which is already measured at 4.72:1 on --bg-surface-3 —
+     so the third tier is finally a real step down instead of a rename, and it
+     still clears AA on every surface in the system.
+
+     What has NOT changed: the admin used to fake this tier with opacity-40 and
+     opacity-50 on secondary text, which measures 1.91:1. That is not a dim
+     label, it is an unreadable one. Hierarchy is still carried mainly by SIZE,
+     WEIGHT and CASE (12px mono, uppercase, wide tracking); the colour step is
+     support, not the whole signal. */
   --text-muted: #8a8f98;
 
   /* Developer palette -------------------------------------------------------
@@ -144,12 +189,33 @@
   --space-24: 6rem; /* 96 */
   --space-32: 8rem; /* 128 */
 
-  /* Radius ----------------------------------------------------------------- */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
-  --radius-2xl: 28px;
+  /* Radius -----------------------------------------------------------------
+     FIVE STEPS, NO EXCEPTIONS. Any radius not on this scale is a bug.
+
+       xs   6px   chips, badges, small controls
+       sm  10px   buttons, inputs, table row hover
+       md  14px   cards, panels, dropdowns
+       lg  18px   modals, drawers, large surfaces
+       full        pills only
+
+     Tighter than the old 8/12/16/24/28 scale — glass panels come down from
+     28px to 14px, which is the single biggest change to how the interface
+     reads. Generous corners on a dark panel look soft and unresolved; tight
+     ones look machined.
+
+     The concentric rule still holds: inner radius = outer radius − padding.
+     A 14px card with 4px of padding takes a 10px inner element.
+
+     --radius-xl and --radius-2xl are deliberately mapped onto lg rather than
+     deleted. They are referenced from a few places that are not worth
+     churning, and pointing them at a scale value means those call sites stay
+     on-scale instead of drifting off it. */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: var(--radius-lg);
+  --radius-2xl: var(--radius-lg);
   --radius-full: 9999px;
 
   /* Depth glass ------------------------------------------------------------
@@ -169,42 +235,68 @@
      catch. Further panels: less of everything. That gradient is what makes
      three panels read as depth rather than as three flat cards. */
 
-  --glass-near-bg: rgba(26, 23, 20, 0.32);
-  --glass-near-blur: 28px;
+  /* THE SLIDER AXES.
+     Written on :root by the Glass control (GlassControl.tsx) and by the
+     pre-paint script in layout.tsx.
+
+     --glass-alpha       frost:    0.10 clear → 0.96 solid
+     --glass-blur        frost:    28px → 0px
+     --glass-refraction  frost:    1 → 0, forced 0 above 70
+     --glass-backing     contrast: transparent → rgba(8,9,10,0.85)
+     --specular-strength contrast: 1 → 0 (optical effects strip out)
+
+     These literals are the MAPPING'S OUTPUT at frost 55 / contrast 30, not
+     round numbers — so a visitor with JavaScript disabled gets pixel-identical
+     glass to one running the control at its defaults. Picking tidy values here
+     instead meant the no-JS render differed slightly from every other render,
+     which is the kind of discrepancy nobody notices until they are comparing
+     two screenshots and cannot work out why. Keep in step with lib/glass.ts. */
+  --glass-alpha: 0.573;
+  --glass-blur: 12.6px;
+  --glass-refraction: 1;
+  --glass-backing: rgba(8, 9, 10, 0.255);
+  --specular-strength: 0.7;
+
+  /* Depth is a MULTIPLIER on the slider alpha, not an absolute value, so the
+     three levels keep their relationship at every slider position. Near glass
+     is the most transparent, far glass the most solid.
+
+     Tints stay the palette's own neutrals — the glass is a MATERIAL change,
+     not a colour change. The specular inset is white for the same reason. */
+  --glass-near-bg: rgba(26, 27, 30, calc(var(--glass-alpha) * 0.78));
+  --glass-near-blur: var(--glass-blur);
   --glass-near-shadow:
-    0 48px 120px -20px rgba(0, 0, 0, 0.85),
-    0 24px 48px -12px rgba(0, 0, 0, 0.6),
-    inset 0 1.5px 0 rgba(255, 252, 248, 0.42),
-    inset 0 -30px 60px -30px rgba(255, 252, 248, 0.05);
+    0 24px 60px -16px rgba(0, 0, 0, 0.72),
+    0 8px 20px -8px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, calc(0.3 * var(--specular-strength)));
 
-  --glass-mid-bg: rgba(22, 20, 18, 0.38);
-  --glass-mid-blur: 20px;
+  --glass-mid-bg: rgba(22, 23, 26, calc(var(--glass-alpha) * 0.9));
+  --glass-mid-blur: calc(var(--glass-blur) * 0.75);
   --glass-mid-shadow:
-    0 32px 80px -16px rgba(0, 0, 0, 0.75),
-    0 12px 28px -8px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 252, 248, 0.28),
-    inset 0 -24px 48px -24px rgba(255, 252, 248, 0.035);
+    0 20px 48px -14px rgba(0, 0, 0, 0.68),
+    0 6px 16px -6px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, calc(0.22 * var(--specular-strength)));
 
-  --glass-far-bg: rgba(18, 16, 15, 0.44);
-  --glass-far-blur: 14px;
+  --glass-far-bg: rgba(18, 19, 22, var(--glass-alpha));
+  --glass-far-blur: calc(var(--glass-blur) * 0.55);
   --glass-far-shadow:
-    0 20px 56px -12px rgba(0, 0, 0, 0.65),
-    inset 0 1px 0 rgba(255, 252, 248, 0.16);
+    0 14px 36px -12px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, calc(0.14 * var(--specular-strength)));
 
-  /* Thick glass takes generous corners. */
-  --glass-radius-panel: 28px;
-  --glass-radius-card: 24px;
+  /* On the five-step scale: panels are cards, drawers and modals are lg.
+     Down from 28px/24px — see the radius block above. */
+  --glass-radius-panel: var(--radius-md);
+  --glass-radius-card: var(--radius-md);
 
   /* Legacy glass ------------------------------------------------------------
-     The inset highlights do the work here — the outer shadow only seats the
-     panel against the canvas. */
-  --glass-bg: rgba(14, 14, 22, 0.24);
-  --glass-blur: 12px;
-  --glass-saturate: 180%;
+     Now derived from the slider axes like everything else. */
+  --glass-bg: rgba(20, 21, 26, var(--glass-alpha));
+  --glass-saturate: 165%;
   --glass-shadow:
-    0 24px 60px rgba(0, 0, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.5),
-    inset 0 -8px 20px rgba(255, 255, 255, 0.06),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.13);
+    0 24px 60px -16px rgba(0, 0, 0, 0.72),
+    0 8px 20px -8px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, calc(0.3 * var(--specular-strength))),
+    inset 0 0 0 1px var(--separator);
 
   /* Motion ------------------------------------------------------------------ */
   --dur-fast: 0.2s;
@@ -212,6 +304,25 @@
   --dur-slow: 0.8s;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* Hover -------------------------------------------------------------------
+     THE CURVE, NOT THE DURATION, IS WHY HOVERS FELT WRONG.
+
+     Everything hover-related used --ease-out-expo. Expo-out is violently
+     front-loaded: it covers about 90% of the distance in the first third of
+     the time and then crawls the rest. Over 800ms that reads as luxurious and
+     slow. Shortened to 200ms to fix the slowness, the same curve becomes a
+     SNAP followed by a drift too small to see — which is what "not smooth"
+     actually is. Cutting the duration made it worse, not better.
+
+     easeOutCubic is the right shape for a 200ms interaction: it starts
+     immediately, decelerates evenly, and arrives. Nothing about it is
+     dramatic, which is the point — a hover is feedback, not an event.
+
+     --dur-hover is separate from --dur-fast so tuning the feel of hovers never
+     silently retimes a toast, a focus ring or a dropdown. */
+  --ease-hover: cubic-bezier(0.33, 1, 0.68, 1);
+  --dur-hover: 0.22s;
 
   /* Focus ------------------------------------------------------------------- */
   --focus-ring-width: 2px;
@@ -233,11 +344,17 @@
   --bg-surface-3: #e2e2e8;
 
   --text-primary: #0a0a0a;
-  /* Holds 4.5:1 all the way up to --bg-surface-3, the worst case. */
-  --text-secondary: #5b5f66;
+  /* Mirrors the dark theme's lift — see the note on --text-secondary there.
+     Was #5b5f66 (4.97:1 on --bg-surface-3, only just over the line); #454951
+     measures 8.74:1 on --bg-canvas and 7.00:1 on --bg-surface-3. */
+  --text-secondary: #454951;
 
-  --border-hairline: rgba(10, 10, 10, 0.09);
-  --border-glass: rgba(10, 10, 10, 0.12);
+  /* Separator and outline invert to dark-on-light but keep the same job and
+     the same slider wiring. */
+  --separator: rgba(10, 10, 10, calc(var(--separator-alpha) * 0.8));
+  --outline: rgba(10, 10, 10, calc(var(--outline-alpha) * 0.85));
+  --border-hairline: rgba(10, 10, 10, calc(var(--separator-alpha) * 0.65));
+  --border-glass: var(--separator);
 
   /* Darkened slightly so it clears 4.5:1 on the light canvas. */
   --accent: #4c58c0;
@@ -253,9 +370,9 @@
      theme's value would sit near 1.6:1 here. Verified 5.40:1 on --bg-surface-1. */
   --text-notice: #8a5a00;
 
-  /* Same as --text-secondary, for the same reason as the dark theme: a third
-     step down measures 4.40:1 on --bg-surface-3 and fails. Hierarchy comes
-     from size and case, not from contrast. Verified 4.97:1. */
+  /* A real third tier now that secondary has moved up, same as the dark theme.
+     This is the old secondary value, already verified at 4.97:1 on
+     --bg-surface-3 — the worst case in the system and still over AA. */
   --text-muted: #5b5f66;
 
   /* Developer palette, darkened for a light canvas. The dark-theme values are
@@ -273,12 +390,17 @@
 
   /* On light, glass is a white scrim: the bright inset highlight that reads as
      a bevel on dark would wash out, so it is dropped in favour of a soft
-     ambient shadow and a darker seam. */
-  --glass-bg: rgba(255, 255, 255, 0.6);
+     ambient shadow and a darker seam. Still driven by --glass-alpha so the
+     slider works in both themes. */
+  --glass-bg: rgba(255, 255, 255, var(--glass-alpha));
+  --glass-near-bg: rgba(255, 255, 255, calc(var(--glass-alpha) * 0.78));
+  --glass-mid-bg: rgba(255, 255, 255, calc(var(--glass-alpha) * 0.9));
+  --glass-far-bg: rgba(255, 255, 255, var(--glass-alpha));
+  --glass-backing: rgba(251, 251, 253, 0.26);
   --glass-shadow:
-    0 16px 40px rgba(10, 10, 20, 0.1),
+    0 16px 40px -12px rgba(10, 10, 20, 0.12),
     inset 0 1px 1px rgba(255, 255, 255, 0.9),
-    inset 0 0 0 1px rgba(10, 10, 10, 0.08);
+    inset 0 0 0 1px var(--separator);
 }
 
 /* --------------------------------------------------------------------------
@@ -299,6 +421,11 @@
   --color-accent: var(--accent);
   --color-accent-glow: var(--accent-glow);
   --color-accent-solid: var(--accent-solid);
+  /* The two structural tokens — so `border-separator` and `border-outline`
+     exist as utilities rather than every call site writing
+     border-[color:var(--separator)] by hand. */
+  --color-separator: var(--separator);
+  --color-outline: var(--outline);
   --color-danger: var(--danger);
   --color-danger-solid: var(--danger-solid);
   --color-notice: var(--text-notice);
@@ -375,12 +502,18 @@
   --animate-duration-slow: var(--dur-slow);
   --ease-out-expo: var(--ease-out-expo);
   --ease-in-out-quint: var(--ease-in-out);
+  --ease-hover: var(--ease-hover);
 }
 
 /* Tailwind v4 derives duration-* from its own scale, so register the motion
    durations as first-class utilities. */
 @utility duration-fast {
   transition-duration: var(--dur-fast);
+}
+
+/* The hover timing, as one utility. Pairs with ease-hover. */
+@utility duration-hover {
+  transition-duration: var(--dur-hover);
 }
 @utility duration-base {
   transition-duration: var(--dur-base);
@@ -423,9 +556,26 @@
     overflow: hidden;
   }
 
-  /* Touch is native (syncTouch is off), so pointer events must reach the
-     document — Lenis's default would swallow them. */
-  .lenis.lenis-smooth iframe {
+  /* Iframes stay INTERACTIVE. This is opt-in, not blanket.
+
+     This used to be `.lenis.lenis-smooth iframe { pointer-events: none }` —
+     every iframe on every marketing route, unconditionally, for as long as
+     smooth scroll was active. The intent was scroll passthrough: a wheel event
+     over an iframe does not reach the parent document, so the page stops
+     scrolling while the pointer is over one.
+
+     The cost was far worse than the problem. On this site the iframes are
+     Stripe's hosted card fields, the Turnstile challenge, and embedded
+     YouTube/Vimeo players. All of them were completely unclickable on any page
+     Lenis was running — which is every marketing page, including the one
+     asking for a card number. Nothing about that failure announces itself:
+     the field simply does not focus.
+
+     So the default is now correct-for-interaction, and anything genuinely
+     decorative — a background embed nobody needs to click — opts INTO the old
+     behaviour by wrapping itself in [data-lenis-block]. Trading a scroll
+     stutter over a video for a payment form that works is not a close call. */
+  .lenis.lenis-smooth [data-lenis-block] iframe {
     pointer-events: none;
   }
 
@@ -617,11 +767,25 @@
     cursor: none;
   }
 
-  /* Skill rows. Flat and hairline-separated; the only hover affordance is the
-     use line resolving from muted to full strength. */
+  /* Skill rows. The hover affordance is the use line resolving from quiet to
+     full strength.
+
+     Resting opacity was 0.55, which against the current --text-secondary
+     measures 3.76:1 — under the 4.5:1 floor, so the description of every skill
+     was failing AA until you happened to point at it. Hover is not an
+     accessibility strategy: a touch user has no hover, and a keyboard user
+     only reaches one row at a time.
+
+     0.82 measures 7.1:1 at rest and still leaves a visible step up to 1 on
+     hover, so the affordance survives without the text ever being unreadable.
+
+     --dur-fast, not --dur-slow. An 800ms fade was chosen as "ambient", but a
+     response that arrives a full second after the pointer does not read as
+     calm — it reads as lag, and on a list you sweep across it never finishes
+     before you have moved on. Confident interfaces answer immediately. */
   .skill-row-use {
     color: var(--text-secondary);
-    opacity: 0.55;
+    opacity: 0.82;
     transition: opacity var(--dur-fast) var(--ease-out-expo);
   }
 
@@ -644,9 +808,48 @@
     }
   }
 
-  /* Nav pill. Transparent at rest so the hero reads full-bleed; on scroll it
-     picks up a translucent fill and a hairline so content passing underneath
-     stays legible. */
+  /* Nav pill — frosted glass.
+
+     THE BALANCE HERE IS THE WHOLE POINT, and it has been wrong in both
+     directions.
+
+     Originally `background-color: transparent` with blur only once scrolled:
+     a plain window. Body text passing underneath sat behind the nav labels and
+     neither was readable.
+
+     Then 92% opaque with a 24px blur, which fixed legibility by removing the
+     glass entirely — at 92% there is nothing left to blur, so it read as a
+     solid bar with a rounded end.
+
+     Then 62% with a 40px blur, which went too far back: at 62% a paragraph
+     scrolling underneath was still legible THROUGH the pill, straight across
+     the nav labels.
+
+     The fill has to guarantee illegibility ON ITS OWN, because backdrop-filter
+     is the part that is allowed to fail — it is dropped under
+     prefers-reduced-transparency, unsupported on older engines, and quietly
+     skipped by some compositors. If the design only works when the blur
+     renders, then it does not work.
+
+     So: 84% fill, which leaves 16% of whatever is behind bleeding through as a
+     faint wash — enough that light and colour still pass and the material
+     reads as glass rather than as a painted bar, but far too little for text
+     to resolve. The 32px blur and the saturate/brightness lift then do the
+     rest on every engine that supports them, turning that 16% into soft colour
+     instead of ghosted letterforms.
+
+     Brightness above 1: without it the panel darkens what is behind it and the
+     pill reads as a shadow. Real glass brightens. */
+  /* Nav pill — invisible at the top of the page, glass once you scroll.
+
+     RESTORED to the original behaviour. It was briefly made opaque at rest, on
+     the reasoning that content passing underneath had to stay unreadable. That
+     is true while scrolling, which is exactly when the condensed state applies
+     — but at the top of a page there is nothing behind the pill to obscure, so
+     a solid bar there just draws a lozenge across the hero for no reason.
+
+     Sitting on nothing at rest, and becoming a material only when it has
+     something to sit on, is the quieter and more considered behaviour. */
   .nav-pill {
     background-color: transparent;
     border: 1px solid transparent;
@@ -656,11 +859,37 @@
       box-shadow var(--dur-base) var(--ease-out-expo);
   }
 
+  /* Scrolled: blurred glass, and unmistakably so.
+
+     The two requirements are not in tension, they just have to be stated
+     together: NOTHING at the very top of the page, real frosted glass the
+     moment you move. The resting state above is transparent; this is the
+     material.
+
+     28px of blur with the saturation and brightness lift is what makes it read
+     as a pane with the page travelling behind it. The original 12px was too
+     little to see — it looked like a slightly grey bar, which is the thing
+     that kept getting reported as "not blurred".
+
+     The fill is 68%: LOWER than before, on purpose. Blur is only visible
+     through the fill, so raising the opacity to make it feel more solid is
+     exactly what destroys the glass. 68% is the floor at which content passing
+     underneath still cannot be read — the fill carries legibility, the blur
+     never does — so this is as transparent as it is allowed to get. */
   .nav-pill-condensed {
-    background-color: color-mix(in srgb, var(--bg-surface-1) 72%, transparent);
-    border-color: var(--border-hairline);
-    -webkit-backdrop-filter: blur(12px) saturate(180%);
-    backdrop-filter: blur(12px) saturate(180%);
+    background-color: color-mix(in srgb, var(--bg-surface-1) 68%, transparent);
+    border-color: var(--border-glass);
+    -webkit-backdrop-filter: blur(28px) saturate(180%) brightness(1.12);
+    backdrop-filter: blur(28px) saturate(180%) brightness(1.12);
+  }
+
+  /* No backdrop-filter support: the fill alone cannot carry it at 72%, so the
+     condensed state goes solid. The resting state stays transparent — there is
+     nothing behind it to hide. */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .nav-pill-condensed {
+      background-color: var(--bg-surface-1);
+    }
   }
 
   @media (prefers-reduced-transparency: reduce) {
@@ -671,8 +900,88 @@
     }
   }
 
+  /* The glass control's sliders.
+
+     Styled per-engine because there is still no cross-browser way to reach a
+     range thumb: WebKit and Blink use ::-webkit-slider-thumb, Firefox uses
+     ::-moz-range-thumb, and a selector list containing an unknown
+     pseudo-element is discarded WHOLE by every engine — so these have to stay
+     as separate rules even though the declarations are identical.
+
+     The track carries --outline rather than a fixed colour, so the contrast
+     axis firms up its own control along with everything else. */
+  .glass-range {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 20px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .glass-range::-webkit-slider-runnable-track {
+    height: 3px;
+    border-radius: var(--radius-full);
+    background: var(--outline);
+  }
+  .glass-range::-moz-range-track {
+    height: 3px;
+    border-radius: var(--radius-full);
+    background: var(--outline);
+  }
+
+  /* margin-top centres the thumb on the 3px track: -(thumb − track) / 2. */
+  .glass-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    margin-top: -5.5px;
+    border: 1px solid var(--outline);
+    border-radius: var(--radius-full);
+    background: var(--text-primary);
+  }
+  .glass-range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--outline);
+    border-radius: var(--radius-full);
+    background: var(--text-primary);
+  }
+
+  .glass-range:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+    border-radius: var(--radius-full);
+  }
+
   .hairline {
     border: 1px solid var(--border-hairline);
+  }
+
+  /* An interactive edge, distinct from a structural one.
+
+     --separator divides things that are already distinct. --outline BOUNDS
+     something you can act on, and is a step stronger for that reason: a
+     control has to announce itself before you point at it, not after.
+
+     Apply to buttons, inputs, selects and chips that need to read as tappable
+     against a surface they would otherwise blend into. Both alphas rise
+     together on the contrast axis, so the relationship holds at every slider
+     position. */
+  .control-outline {
+    border: 1px solid var(--outline);
+  }
+
+  /* Icon containers. The spec's point is that an icon floating unbounded on
+     glass reads as soft — an edge gives it presence and makes a tappable icon
+     look tappable. Square-ish rather than round so it does not read as an
+     avatar. */
+  .icon-box {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--outline);
+    border-radius: var(--radius-xs);
   }
   .hairline-t {
     border-top: 1px solid var(--border-hairline);
@@ -840,6 +1149,51 @@
     box-shadow: inset 0 1px 0 color-mix(in srgb, #c9a227 18%, transparent);
   }
 
+  /*
+     The universal update signal.
+
+     Any element whose underlying data changes flashes its border once at the
+     accent — 200ms in, 400ms out. Driven by useUpdateFlash, which sets the
+     attribute; the timing lives here so every surface in the product speaks
+     the same language and reduced motion is one rule rather than a branch in
+     every caller.
+
+     OUTLINE, not box-shadow. Half the things this lands on are glass panels
+     carrying a shadow stack that IS their depth, and replacing that for 600ms
+     would make the panel visibly flatten and pop back. An outline is drawn on
+     top of everything, affects no layout, and follows the border radius.
+
+     Offset inwards by a pixel so it sits on the panel's own edge rather than
+     floating just outside it.
+
+     :not(:focus-visible) because the focus ring is also an outline, and a
+     value updating under a focused control must not steal the one indicator
+     telling a keyboard user where they are. */
+  @keyframes yc-update-flash {
+    0% {
+      outline-color: transparent;
+    }
+    33% {
+      outline-color: var(--accent);
+    }
+    100% {
+      outline-color: transparent;
+    }
+  }
+
+  [data-update-flash]:not(:focus-visible) {
+    outline: 1px solid transparent;
+    outline-offset: -1px;
+    animation: yc-update-flash 600ms var(--ease-out-expo) 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-update-flash] {
+      animation: none;
+      outline-color: transparent;
+    }
+  }
+
   /* FAQ accordion */
   .faq-chevron {
     transition: transform var(--dur-fast) var(--ease-out-expo);
@@ -860,6 +1214,39 @@
   @keyframes faq-close {
     from { height: var(--radix-accordion-content-height); }
     to { height: 0; }
+  }
+
+  /* The answer RESOLVES rather than sliding into view.
+
+     The panel opening is a box changing height; that is the container moving,
+     and it says nothing about the text. Bringing the text from blurred and
+     faint to sharp and legible over the same duration makes the answer itself
+     the thing that arrived — you watch it come into focus, which is what
+     reading it feels like.
+
+     On the text, not on the panel: a filter on the animating container would
+     blur its own height transition, and a blurred edge sliding is worse than
+     either effect on its own. */
+  @keyframes faq-resolve {
+    from {
+      filter: blur(4px);
+      opacity: 0.4;
+    }
+    to {
+      filter: blur(0);
+      opacity: 1;
+    }
+  }
+  .faq-content[data-state="open"] > * {
+    animation: faq-resolve var(--dur-fast) var(--ease-out-expo);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .faq-content[data-state="open"],
+    .faq-content[data-state="closed"],
+    .faq-content[data-state="open"] > * {
+      animation: none;
+    }
   }
 
   /* Disappearing ink: typed characters fade to invisible, and revealing the
@@ -983,7 +1370,8 @@
     display: flex;
     align-items: center;
     gap: 0.625rem;
-    border-radius: 0.5rem;
+    /* On the scale: a nav row is a control, so --radius-sm. Was 0.5rem. */
+    border-radius: var(--radius-sm);
     padding: 0.5rem 0.75rem;
     font-size: 0.8125rem;
     color: var(--text-secondary);
@@ -1020,8 +1408,11 @@
   }
 
   .admin-card {
-    border: 1px solid var(--border-hairline);
-    border-radius: 0.75rem;
+    /* --separator, not --border-hairline: a card edge is structure, and this
+       is the token the contrast axis drives. */
+    border: 1px solid var(--separator);
+    /* On the scale: cards are --radius-md. Was 0.75rem. */
+    border-radius: var(--radius-md);
     background-color: var(--bg-surface-1);
     /* 16px, down from 20px. A tool puts more on screen than a marketing page;
        the old value was chosen for a landing section, not a row of records. */
@@ -1162,16 +1553,42 @@
 @layer components {
   /* Shared material. Depth level supplies bg, blur and shadow.
 
-     No border and no outline: the specular inset along the top edge does that
-     job, and it does it better — a border is uniform, whereas real glass
-     catches light only where it faces the source. */
+     GOLDEN GATE REINSTATES THE SEPARATOR. The previous revision had no border
+     at all, on the reasoning that the specular inset along the top edge does
+     that job better — real glass catches light only where it faces the source,
+     whereas a border is uniform. That is true of DEPTH, and the specular edge
+     still carries it. It is not true of STRUCTURE: with nothing bounding them,
+     panels dissolved into whatever was behind them and controls stopped
+     reading as controls. So both now exist, doing different jobs. */
   .glass-depth {
     position: relative;
-    border: 0;
+    border: 1px solid var(--separator);
     /* Only opacity is safe to animate on a blurred layer; the compositor
        re-snapshots the backdrop whenever geometry or blur radius changes,
        which is the most expensive thing available on a phone GPU. */
     will-change: opacity;
+  }
+
+  /* The contrast backing.
+
+     A pseudo-element rather than a second background on the panel itself,
+     because the panel's own fill is what the transparency axis controls — the
+     two axes have to be independently addressable or the slider collapses into
+     one control. At contrast 0 this is fully transparent and costs nothing; at
+     contrast 100 it is a near-solid canvas-coloured sheet sitting between the
+     blurred backdrop and the content, which is what makes maximum contrast
+     genuinely readable rather than merely darker.
+
+     inset 0 with the parent's radius inherited, and pointer-events off so it
+     never intercepts a click meant for the panel. */
+  .glass-depth::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background-color: var(--glass-backing);
+    pointer-events: none;
   }
 
   /* Large panels that SCROLL keep the glass fill and the specular edge, but
@@ -1204,22 +1621,22 @@
 
   .glass-near {
     background-color: var(--glass-near-bg);
-    -webkit-backdrop-filter: blur(var(--glass-near-blur)) saturate(180%);
-    backdrop-filter: blur(var(--glass-near-blur)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--glass-near-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-near-blur)) saturate(var(--glass-saturate));
     box-shadow: var(--glass-near-shadow);
   }
 
   .glass-mid {
     background-color: var(--glass-mid-bg);
-    -webkit-backdrop-filter: blur(var(--glass-mid-blur)) saturate(170%);
-    backdrop-filter: blur(var(--glass-mid-blur)) saturate(170%);
+    -webkit-backdrop-filter: blur(var(--glass-mid-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-mid-blur)) saturate(var(--glass-saturate));
     box-shadow: var(--glass-mid-shadow);
   }
 
   .glass-far {
     background-color: var(--glass-far-bg);
-    -webkit-backdrop-filter: blur(var(--glass-far-blur)) saturate(160%);
-    backdrop-filter: blur(var(--glass-far-blur)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--glass-far-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-far-blur)) saturate(var(--glass-saturate));
     box-shadow: var(--glass-far-shadow);
   }
 
@@ -1244,7 +1661,18 @@
      --brand is set inline per mark by TechLogo, and is absent when the brand
      ships no hex, in which case the mark simply keeps currentColor. */
   .tech-logo {
-    transition: color var(--dur-fast) var(--ease-out-expo);
+    transition: color var(--dur-hover) var(--ease-hover);
+  }
+
+  /* Always brand-coloured, no hover required.
+
+     The hover-to-reveal behaviour below is right for the Skills LIST, where
+     twenty static marks in twenty palettes beside body text would be a ransom
+     note. It is wrong for the ticker: that row is already moving, the marks
+     are the whole point of it, and a colour you have to chase a moving target
+     to see is a colour nobody ever sees. */
+  .tech-logo-always {
+    color: var(--brand, currentColor);
   }
 
   /* Pointer devices only. :hover on a touchscreen sticks after a tap and

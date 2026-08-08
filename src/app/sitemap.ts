@@ -24,8 +24,14 @@ const STATIC: { path: string; priority: number; freq: Entry["changeFrequency"] }
     { path: "/work", priority: 0.9, freq: "weekly" },
     { path: "/pricing", priority: 0.9, freq: "monthly" },
     { path: "/services", priority: 0.8, freq: "monthly" },
+    // High priority: this is the page an enterprise buyer searches for, and
+    // the one that answers procurement questions nothing else on the site does.
+    { path: "/enterprise", priority: 0.8, freq: "monthly" },
     { path: "/about", priority: 0.7, freq: "monthly" },
     { path: "/start", priority: 0.8, freq: "monthly" },
+    // Was missing: /express is a public, indexable landing page with its own
+    // canonical, so leaving it out meant the only route to it was a direct link.
+    { path: "/express", priority: 0.7, freq: "monthly" },
     { path: "/blog", priority: 0.7, freq: "weekly" },
     { path: "/audit", priority: 0.7, freq: "monthly" },
     { path: "/waitlist", priority: 0.8, freq: "daily" },

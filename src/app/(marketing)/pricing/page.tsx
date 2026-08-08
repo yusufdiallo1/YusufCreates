@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PricingTables } from "@/components/marketing/PricingTables";
+import { PricingComparison } from "@/components/marketing/PricingComparison";
 import { PricingFaq } from "@/components/marketing/PricingFaq";
 import { ContactCTA } from "@/components/marketing/ContactCTA";
 import { TextReveal } from "@/components/motion/TextReveal";
@@ -29,6 +30,10 @@ export default function PricingPage() {
       </div>
 
       <PricingTables />
+      {/* After the cards, before the questions. Someone who has read the cards
+          and is now weighing two of them wants rows; someone still deciding
+          whether to ask at all is heading for the FAQ. */}
+      <PricingComparison />
       <PricingFaq />
       <ContactCTA />
     </>

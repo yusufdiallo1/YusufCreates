@@ -72,8 +72,17 @@ export function MiniSlide({
     };
   }, []);
 
+  /*
+   * Synchronous latch — see the long note in SlideToConfirm. onDrag fires on
+   * every pointermove, and `busy`/`done` are state, so they are still false on
+   * the next call in the same frame. Without this a single drag ran the action
+   * a dozen-plus times.
+   */
+  const running = useRef(false);
+
   const complete = useCallback(async () => {
-    if (done || busy || disabled) return;
+    if (running.current || done || busy || disabled) return;
+    running.current = true;
     setBusy(true);
     animate(x, maxX, { duration: 0.2, ease: EASE });
     try {
@@ -82,6 +91,7 @@ export function MiniSlide({
     } catch {
       // Roll back so the control reads as untouched, not half-committed.
       animate(x, 0, { duration: 0.42, ease: EASE });
+      running.current = false;
     } finally {
       setBusy(false);
     }

@@ -116,7 +116,7 @@ export function AuditsAdmin() {
                       href={row.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-accent transition-opacity duration-fast hover:opacity-80"
+                      className="text-xs text-accent transition-opacity duration-hover ease-hover hover:opacity-80"
                     >
                       {row.url}
                     </a>
@@ -210,7 +210,7 @@ export function AuditsAdmin() {
 
                     <a
                       href={`mailto:${row.email}?subject=${encodeURIComponent(`Your site audit — ${row.siteName ?? row.url}`)}`}
-                      className="mt-5 inline-block rounded-full bg-primary px-4 py-2 text-xs font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+                      className="mt-5 inline-block rounded-full bg-primary px-4 py-2 text-xs font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
                     >
                       Reply to {row.email}
                     </a>

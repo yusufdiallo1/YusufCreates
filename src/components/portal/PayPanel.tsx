@@ -209,7 +209,7 @@ function PayForm({ intent }: { intent: Intent }) {
       <button
         type="submit"
         disabled={!stripe || busy}
-        className="mt-6 w-full rounded-full bg-[color:var(--accent-solid)] px-6 py-3 text-sm font-medium text-white transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+        className="mt-6 w-full rounded-full bg-[color:var(--accent-solid)] px-6 py-3 text-sm font-medium text-white transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-40"
       >
         {busy ? "Paying…" : `Pay ${amountLabel}`}
       </button>

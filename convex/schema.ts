@@ -154,6 +154,38 @@ export default defineSchema({
     notes: v.optional(v.string()),
     score: v.optional(v.number()),
     status: leadStatus,
+
+    /* ---------------------------------------------------------------------
+       The decision.
+
+       Separate from `status` on purpose. `status` is a pipeline position and
+       moves in both directions — a lead can go back from "proposal" to
+       "contacted" when a conversation stalls. A decision is a single, dated
+       act that either happened or did not, and conflating the two means you
+       cannot tell "won, eventually" from "I accepted this on Tuesday and
+       promised them a setup window".
+       --------------------------------------------------------------------- */
+
+    decision: v.optional(
+      v.union(v.literal("approved"), v.literal("declined")),
+    ),
+    decidedAt: v.optional(v.number()),
+
+    /**
+     * Instant starts only: the deadline for getting them set up.
+     *
+     * Twelve hours from acceptance. Distinct from the Express tier's WINDOW_MS
+     * (two hours), which is a DELIVERY promise to the client — this is an
+     * internal commitment about onboarding, and the two are different clocks
+     * that happened to look alike enough to be confused for one.
+     */
+    setupDueAt: v.optional(v.number()),
+
+    /** Slot starts only: the month booked, as "2026-09". */
+    scheduledMonth: v.optional(v.string()),
+
+    /** Why it was declined. Shown back to me, never sent automatically. */
+    declineReason: v.optional(v.string()),
     source: v.optional(v.string()),
     currency: v.optional(v.string()),
     vatNumber: v.optional(v.string()),
@@ -997,6 +1029,22 @@ export default defineSchema({
     startedAt: v.optional(v.number()),
     targetLaunch: v.optional(v.number()),
     createdAt: v.number(),
+
+    /*
+     * Typing presence, as an EXPIRY rather than a boolean.
+     *
+     * Two timestamps on the project instead of a presence table. A boolean
+     * needs someone to reliably clear it, and nothing does that when a laptop
+     * lid closes mid-sentence — the indicator would say "typing…" forever. An
+     * expiry is self-healing: the writer keeps pushing it a few seconds into
+     * the future while keys are being pressed, and it lapses on its own the
+     * moment they stop, crash or disconnect.
+     *
+     * On the project rather than in their own table because Convex pushes the
+     * whole document to subscribers anyway, so this costs no extra query.
+     */
+    clientTypingUntil: v.optional(v.number()),
+    adminTypingUntil: v.optional(v.number()),
   }).index("by_client", ["clientId"]),
 
   clients: defineTable({
@@ -1053,9 +1101,112 @@ export default defineSchema({
     authorType: v.union(v.literal("client"), v.literal("admin")),
     authorName: v.string(),
     body: v.string(),
+    /**
+     * Reached the recipient's device.
+     *
+     * Distinct from readAt, and the distinction is the whole point of showing
+     * either. "Delivered" means their browser has the message — set when the
+     * recipient's live query first returns it. "Read" means they were actually
+     * looking at the thread. Without both, a silent recipient is ambiguous
+     * between "hasn't seen it" and "saw it and didn't reply", which is exactly
+     * the thing a client waiting on an answer wants to know.
+     */
+    deliveredAt: v.optional(v.number()),
     readAt: v.optional(v.number()),
     createdAt: v.number(),
   }).index("by_project", ["projectId", "createdAt"]),
+
+  /* -------------------------------------------------------------------------
+     Calls: voice, video, whiteboard and notes.
+
+     Agora carries the MEDIA. Everything else — who may join, what was drawn,
+     what was said — lives here, because it is project data that has to outlive
+     the call. A whiteboard that vanishes when the last person hangs up is a
+     whiteboard nobody will use for anything that matters.
+     ------------------------------------------------------------------------- */
+
+  calls: defineTable({
+    projectId: v.id("clientProjects"),
+    /**
+     * The Agora channel name. Derived from the call id, never from the project
+     * name — a channel name is effectively a shared secret in testing mode,
+     * and one guessable from public information is not a boundary at all.
+     */
+    channel: v.string(),
+    title: v.optional(v.string()),
+    scheduledAt: v.optional(v.number()),
+    startedAt: v.optional(v.number()),
+    endedAt: v.optional(v.number()),
+    createdBy: v.union(v.literal("client"), v.literal("admin")),
+    createdAt: v.number(),
+    /**
+     * Opaque token that lets a GUEST join without a portal account.
+     *
+     * Separate from the channel name so it can be revoked by clearing this
+     * field while the call carries on — otherwise "uninvite someone" would
+     * mean ending the call and starting a new one.
+     */
+    guestKey: v.optional(v.string()),
+    /** Claude's summary, written once the call ends. */
+    summary: v.optional(v.string()),
+    summaryAt: v.optional(v.number()),
+  })
+    .index("by_project", ["projectId", "createdAt"])
+    .index("by_channel", ["channel"])
+    .index("by_guest_key", ["guestKey"]),
+
+  /**
+   * Whiteboard strokes, one row per stroke.
+   *
+   * Convex rather than a second realtime vendor: the reactive query that
+   * already powers the portal delivers strokes to every participant with no
+   * extra SDK, no extra token and no extra failure mode — and the board is
+   * still there tomorrow.
+   *
+   * A stroke is the unit, not a point: one row per pointer-down-to-up. Storing
+   * points individually would be thousands of writes for a single sentence of
+   * handwriting, and undo would have nothing coherent to remove.
+   */
+  whiteboardStrokes: defineTable({
+    callId: v.id("calls"),
+    /** Flat [x0,y0,x1,y1,…] in 0–1 space, so it scales to any canvas size. */
+    points: v.array(v.number()),
+    colour: v.string(),
+    width: v.number(),
+    /** Who drew it, for undo-your-own and for the cursor label. */
+    authorId: v.string(),
+    authorName: v.string(),
+    createdAt: v.number(),
+  }).index("by_call", ["callId", "createdAt"]),
+
+  /**
+   * Live transcript lines, which the AI note taker summarises.
+   *
+   * Kept as discrete lines with a speaker and a timestamp rather than one
+   * growing blob: a summary is far better when it can see who said what, and
+   * an append-only line is a single small write instead of rewriting the whole
+   * transcript on every utterance.
+   */
+  callTranscript: defineTable({
+    callId: v.id("calls"),
+    speaker: v.string(),
+    text: v.string(),
+    at: v.number(),
+  }).index("by_call", ["callId", "at"]),
+
+  /**
+   * The daily AI overview.
+   *
+   * One row per morning. No index: it is only ever read newest-first and
+   * trimmed to thirty rows on write, so the table's default order is already
+   * the only access pattern it has.
+   */
+  digests: defineTable({
+    summary: v.string(),
+    /** The figures the summary was written from, for tracing a wrong one. */
+    basis: v.optional(v.string()),
+    createdAt: v.number(),
+  }),
 
   /**
    * Promotions.

@@ -68,7 +68,7 @@ export function AnalyticsDashboard() {
                   type="button"
                   onClick={() => setDays(r.days)}
                   aria-pressed={days === r.days}
-                  className={`rounded-full px-3 py-1.5 text-xs transition-colors duration-fast ${
+                  className={`rounded-full px-3 py-1.5 text-xs transition-colors duration-hover ease-hover ${
                     days === r.days
                       ? "bg-surface-2 text-primary"
                       : "text-secondary hover:text-primary"
@@ -92,7 +92,7 @@ export function AnalyticsDashboard() {
                     ]),
                   )
                 }
-                className="admin-meta rounded-lg px-2 py-1 transition-colors duration-fast hover:text-primary"
+                className="admin-meta rounded-lg px-2 py-1 transition-colors duration-hover ease-hover hover:text-primary"
               >
                 Export
               </button>
@@ -116,7 +116,7 @@ export function AnalyticsDashboard() {
             type="button"
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            className={`-mb-px shrink-0 border-b-2 px-3 py-2.5 text-[13px] whitespace-nowrap transition-colors duration-fast ${
+            className={`-mb-px shrink-0 border-b-2 px-3 py-2.5 text-[13px] whitespace-nowrap transition-colors duration-hover ease-hover ${
               tab === t.id
                 ? "border-[color:var(--accent)] text-primary"
                 : "border-transparent text-secondary hover:text-primary"

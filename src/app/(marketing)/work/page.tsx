@@ -20,7 +20,7 @@ export default async function WorkPage() {
 
   if (!preloaded) {
     return (
-      <div className="mx-auto max-w-5xl px-6 py-24">
+      <div className="mx-auto max-w-5xl px-6 pt-32 pb-24">
         <h1 className="text-4xl">Work</h1>
         <p className="mt-6 text-secondary">
           Case studies are being written up. Check back shortly.

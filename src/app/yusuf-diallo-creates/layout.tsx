@@ -9,7 +9,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
  *
  * Three layers of protection, and all three are load-bearing:
  *
- *   1. src/middleware.ts redirects an unauthenticated request at the edge.
+ *   1. src/proxy.ts redirects an unauthenticated request at the edge.
  *   2. AdminGate renders a sign-in prompt rather than a broken page if the
  *      session is missing or not the admin.
  *   3. Every Convex query and mutation calls requireAdmin server-side.
@@ -17,6 +17,11 @@ import { AdminShell } from "@/components/admin/AdminShell";
  * The first two are convenience. Only the third actually protects the data,
  * because anything reachable over the wire can be called without ever loading
  * this page.
+ *
+ * Sessions themselves expire after 12 hours, or 2 hours idle — see the
+ * `session` block in convex/auth.ts. Without that, none of the above matters
+ * much: the gate opens on a valid session, and a session that never expires is
+ * a permanently open gate.
  */
 export const metadata: Metadata = {
   title: { default: "Admin", template: "%s · Admin" },

@@ -40,13 +40,13 @@ export default function Error({
         <button
           type="button"
           onClick={reset}
-          className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+          className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
         >
           Try again
         </button>
         <Link
           href="/"
-          className="rounded-full px-5 py-2.5 text-sm text-primary transition-colors duration-fast hover:bg-surface-2"
+          className="rounded-full px-5 py-2.5 text-sm text-primary transition-colors duration-hover ease-hover hover:bg-surface-2"
         >
           Back to home
         </Link>

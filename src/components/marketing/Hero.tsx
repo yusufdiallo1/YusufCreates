@@ -4,16 +4,20 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
+  animate,
   motion,
+  useMotionTemplate,
   useMotionValue,
   useReducedMotion,
   useScroll,
   useSpring,
   useTransform,
+  type MotionValue,
 } from "motion/react";
 import { LiquidGlass } from "@/components/ui/LiquidGlass";
 import { TextReveal } from "@/components/motion/TextReveal";
 import { track } from "@/lib/track";
+import { useCapability } from "@/components/providers/CapabilityProvider";
 import { AvailabilityBadge } from "@/components/marketing/AvailabilityBadge";
 
 /**
@@ -54,33 +58,97 @@ export type HeroProject = {
   category?: string;
 };
 
-/** Depth, offset and screenshot dimming per slab position. */
-const SLABS = [
-  {
-    depth: "far" as const,
-    scale: 0.88,
-    className: "left-0 top-[6%] w-[62%]",
-    imageOpacity: 0.6,
-    drift: { duration: 11, y: 12, x: 5, rotate: 0.4 },
-    z: 10,
-  },
-  {
-    depth: "near" as const,
-    scale: 1,
-    className: "left-[22%] top-[26%] w-[68%]",
-    imageOpacity: 0.85,
-    drift: { duration: 8.5, y: 10, x: 4, rotate: -0.35 },
-    z: 30,
-  },
-  {
-    depth: "mid" as const,
-    scale: 0.94,
-    className: "left-[8%] top-[52%] w-[60%]",
-    imageOpacity: 0.72,
-    drift: { duration: 9.8, y: 11, x: 5, rotate: 0.3 },
-    z: 20,
-  },
-];
+/**
+ * Depth, offset and screenshot dimming per slab position.
+ *
+ * `origin` is the edge the slab flies in from on first load. It follows the
+ * slab's resting position — a panel that lives on the left arrives from the
+ * left — so the composition assembles outwards from the middle rather than
+ * every card sliding the same way, which reads as a carousel.
+ *
+ * imageOpacity used to run 0.6 / 0.72 / 0.85. These are real screenshots of
+ * real shipped work and they are the proof on this page; dimming them to 60%
+ * made the hero look like it had failed to finish loading. They now sit close
+ * to full and hover still takes them the rest of the way.
+ */
+type SlabConfig = {
+  depth: "far" | "mid" | "near";
+  scale: number;
+  className: string;
+  imageOpacity: number;
+  drift: { duration: number; y: number; x: number; rotate: number };
+  z: number;
+  origin: "left" | "right";
+};
+
+const FAR: SlabConfig = {
+  depth: "far",
+  scale: 0.88,
+  className: "left-0 top-[6%] w-[62%]",
+  imageOpacity: 0.86,
+  drift: { duration: 11, y: 12, x: 5, rotate: 0.4 },
+  z: 10,
+  origin: "left",
+};
+
+const NEAR: SlabConfig = {
+  depth: "near",
+  scale: 1,
+  className: "left-[22%] top-[26%] w-[68%]",
+  imageOpacity: 1,
+  drift: { duration: 8.5, y: 10, x: 4, rotate: -0.35 },
+  z: 30,
+  origin: "right",
+};
+
+const MID: SlabConfig = {
+  depth: "mid",
+  scale: 0.94,
+  className: "left-[8%] top-[52%] w-[60%]",
+  imageOpacity: 0.92,
+  drift: { duration: 9.8, y: 11, x: 5, rotate: 0.3 },
+  z: 20,
+  origin: "left",
+};
+
+/**
+ * Layout per project count.
+ *
+ * This used to be a single three-slab array with `shown.length >= 3 ? SLABS :
+ * [SLABS[1]]` at the call site, which meant one or two featured projects
+ * collapsed the whole composition to a single panel — and a fourth was
+ * discarded upstream by a `.take(3)` in convex/projects.ts. Featuring two
+ * projects should show two, laid out for two, not one.
+ *
+ * Three is the cap here on purpose: the hero is a composition, not a gallery.
+ * Everything marked featured appears in the "Featured work" section below,
+ * which now has no limit.
+ */
+const SLAB_LAYOUTS: Record<number, SlabConfig[]> = {
+  // Centred, and the largest of the three depths — a lone slab pinned to the
+  // left edge just looks like the other two failed to load.
+  1: [{ ...NEAR, className: "left-[10%] top-[20%] w-[80%]" }],
+  2: [
+    { ...FAR, className: "left-0 top-[8%] w-[64%]" },
+    { ...NEAR, className: "left-[26%] top-[42%] w-[70%]" },
+  ],
+  3: [FAR, NEAR, MID],
+};
+
+/** How far a slab travels on entry, in px. */
+const SLIDE_DISTANCE = 110;
+
+/** Radius of the circle the cursor clears in the frost, in px. */
+const FROST_RADIUS = 200;
+
+/**
+ * Where the near slab's cast shadow falls, relative to the slab itself.
+ *
+ * Down and to the LEFT, because the key light is upper-right — the same source
+ * every other shadow and specular catch on this page agrees with. A shadow
+ * falling the wrong way is the single most legible way to break the illusion.
+ */
+const CAST_SHADOW_OFFSET = { x: -18, y: 26 };
 
 export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
   const reduceMotion = useReducedMotion();
@@ -172,6 +240,7 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
         };
 
   const shown = projects.filter((p) => p.coverUrl).slice(0, 3);
+  const layout = SLAB_LAYOUTS[shown.length] ?? SLAB_LAYOUTS[3];
 
   // Viewport-gated rather than CSS-hidden. `lg:hidden` still mounts the
   // element, and a mounted glass panel still costs its backdrop-filter — the
@@ -198,6 +267,94 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
     return () => mq.removeEventListener("change", onChange);
   }, []);
 
+  /*
+   * Depth of field.
+   *
+   * Which slab the pointer is on. The other two defocus — camera focus, not
+   * z-index. Held here rather than in each slab because a slab has to know
+   * about its siblings' state to know whether it is the one in focus.
+   */
+  const [focused, setFocused] = useState<number | null>(null);
+
+  /*
+   * The near slab's drift, lifted out of the slab and into MotionValues.
+   *
+   * It was a declarative keyframe loop, which moves the element perfectly well
+   * but publishes nothing — and the shadow it now casts across the two behind
+   * it has to travel with it, or the three panels go straight back to reading
+   * as three independent layers that happen to overlap.
+   *
+   * Same durations, same amplitudes, same easing. Only the owner changed.
+   */
+  const nearDrift = layout.find((slab) => slab.depth === "near")?.drift;
+  const driftX = useMotionValue(0);
+  const driftY = useMotionValue(0);
+  const driftRotate = useMotionValue(0);
+
+  useEffect(() => {
+    if (reduceMotion || !nearDrift || isDesktop !== true) return;
+    const options = {
+      duration: nearDrift.duration,
+      repeat: Infinity,
+      ease: "easeInOut" as const,
+    };
+    const runs = [
+      animate(driftY, [0, -nearDrift.y, 0], options),
+      animate(driftX, [0, nearDrift.x, 0], options),
+      animate(driftRotate, [0, nearDrift.rotate, 0], options),
+    ];
+    return () => {
+      for (const run of runs) run.stop();
+    };
+  }, [reduceMotion, nearDrift, isDesktop, driftX, driftY, driftRotate]);
+
+  /*
+   * The near slab's laid-out box, so the shadow can be sized and placed from it.
+   *
+   * offsetLeft/offsetTop rather than getBoundingClientRect: those report the
+   * PRE-transform CSS box, so the measurement does not move with the tilt, the
+   * drift or the entrance. Measuring the transformed rect would make the shadow
+   * chase the slab a frame behind and grow every time the panel scaled.
+   */
+  const stageRef = useRef<HTMLDivElement>(null);
+  const nearRef = useRef<HTMLDivElement>(null);
+  const [nearBox, setNearBox] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    const near = nearRef.current;
+    if (!stage || !near) return;
+
+    const measure = () =>
+      setNearBox({
+        left: near.offsetLeft,
+        top: near.offsetTop,
+        width: near.offsetWidth,
+        height: near.offsetHeight,
+      });
+    measure();
+
+    // One observer on the stage, not one per slab — the slabs are all sized in
+    // percentages of it, so it is the only thing whose size can change them.
+    const observer = new ResizeObserver(measure);
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, [isDesktop, shown.length]);
+
+  /*
+   * Cursor-led frost clearing costs a mask repaint per frame on a
+   * screenshot-sized element, so it is the first thing to go on a device that
+   * cannot afford it. Below `full` the uniform CSS hover clear stays, which is
+   * what was there before and still reads correctly.
+   */
+  const { tier } = useCapability();
+  const clearFrost = tier === "full" && !reduceMotion;
+
   return (
     <section
       ref={ref}
@@ -218,7 +375,11 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
       }}
       // dvh, never vh: on mobile Safari vh is the *largest* viewport height, so
       // the hero sits partly under the address bar on first paint.
-      className="relative isolate flex min-h-[86dvh] items-center overflow-hidden px-6 py-24"
+      /* pt-32 rather than py-24: the nav is fixed and occupies roughly the top
+         84px, and `items-center` on a short viewport pulls the headline up
+         under it. The extra top padding is what the centring is allowed to
+         eat into. */
+      className="relative isolate flex min-h-[86dvh] items-center overflow-hidden px-6 pt-32 pb-24"
     >
       <Backdrop glowScale={glowScale} glowOpacity={glowOpacity} play={play} />
 
@@ -231,7 +392,7 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
           {/* Live, not a claim. Reads the same capacity as the waitlist, so
               the hero cannot advertise work that is already booked. */}
           <motion.div {...step(0.1)}>
-            <AvailabilityBadge className="inline-flex items-center gap-2.5 font-mono text-xs tracking-[0.1em] text-secondary uppercase transition-colors duration-fast hover:text-primary" />
+            <AvailabilityBadge className="inline-flex items-center gap-2.5 font-mono text-xs tracking-[0.1em] text-secondary uppercase transition-colors duration-hover ease-hover hover:text-primary" />
           </motion.div>
 
           <h1
@@ -282,14 +443,14 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
               href="/pricing"
               data-cursor="link"
               onClick={() => track("cta_click", { cta: "hero-start" })}
-              className="rounded-full bg-[color:var(--accent-solid)] px-6 py-3 text-center text-sm font-medium text-white transition-opacity duration-fast hover:opacity-90"
+              className="rounded-full bg-[color:var(--accent-solid)] px-6 py-3 text-center text-sm font-medium text-white transition-opacity duration-hover ease-hover hover:opacity-90"
             >
               Start a project
             </Link>
             <Link
               href="/work"
               data-cursor="link"
-              className="rounded-full px-6 py-3 text-center text-sm text-primary transition-colors duration-fast hover:bg-surface-2"
+              className="rounded-full px-6 py-3 text-center text-sm text-primary transition-colors duration-hover ease-hover hover:bg-surface-2"
             >
               View work
             </Link>
@@ -307,15 +468,23 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
             overlap is deliberate and the layout never shifts. */}
         {shown.length > 0 && isDesktop === true ? (
           <motion.div
+            ref={stageRef}
             style={reduceMotion ? undefined : { y: slabY }}
             className="relative h-[30rem] lg:col-span-7"
+            /* One leave handler on the stage rather than per slab: moving
+               between two overlapping slabs fires leave-then-enter, and
+               clearing focus on the stage means the gap between them never
+               flashes all three back into focus for a frame. */
+            onPointerLeave={() => setFocused(null)}
           >
-            {(shown.length >= 3 ? SLABS : [SLABS[1]]).map((slab, i) => {
-              const project = shown[shown.length >= 3 ? i : 0];
+            {layout.map((slab, i) => {
+              const project = shown[i];
               if (!project) return null;
+              const isNear = slab.depth === "near";
               return (
                 <Slab
                   key={project.slug}
+                  hostRef={isNear ? nearRef : undefined}
                   project={project}
                   config={slab}
                   index={i}
@@ -323,18 +492,74 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
                   reduceMotion={Boolean(reduceMotion)}
                   tiltX={tiltX}
                   tiltY={tiltY}
+                  clearFrost={clearFrost}
+                  dimmed={focused !== null && focused !== i}
+                  onFocusChange={(on) => setFocused(on ? i : null)}
+                  drift={
+                    isNear
+                      ? { x: driftX, y: driftY, rotate: driftRotate }
+                      : undefined
+                  }
                 />
               );
             })}
+
+            {/*
+              The near slab's shadow, falling across the two behind it.
+
+              ONE element at z-index 25, between the rear slabs (10 and 20) and
+              the near slab (30). That single placement does the whole job: it
+              darkens whatever sits behind the near panel and is occluded by the
+              panel itself, which is what a cast shadow is. Three separate
+              overlays, one per rear slab, would have to solve the same
+              occlusion by hand and get the overlap between the rear two wrong.
+
+              It reads driftX/driftY — the same values the near slab moves on —
+              so the shadow travels with the object casting it. Without that
+              the slabs go back to being three layers in a stack rather than
+              three objects in one space.
+
+              blur() here is a plain filter on a small opaque rectangle, not a
+              backdrop-filter: it is rasterised once and then only translated,
+              which is the cheap case.
+            */}
+            {nearBox && layout.length > 1 && !reduceMotion ? (
+              <motion.div
+                aria-hidden="true"
+                initial={play ? { opacity: 0 } : false}
+                animate={{ opacity: 0.18 }}
+                transition={{
+                  duration: 0.7,
+                  delay: play ? 0.95 : 0,
+                  ease: EASE,
+                }}
+                style={{
+                  position: "absolute",
+                  left: nearBox.left + CAST_SHADOW_OFFSET.x,
+                  top: nearBox.top + CAST_SHADOW_OFFSET.y,
+                  width: nearBox.width,
+                  height: nearBox.height,
+                  x: driftX,
+                  y: driftY,
+                  zIndex: 25,
+                  borderRadius: "var(--glass-radius-panel)",
+                  background: "#000",
+                  filter: "blur(40px)",
+                  pointerEvents: "none",
+                }}
+              />
+            ) : null}
           </motion.div>
         ) : null}
 
         {/* Mobile: the same stacked composition, scaled down.
             Only the front slab is a link — see SlabStack. */}
         {shown.length > 0 && isDesktop === false ? (
-          <motion.div {...step(0.6)}>
-            <SlabStack projects={shown} />
-          </motion.div>
+          <SlabStack
+            projects={shown}
+            play={play}
+            reduceMotion={Boolean(reduceMotion)}
+          />
         ) : null}
       </div>
     </section>
@@ -402,17 +627,118 @@ function Slab({
   reduceMotion,
   tiltX,
   tiltY,
+  clearFrost,
+  dimmed,
+  onFocusChange,
+  drift,
+  hostRef,
 }: {
   project: HeroProject;
-  config: (typeof SLABS)[number];
+  config: SlabConfig;
   index: number;
   play: boolean;
   reduceMotion: boolean;
-  tiltX: ReturnType<typeof useSpring>;
-  tiltY: ReturnType<typeof useSpring>;
+  tiltX: MotionValue<number>;
+  tiltY: MotionValue<number>;
+  /** Whether this slab clears its frost from the cursor rather than uniformly. */
+  clearFrost: boolean;
+  /** True while a DIFFERENT slab has the pointer. */
+  dimmed: boolean;
+  onFocusChange: (focused: boolean) => void;
+  /** Supplied for the near slab only, whose drift the cast shadow reads. */
+  drift?: {
+    x: MotionValue<number>;
+    y: MotionValue<number>;
+    rotate: MotionValue<number>;
+  };
+  hostRef?: React.Ref<HTMLDivElement>;
 }) {
+  /*
+   * Each slab arrives from the edge it rests nearest, with a slight
+   * counter-rotation that unwinds as it lands — so the composition assembles
+   * outwards rather than every panel sliding up together.
+   *
+   * x and rotate are only ever set in `initial`, never in `animate`, so the
+   * infinite drift loop on the inner element stays the only thing owning those
+   * properties at rest. Two animations writing the same transform is what
+   * makes a panel jitter once the entrance finishes.
+   */
+  const fromLeft = config.origin === "left";
+
+  /*
+   * Tilt-driven specular.
+   *
+   * The highlight was a fixed inset in the shadow stack, so the light stayed
+   * put while the surface turned under it — and a highlight that does not move
+   * when the plane moves reads as paint rather than as light. Deriving its
+   * position from the tilt sends it toward whichever edge is rising, which is
+   * what a real specular catch does.
+   *
+   * Inverted on both axes: tilting the far edge away lifts the near edge, and
+   * the light gathers on the part now facing the source.
+   */
+  const highlightX = useTransform(tiltY, [-5, 5], ["88%", "12%"]);
+  const highlightY = useTransform(tiltX, [-5, 5], ["12%", "88%"]);
+  const highlightPosition = useMotionTemplate`${highlightX} ${highlightY}`;
+
+  /*
+   * Cursor-led frost clearing.
+   *
+   * The mask position is spring-lagged behind the true pointer, and that lag is
+   * the whole effect: frost that clears exactly under the cursor reads as a
+   * spotlight, frost that clears a beat later reads as something viscous being
+   * pushed out of the way.
+   *
+   * The radius is a MotionValue rather than a CSS transition because it runs at
+   * different speeds in each direction — 300ms opening, 400ms closing — and
+   * because it has to compose into the same template string as the position.
+   */
+  const pointerX = useMotionValue(0);
+  const pointerY = useMotionValue(0);
+  const maskX = useSpring(pointerX, { stiffness: 120, damping: 20 });
+  const maskY = useSpring(pointerY, { stiffness: 120, damping: 20 });
+  const maskRadius = useMotionValue(0);
+  const frostMask = useMotionTemplate`radial-gradient(${maskRadius}px circle at ${maskX}px ${maskY}px, transparent 0%, black 68%)`;
+
+  /*
+   * The panel's box, cached on enter rather than read per move.
+   *
+   * getBoundingClientRect inside a pointermove handler forces a synchronous
+   * layout on every event, and this element is already drifting. One read per
+   * hover is enough — the slab travels at most a dozen pixels over its cycle,
+   * which is nothing against a 200px soft-edged mask.
+   */
+  const boxRef = useRef<DOMRect | null>(null);
+
+  const trackPointer = (event: React.PointerEvent<HTMLDivElement>) => {
+    const box = boxRef.current;
+    if (!box) return;
+    pointerX.set(event.clientX - box.left);
+    pointerY.set(event.clientY - box.top);
+  };
+
+  const onEnter = (event: React.PointerEvent<HTMLDivElement>) => {
+    onFocusChange(true);
+    if (!clearFrost) return;
+    const box = event.currentTarget.getBoundingClientRect();
+    boxRef.current = box;
+    // jump, not set: the mask opens where the pointer arrived rather than
+    // springing across the panel from wherever it was left last time.
+    maskX.jump(event.clientX - box.left);
+    maskY.jump(event.clientY - box.top);
+    trackPointer(event);
+    animate(maskRadius, FROST_RADIUS, { duration: 0.3, ease: "easeOut" });
+  };
+
+  const onLeave = () => {
+    onFocusChange(false);
+    if (!clearFrost) return;
+    animate(maskRadius, 0, { duration: 0.4, ease: "easeOut" });
+  };
+
   return (
     <motion.div
+      ref={hostRef}
       className={`absolute ${config.className}`}
       style={{
         zIndex: config.z,
@@ -422,21 +748,34 @@ function Slab({
       }}
       initial={
         play && !reduceMotion
-          ? { opacity: 0, y: 40, scale: config.scale * 0.94 }
+          ? {
+              opacity: 0,
+              x: fromLeft ? -SLIDE_DISTANCE : SLIDE_DISTANCE,
+              y: 28,
+              rotate: fromLeft ? -3 : 3,
+              scale: config.scale * 0.94,
+            }
           : false
       }
-      animate={{ opacity: 1, y: 0, scale: config.scale }}
+      animate={{ opacity: 1, x: 0, y: 0, rotate: 0, scale: config.scale }}
       transition={{
-        duration: 0.9,
-        delay: play && !reduceMotion ? 0.16 + index * 0.06 : 0,
+        duration: 0.85,
+        delay: play && !reduceMotion ? 0.16 + index * 0.09 : 0,
         ease: EASE,
       }}
     >
       {/* Drift on a separate element from the entrance, so the two transforms
-          compose instead of fighting over the same property. */}
+          compose instead of fighting over the same property.
+
+          The near slab's drift is driven from MotionValues owned by Hero, so
+          the shadow it casts can travel with it. The other two keep the
+          declarative loop — nothing reads those. */}
       <motion.div
+        style={
+          drift ? { x: drift.x, y: drift.y, rotate: drift.rotate } : undefined
+        }
         animate={
-          reduceMotion
+          reduceMotion || drift
             ? undefined
             : {
                 y: [0, -config.drift.y, 0],
@@ -450,37 +789,137 @@ function Slab({
           ease: "easeInOut",
         }}
       >
-        <Link
-          href={`/work/${project.slug}`}
-          data-cursor="view"
-          aria-label={`${project.title} — view case study`}
-          className="group block"
+        {/*
+          Depth of field, on a wrapper that is never transformed.
+
+          Putting the filter on the drifting element would make the compositor
+          re-rasterise a blurred layer on every frame of the loop, which is the
+          expensive case. This element only changes when the pointer moves
+          between slabs.
+
+          The filter is ABSENT at rest rather than set to blur(0). An ancestor
+          with any filter value establishes a backdrop root, and a backdrop root
+          is precisely what would stop the LiquidGlass inside from seeing the
+          page behind it — the panel would go flat. So the property exists only
+          while the slab is deliberately out of focus, and CSS interpolates from
+          `none` using the identity value, which gives the same 300ms ramp.
+        */}
+        <div
+          className="transition-[filter,opacity] duration-300 ease-out motion-reduce:transition-none"
+          style={dimmed ? { filter: "blur(1.5px)", opacity: 0.75 } : undefined}
         >
-          <LiquidGlass
-            depth={config.depth}
-            shape="panel"
-            className="overflow-hidden !p-2 transition-transform duration-slow ease-out-expo group-hover:-translate-y-2.5"
+          <Link
+            href={`/work/${project.slug}`}
+            data-cursor="view"
+            aria-label={`${project.title} — view case study`}
+            className="group block"
           >
-            <div className="relative aspect-[16/10] overflow-hidden rounded-[20px] bg-surface-2">
-              <Image
-                src={project.coverUrl!}
-                alt={project.title}
-                fill
-                sizes="(max-width: 1024px) 90vw, 40vw"
-                // The near slab is the LCP element on desktop.
-                priority={config.depth === "near"}
-                style={{ opacity: config.imageOpacity }}
-                className="object-cover object-top saturate-[0.75] transition-[opacity,filter] duration-slow ease-out-expo group-hover:!opacity-100 group-hover:saturate-100 motion-reduce:!opacity-100 motion-reduce:saturate-100"
-              />
-            </div>
-          </LiquidGlass>
-        </Link>
+            <LiquidGlass
+              depth={config.depth}
+              shape="panel"
+              className="overflow-hidden !p-2 transition-transform duration-hover ease-hover group-hover:-translate-y-2.5"
+            >
+              <div
+                className="relative aspect-[16/10] overflow-hidden rounded-[var(--radius-xs)] bg-surface-2"
+                onPointerEnter={onEnter}
+                onPointerMove={clearFrost ? trackPointer : undefined}
+                onPointerLeave={onLeave}
+              >
+                {clearFrost ? (
+                  <>
+                    {/* Base: the screenshot at full colour. Only ever seen
+                        through the hole the cursor opens in the layer above. */}
+                    <Image
+                      src={project.coverUrl!}
+                      alt={project.title}
+                      fill
+                      sizes="(max-width: 1024px) 90vw, 40vw"
+                      // The near slab is the LCP element on desktop.
+                      priority={config.depth === "near"}
+                      className="object-cover object-top"
+                    />
+
+                    {/*
+                      The frost. The same image, dimmed and desaturated to the
+                      resting appearance, masked so it disappears under the
+                      cursor. Both copies resolve to a single request — same
+                      URL, same optimiser parameters.
+
+                      brightness rather than opacity for the dimming: an opacity
+                      here would let the full-colour base bleed through
+                      everywhere, so the panel would rest brighter than it did
+                      before and the hover would have less left to reveal.
+                    */}
+                    <motion.div
+                      aria-hidden="true"
+                      className="absolute inset-0"
+                      style={{
+                        maskImage: frostMask,
+                        WebkitMaskImage: frostMask,
+                      }}
+                    >
+                      <Image
+                        src={project.coverUrl!}
+                        alt=""
+                        fill
+                        sizes="(max-width: 1024px) 90vw, 40vw"
+                        /*
+                         * priority here as well as on the base copy.
+                         *
+                         * THIS is the layer that is visible at rest — the base
+                         * underneath is only ever seen through the hole the
+                         * cursor opens. So on the near slab this is the LCP
+                         * element, and without the hint Next lazy-loads the
+                         * largest thing above the fold. Both copies resolve to
+                         * one request, so the preload is not duplicated.
+                         */
+                        priority={config.depth === "near"}
+                        style={{
+                          filter: `saturate(0.95) brightness(${config.imageOpacity})`,
+                        }}
+                        className="object-cover object-top"
+                      />
+                    </motion.div>
+                  </>
+                ) : (
+                  <Image
+                    src={project.coverUrl!}
+                    alt={project.title}
+                    fill
+                    sizes="(max-width: 1024px) 90vw, 40vw"
+                    // The near slab is the LCP element on desktop.
+                    priority={config.depth === "near"}
+                    style={{ opacity: config.imageOpacity }}
+                    /* saturate-[0.95] rather than the old 0.75. Combined with an
+                       imageOpacity of 0.6 that read as a broken image rather than
+                       a recessed one; the depth is already carried by scale, blur
+                       and position, so the colour barely needs to help. */
+                    className="object-cover object-top saturate-[0.95] transition-[opacity,filter] duration-hover ease-hover group-hover:!opacity-100 group-hover:saturate-100 motion-reduce:!opacity-100 motion-reduce:saturate-100"
+                  />
+                )}
+
+                {/* The specular catch, riding the tilt. Screen blend so it adds
+                    light to the image rather than washing it out. */}
+                <motion.div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0"
+                  style={{
+                    backgroundImage:
+                      "radial-gradient(closest-side, rgba(255,255,255,0.16), rgba(255,255,255,0.05) 46%, rgba(255,255,255,0) 72%)",
+                    backgroundSize: "180% 180%",
+                    backgroundRepeat: "no-repeat",
+                    backgroundPosition: highlightPosition,
+                    mixBlendMode: "screen",
+                  }}
+                />
+              </div>
+            </LiquidGlass>
+          </Link>
+        </div>
       </motion.div>
     </motion.div>
   );
 }
-
-/** Mobile and reduced-motion variant: one slab, no drift, no tilt. */
 
 /**
  * Mobile slab stack.
@@ -495,11 +934,24 @@ function Slab({
  * decorative and aria-hidden, which also keeps them out of the tab order
  * rather than leaving two unreachable links in it.
  *
- * No drift, no tilt, and blur is left to the glass tokens: this is the mobile
- * blur budget, and animating three backdrop-filtered elements on a phone is
- * what made the old hero stutter.
+ * Each panel now slides in from the edge it rests against — the back-left one
+ * from the left, the back-right one from the right, the front one up from
+ * below. That is a ONE-SHOT transform, not the desktop drift loop: the warning
+ * that used to sit here was about animating three backdrop-filtered elements
+ * *continuously* on a phone, which is what made the old hero stutter. A single
+ * composited entrance that settles and stops is affordable.
+ *
+ * Still no drift and no tilt on mobile, for exactly that reason.
  */
-function SlabStack({ projects }: { projects: HeroProject[] }) {
+function SlabStack({
+  projects,
+  play,
+  reduceMotion,
+}: {
+  projects: HeroProject[];
+  play: boolean;
+  reduceMotion: boolean;
+}) {
   const front = projects[0];
   if (!front) return null;
 
@@ -507,56 +959,76 @@ function SlabStack({ projects }: { projects: HeroProject[] }) {
   // without needing a z-index on every layer.
   const behind = projects.slice(1, 3);
 
+  const animate = play && !reduceMotion;
+  const entrance = (from: "left" | "right" | "below", delay: number) =>
+    animate
+      ? {
+          initial: {
+            opacity: 0,
+            x: from === "left" ? -70 : from === "right" ? 70 : 0,
+            y: from === "below" ? 40 : 16,
+          },
+          animate: { opacity: 1, x: 0, y: 0 },
+          transition: { duration: 0.7, delay, ease: EASE },
+        }
+      : {};
+
   return (
     <div className="relative h-[19rem] sm:h-[24rem]">
       {behind.map((project, i) => (
-        <div
+        <motion.div
           key={project.slug}
           aria-hidden="true"
+          {...entrance(i === 0 ? "left" : "right", 0.1 + i * 0.09)}
           className={
             i === 0
               ? "absolute top-0 left-0 w-[72%] opacity-70"
               : "absolute top-[18%] right-0 w-[64%] opacity-55"
           }
-          style={{ transform: `scale(${i === 0 ? 0.94 : 0.88})` }}
+          style={{ scale: i === 0 ? 0.94 : 0.88 }}
         >
           <LiquidGlass depth={i === 0 ? "far" : "mid"} shape="panel" className="overflow-hidden !p-1.5">
-            <div className="relative aspect-[16/10] overflow-hidden rounded-[16px] bg-surface-2">
+            <div className="relative aspect-[16/10] overflow-hidden rounded-[var(--radius-xs)] bg-surface-2">
               {project.coverUrl ? (
                 <Image
                   src={project.coverUrl}
                   alt=""
                   fill
                   sizes="70vw"
-                  className="object-cover object-top opacity-60"
+                  className="object-cover object-top opacity-80"
                 />
               ) : null}
             </div>
           </LiquidGlass>
-        </div>
+        </motion.div>
       ))}
 
-      <Link
-        href={`/work/${front.slug}`}
-        data-cursor="view"
-        aria-label={`${front.title} — view case study`}
-        className="absolute top-[30%] left-[8%] block w-[86%]"
+      <motion.div
+        {...entrance("below", 0.28)}
+        className="absolute top-[30%] left-[8%] w-[86%]"
       >
-        <LiquidGlass depth="near" shape="panel" className="overflow-hidden !p-2">
-          <div className="relative aspect-[16/10] overflow-hidden rounded-[20px] bg-surface-2">
-            {front.coverUrl ? (
-              <Image
-                src={front.coverUrl}
-                alt={front.title}
-                fill
-                sizes="90vw"
-                priority
-                className="object-cover object-top"
-              />
-            ) : null}
-          </div>
-        </LiquidGlass>
-      </Link>
+        <Link
+          href={`/work/${front.slug}`}
+          data-cursor="view"
+          aria-label={`${front.title} — view case study`}
+          className="block"
+        >
+          <LiquidGlass depth="near" shape="panel" className="overflow-hidden !p-2">
+            <div className="relative aspect-[16/10] overflow-hidden rounded-[var(--radius-xs)] bg-surface-2">
+              {front.coverUrl ? (
+                <Image
+                  src={front.coverUrl}
+                  alt={front.title}
+                  fill
+                  sizes="90vw"
+                  priority
+                  className="object-cover object-top"
+                />
+              ) : null}
+            </div>
+          </LiquidGlass>
+        </Link>
+      </motion.div>
     </div>
   );
 }

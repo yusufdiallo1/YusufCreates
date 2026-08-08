@@ -124,7 +124,7 @@ export function SlotPicker({
               setKind(k);
               setMonth(null);
             }}
-            className={`hairline rounded-full px-4 py-2 text-sm transition-colors duration-fast ${
+            className={`hairline rounded-full px-4 py-2 text-sm transition-colors duration-hover ease-hover ${
               kind === k ? "bg-surface-2 text-primary" : "text-secondary"
             }`}
           >
@@ -337,7 +337,7 @@ export function SlotPicker({
             setState("idle");
           }
         }}
-        className="mt-5 rounded-full bg-[color:var(--accent-solid)] px-6 py-3 text-sm font-medium text-white transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+        className="mt-5 rounded-full bg-[color:var(--accent-solid)] px-6 py-3 text-sm font-medium text-white transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-40"
       >
         {state === "saving" ? "Saving…" : "Hold my slot"}
       </button>

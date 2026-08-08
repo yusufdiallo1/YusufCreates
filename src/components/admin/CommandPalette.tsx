@@ -67,16 +67,34 @@ export function CommandPalette() {
     setRecents(loadRecents());
   }
 
+  /*
+   * ⌘K toggles, Escape closes.
+   *
+   * Escape used to be missing entirely. This is a bare <Command> with a
+   * hand-rolled overlay rather than <Command.Dialog>, and cmdk's own root
+   * keydown handler only implements the navigation keys — Escape is handled by
+   * the Radix Dialog that Command.Dialog wraps, which is not in this tree. So
+   * nothing anywhere was listening for it, while the panel rendered an "esc"
+   * hint promising that it was.
+   *
+   * capture phase, so it fires before cmdk's own handler and before anything
+   * inside the palette can swallow it.
+   */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // metaKey for macOS, ctrlKey elsewhere.
       if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         setOpen((v) => !v);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setOpen(false);
       }
     };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
   }, []);
 
   const remember = useCallback((id: string) => {
@@ -103,7 +121,11 @@ export function CommandPalette() {
   const actions = useMemo<Action[]>(() => {
     const nav: Action[] = [
       { id: "nav:overview", label: "Overview", group: "Go to", run: () => go(`${ADMIN_PATH}`) },
-      { id: "nav:leads", label: "Leads and inquiries", group: "Go to", keywords: "inbox enquiries", run: () => go(`${ADMIN_PATH}/leads`) },
+      /* One entry, not two. "Leads" and "Clients" were separate destinations
+         until they were merged onto one screen; leaving both here would list
+         the same page twice under different names. The old vocabulary lives on
+         as keywords so typing "leads" still finds it. */
+      { id: "nav:clients", label: "Requests and clients", group: "Go to", keywords: "inbox enquiries leads clients portal access", run: () => go(`${ADMIN_PATH}/clients`) },
       { id: "nav:analytics", label: "Analytics", group: "Go to", keywords: "traffic stats", run: () => go(`${ADMIN_PATH}/analytics`) },
       { id: "nav:content", label: "Content — portfolio, blog, testimonials", group: "Go to", keywords: "work portfolio posts writing quotes", run: () => go(`${ADMIN_PATH}/content`) },
       { id: "nav:feedback", label: "Feedback", group: "Go to", run: () => go(`${ADMIN_PATH}/feedback`) },
@@ -132,7 +154,7 @@ export function CommandPalette() {
         hint: [l.company, l.email].filter(Boolean).join(" · "),
         group: "Leads",
         keywords: `${l.company ?? ""} ${l.email}`,
-        run: () => go(`${ADMIN_PATH}/leads?id=${l._id}`),
+        run: () => go(`${ADMIN_PATH}/clients?id=${l._id}`),
       })) ?? [];
 
     const projectActions: Action[] =
@@ -252,13 +274,24 @@ export function CommandPalette() {
     <div
       className="fixed inset-0 z-[100] flex items-start justify-center px-4 pt-[12vh]"
       role="presentation"
-      onMouseDown={(e) => {
-        // Backdrop click closes; clicks inside the panel must not.
-        if (e.target === e.currentTarget) setOpen(false);
-      }}
     >
+      {/*
+        The backdrop is its own click target.
+
+        It used to be an `aria-hidden` div layered under a container that
+        carried `onMouseDown={e => e.target === e.currentTarget && close()}`.
+        That test could never pass: this div covers the whole container, so a
+        click on the dim area always landed on IT, never on the container, and
+        e.target !== e.currentTarget every single time. Clicking outside the
+        palette did nothing at all.
+
+        Putting the handler on the element the pointer actually hits removes
+        the ambiguity — no target comparison, no guessing what counts as
+        "outside".
+      */}
       <div
         aria-hidden="true"
+        onMouseDown={() => setOpen(false)}
         className="absolute inset-0 bg-[color:var(--bg-canvas)]/70 backdrop-blur-sm"
       />
 

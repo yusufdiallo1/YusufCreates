@@ -130,7 +130,24 @@ export function ProcessConnector({
   // sequence on their own.
   if (tier === "minimal") return null;
 
-  const animated = tier === "full";
+  /*
+   * Past this point the line always animates.
+   *
+   * There used to be a third state — `reduced` drew the path statically at
+   * full length with no travelling dot, and only `full` scrubbed it. That was
+   * the wrong place to economise: this is one SVG path driven by a
+   * `pathLength` MotionValue plus a single dot on an offsetPath. No blur, no
+   * filter, no layout, and the useScroll subscription above already exists at
+   * every tier because hooks cannot be conditional. Animating it costs
+   * essentially nothing on top of what was already running.
+   *
+   * It mattered because `reduced` is also the DEFAULT tier until the
+   * capability probe resolves, so the drawn line was being skipped on first
+   * paint for everyone and only appeared on devices that later scored `full`.
+   *
+   * `minimal` still returns null above — there the line is dropped entirely
+   * rather than frozen, since the numbered steps carry the sequence anyway.
+   */
 
   return (
     <div
@@ -166,21 +183,19 @@ export function ProcessConnector({
             strokeWidth={1.5}
             strokeLinecap="round"
             fill="none"
-            style={animated ? { pathLength } : { pathLength: 1 }}
+            style={{ pathLength }}
             opacity={0.7}
           />
 
-          {animated ? (
-            <motion.circle
-              r={3}
-              fill="var(--dev-cyan)"
-              style={{
-                offsetPath: `path("${path}")`,
-                offsetDistance: dotProgress,
-                offsetRotate: "0deg",
-              }}
-            />
-          ) : null}
+          <motion.circle
+            r={3}
+            fill="var(--dev-cyan)"
+            style={{
+              offsetPath: `path("${path}")`,
+              offsetDistance: dotProgress,
+              offsetRotate: "0deg",
+            }}
+          />
         </svg>
       ) : null}
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion, useScroll, useSpring } from "motion/react";
+import { motion, useScroll, useSpring } from "motion/react";
 
 /**
  * ScrollProgress — a 2px accent bar pinned to the very top of the viewport,
@@ -8,9 +8,21 @@ import { motion, useReducedMotion, useScroll, useSpring } from "motion/react";
  *
  * scaleX is used rather than width because transform is compositor-only; an
  * animated width would trigger layout on every frame of every scroll.
+ *
+ * REDUCED MOTION IS A CSS CONCERN HERE, not a render branch.
+ *
+ * This used to `return null` under prefers-reduced-motion. useReducedMotion
+ * cannot know the preference on the server, so it answered false there and
+ * true on the client — the server sent this element and the client expected
+ * the next one, and React threw out and re-rendered the entire marketing tree
+ * on every page load for anyone with the preference set. The people most
+ * likely to be on a device that cannot afford a full re-render were the only
+ * ones paying for one.
+ *
+ * `motion-reduce:hidden` is a plain media query, so both passes render exactly
+ * the same markup and the bar simply is not painted.
  */
 export function ScrollProgress() {
-  const reduceMotion = useReducedMotion();
   const { scrollYProgress } = useScroll();
 
   // Smoothed so the bar glides rather than tracking wheel jitter exactly.
@@ -20,11 +32,10 @@ export function ScrollProgress() {
     restDelta: 0.001,
   });
 
-  if (reduceMotion) return null;
-
   return (
     <motion.div
       aria-hidden="true"
+      className="motion-reduce:hidden"
       style={{
         scaleX,
         transformOrigin: "left",

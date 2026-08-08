@@ -23,7 +23,7 @@ export function MinimalNav() {
 
       <Link
         href="/"
-        className="text-sm text-secondary transition-colors duration-fast hover:text-primary"
+        className="text-sm text-secondary transition-colors duration-hover ease-hover hover:text-primary"
       >
         yusufcreates.com
       </Link>

@@ -2,6 +2,7 @@
  * Renders each v2 carousel to 1080x1350 PNGs via headless Chromium.
  *
  * Run from the repo root:  node "YusufCreates Social Media/build-v2/render.js"
+ * One deck only:           node "YusufCreates Social Media/build-v2/render.js" v2-27
  * Output: YusufCreates Social Media/posts-v2/<slug>/<slug>-<n>.png
  *
  * 4:5 because Instagram carousels cap there. Filenames carry the deck slug
@@ -19,6 +20,16 @@ const OUT = path.join(__dirname, "..", "posts-v2");
 const W = 1080;
 const H = 1350;
 
+// Optional slug filter. Without it every deck re-renders, which republishes 130
+// finished slides into posts-v2/ beside the copies already filed under DONE/ —
+// slow, and it makes it hard to see which files a change actually touched.
+const only = process.argv[2];
+const decks = only ? carousels.filter((c) => c.slug.includes(only)) : carousels;
+if (only && !decks.length) {
+  console.error(`No deck matches "${only}". Known slugs:\n  ${carousels.map((c) => c.slug).join("\n  ")}`);
+  process.exit(1);
+}
+
 (async () => {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({
@@ -30,11 +41,13 @@ const H = 1350;
   let count = 0;
   let warnings = 0;
 
-  for (const carousel of carousels) {
+  for (const carousel of decks) {
     const dir = path.join(OUT, carousel.slug);
     fs.mkdirSync(dir, { recursive: true });
 
-    await p.setContent(page(carousel.slides, HANDLE), { waitUntil: "load" });
+    await p.setContent(page(carousel.slides, HANDLE, 0, carousel.slides.length, carousel.theme), {
+      waitUntil: "load",
+    });
 
     // The embedded font must be applied before capture, or the screenshot
     // lands on a fallback face and every metric shifts.
@@ -72,7 +85,7 @@ const H = 1350;
     // Loading each slide alone means the capture always happens at scroll
     // offset zero, so there is nothing to repaint and nothing to get wrong.
     for (let i = 0; i < carousel.slides.length; i++) {
-      await p.setContent(page([carousel.slides[i]], HANDLE, i, carousel.slides.length), { waitUntil: "load" });
+      await p.setContent(page([carousel.slides[i]], HANDLE, i, carousel.slides.length, carousel.theme), { waitUntil: "load" });
       await p.evaluate(async () => {
         await document.fonts.load('700 104px "InterEmbedded"');
         await document.fonts.ready;

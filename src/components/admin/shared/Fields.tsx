@@ -112,7 +112,7 @@ export function Markdown({
         <button
           type="button"
           onClick={() => setShowPreview((v) => !v)}
-          className="text-xs text-secondary transition-colors duration-fast hover:text-primary"
+          className="text-xs text-secondary transition-colors duration-hover ease-hover hover:text-primary"
         >
           {showPreview ? "Edit" : "Preview"}
         </button>
@@ -176,7 +176,7 @@ export function TagInput({
               type="button"
               onClick={() => onChange(values.filter((v) => v !== tag))}
               aria-label={`Remove ${tag}`}
-              className="text-secondary transition-colors duration-fast hover:text-primary"
+              className="text-secondary transition-colors duration-hover ease-hover hover:text-primary"
             >
               ×
             </button>
@@ -253,7 +253,7 @@ export function ImageUpload({
           type="button"
           disabled={busy}
           onClick={() => inputRef.current?.click()}
-          className="hairline rounded-full px-3.5 py-1.5 text-xs text-primary transition-colors duration-fast hover:bg-surface-2 disabled:opacity-50"
+          className="hairline rounded-full px-3.5 py-1.5 text-xs text-primary transition-colors duration-hover ease-hover hover:bg-surface-2 disabled:opacity-50"
         >
           {busy ? "Uploading…" : value ? "Replace" : "Upload"}
         </button>
@@ -261,7 +261,7 @@ export function ImageUpload({
           <button
             type="button"
             onClick={() => onChange("")}
-            className="text-xs text-secondary transition-colors duration-fast hover:text-primary"
+            className="text-xs text-secondary transition-colors duration-hover ease-hover hover:text-primary"
           >
             Remove
           </button>
@@ -384,7 +384,7 @@ export function FileUpload({
         type="button"
         disabled={busy}
         onClick={() => inputRef.current?.click()}
-        className="hairline rounded-full px-3.5 py-1.5 text-xs text-primary transition-colors duration-fast hover:bg-surface-2 disabled:opacity-50"
+        className="hairline rounded-full px-3.5 py-1.5 text-xs text-primary transition-colors duration-hover ease-hover hover:bg-surface-2 disabled:opacity-50"
       >
         {busy ? "Uploading…" : label}
       </button>
@@ -487,7 +487,7 @@ export function GalleryUpload({
             aria-checked={ratio === r.id}
             onClick={() => onRatioChange(r.id)}
             title={r.hint}
-            className={`rounded-full border px-3 py-1.5 text-xs transition-colors duration-fast ${
+            className={`rounded-full border px-3 py-1.5 text-xs transition-colors duration-hover ease-hover ${
               ratio === r.id
                 ? "border-[color:var(--accent)] bg-surface-2 text-primary"
                 : "border-[color:var(--border-hairline)] text-secondary hover:text-primary"
@@ -523,7 +523,7 @@ export function GalleryUpload({
                 type="button"
                 onClick={() => onChange(values.filter((_, j) => j !== i))}
                 aria-label={`Remove image ${i + 1}`}
-                className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-[color:var(--bg-canvas)]/80 text-xs text-secondary backdrop-blur transition-colors duration-fast hover:text-[color:var(--danger)]"
+                className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-[color:var(--bg-canvas)]/80 text-xs text-secondary backdrop-blur transition-colors duration-hover ease-hover hover:text-[color:var(--danger)]"
               >
                 ×
               </button>
@@ -541,7 +541,7 @@ export function GalleryUpload({
           type="button"
           disabled={busy}
           onClick={() => inputRef.current?.click()}
-          className="hairline rounded-full px-4 py-2 text-xs text-primary transition-colors duration-fast hover:bg-surface-2 disabled:opacity-40"
+          className="hairline rounded-full px-4 py-2 text-xs text-primary transition-colors duration-hover ease-hover hover:bg-surface-2 disabled:opacity-40"
         >
           {busy
             ? "Uploading…"

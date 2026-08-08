@@ -325,7 +325,7 @@ function DepositForm({
       <button
         type="submit"
         disabled={busy || !stripe}
-        className="mt-5 w-full rounded-full bg-primary py-3 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+        className="mt-5 w-full rounded-full bg-primary py-3 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-40"
       >
         {busy ? "Paying…" : `Pay ${amount}`}
       </button>

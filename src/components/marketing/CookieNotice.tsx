@@ -85,7 +85,7 @@ export function CookieNotice() {
           <button
             type="button"
             onClick={dismiss}
-            className="mt-4 w-full rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90 sm:w-auto"
+            className="mt-4 w-full rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90 sm:w-auto"
           >
             Got it
           </button>

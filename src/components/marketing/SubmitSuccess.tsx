@@ -138,7 +138,7 @@ export function SubmitSuccess({
         Something urgent?{" "}
         <a
           href="mailto:hello@yusufcreates.com"
-          className="text-accent transition-colors duration-fast hover:text-primary"
+          className="text-accent transition-colors duration-hover ease-hover hover:text-primary"
         >
           hello@yusufcreates.com
         </a>

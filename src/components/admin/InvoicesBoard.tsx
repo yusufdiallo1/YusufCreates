@@ -205,14 +205,14 @@ export function InvoicesBoard() {
           <button
             type="button"
             onClick={() => setLinking(true)}
-            className="hairline rounded-full px-4 py-2 text-sm text-primary transition-colors duration-fast hover:bg-surface-2"
+            className="hairline rounded-full px-4 py-2 text-sm text-primary transition-colors duration-hover ease-hover hover:bg-surface-2"
           >
             Custom payment link
           </button>
             <button
               type="button"
               onClick={() => setCreating(true)}
-              className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+              className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
             >
               New invoice pair
             </button>
@@ -327,7 +327,7 @@ export function InvoicesBoard() {
                 <button
                   type="button"
                   onClick={() => setCreating(true)}
-                  className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+                  className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
                 >
                   New invoice pair
                 </button>
@@ -558,7 +558,7 @@ function CreatePairDialog({ onClose }: { onClose: () => void }) {
           <button
             type="button"
             onClick={onClose}
-            className="text-sm text-secondary transition-colors duration-fast hover:text-primary"
+            className="text-sm text-secondary transition-colors duration-hover ease-hover hover:text-primary"
           >
             Cancel
           </button>
@@ -580,7 +580,7 @@ function CreatePairDialog({ onClose }: { onClose: () => void }) {
                 setError("Could not create that. Try again.");
               }
             }}
-            className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+            className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-40"
           >
             Create pair
           </button>
@@ -855,7 +855,7 @@ function PaymentLinksList() {
                   // Clipboard can be blocked; the link is still openable.
                 }
               }}
-              className="hairline rounded-full px-3 py-1 text-xs text-primary transition-colors duration-fast hover:bg-surface-2"
+              className="hairline rounded-full px-3 py-1 text-xs text-primary transition-colors duration-hover ease-hover hover:bg-surface-2"
             >
               {copied === row._id ? "Copied" : "Copy link"}
             </button>
@@ -864,7 +864,7 @@ function PaymentLinksList() {
               href={row.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-accent transition-opacity duration-fast hover:opacity-80"
+              className="text-xs text-accent transition-opacity duration-hover ease-hover hover:opacity-80"
             >
               Open
             </a>

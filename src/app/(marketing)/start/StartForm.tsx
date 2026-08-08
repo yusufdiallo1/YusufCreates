@@ -1,10 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useSearchParams } from "next/navigation";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { storedReferralCode } from "@/lib/referral";
 import { SlideToConfirm } from "@/components/ui/SlideToConfirm";
-import { Reveal } from "@/components/motion/Reveal";
+import { FocusSweep } from "@/components/ui/FocusSweep";
 import { SubmitSuccess } from "@/components/marketing/SubmitSuccess";
 import { WorkingHours } from "@/components/marketing/WorkingHours";
 import { FieldError } from "@/components/ui/FieldError";
@@ -45,6 +52,97 @@ import { PhoneField } from "@/components/ui/PhoneField";
 
 type Values = Record<string, string>;
 
+const EASE = [0.16, 1, 0.3, 1] as const;
+
+/**
+ * Step transitions carry DIRECTION.
+ *
+ * Forward, the outgoing step leaves to the left and the incoming one arrives
+ * from the right; going back, both reverse. Animating both directions the same
+ * way loses any sense of place — four steps that all slide in from the right
+ * read as four unrelated screens rather than as one sequence you are moving
+ * through and can move back along.
+ *
+ * The custom prop is how AnimatePresence knows which way at EXIT time, when
+ * the component being animated has already been told to unmount and can no
+ * longer read the new state itself.
+ */
+const STEP_VARIANTS = {
+  enter: (direction: number) => ({ x: direction > 0 ? 44 : -44, opacity: 0 }),
+  centre: { x: 0, opacity: 1 },
+  exit: (direction: number) => ({ x: direction > 0 ? -44 : 44, opacity: 0 }),
+};
+
+/**
+ * How long the progress bar leads the content by, in seconds.
+ *
+ * The bar used to move with the step, which meant it REPORTED where you had
+ * arrived. Moving first makes it lead you there instead. Eighty milliseconds
+ * is under the threshold at which two events read as sequential, so it does
+ * not feel like waiting — it feels like the bar knew.
+ */
+const PROGRESS_LEAD = 0.08;
+
+/**
+ * Which fields are being drawn attention to after a failed advance.
+ *
+ * A context rather than props threaded through PlanField: every field type in
+ * this form would have to carry two arguments it does nothing with except pass
+ * on, and the one that forgets is the one that silently stops shaking.
+ */
+type Attention = { keys: string[]; nonce: number } | null;
+const AttentionContext = createContext<Attention>(null);
+
+/**
+ * Shake state for a field, and dim state for its siblings.
+ *
+ * The dimming is the half that makes this work. A shake alone in a form this
+ * dense is genuinely easy to miss — there is a lot of similar-looking furniture
+ * around it. Dropping everything else to half opacity for 400ms is what makes
+ * attention land on the one field that needs it.
+ */
+function useAttention(id: string) {
+  const attention = useContext(AttentionContext);
+  if (!attention) return { shake: 0, dimmed: false };
+  const flagged = attention.keys.includes(id);
+  return { shake: flagged ? attention.nonce : 0, dimmed: !flagged };
+}
+
+/**
+ * The wrapper every field sits in: shakes when it is the problem, dims when
+ * something else is.
+ */
+function FieldAttention({
+  id,
+  children,
+}: {
+  id: string;
+  children: React.ReactNode;
+}) {
+  const reduceMotion = useReducedMotion();
+  const { shake, dimmed } = useAttention(id);
+
+  if (reduceMotion) return <div>{children}</div>;
+
+  return (
+    <motion.div
+      animate={{
+        // Three oscillations at 5px. The keyframe array is only replayed when
+        // it changes, which is what the nonce is for — a second failed attempt
+        // on the same field has to shake again.
+        x: shake ? [0, -5, 5, -5, 5, -5, 0] : 0,
+        opacity: dimmed ? 0.5 : 1,
+      }}
+      transition={{
+        x: { duration: 0.26, ease: "easeInOut" },
+        opacity: { duration: 0.2, ease: "easeOut" },
+      }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 export function StartForm() {
   const params = useSearchParams();
   const [sent, setSent] = useState(false);
@@ -68,6 +166,9 @@ export function StartForm() {
    * clicking a specific tier — which reads as the button having ignored them.
    */
   const [step, setStep] = useState(preselected ? 2 : 1);
+  /** 1 forward, -1 back. Passed to AnimatePresence so exits know which way. */
+  const [direction, setDirection] = useState(1);
+  const reduceMotion = useReducedMotion();
 
   const [values, setValues] = useState<Values>({
     name: "",
@@ -136,7 +237,35 @@ export function StartForm() {
       for (const k of keys) next[k] = true;
       return next;
     });
+
+    /*
+     * And draws the eye to them: the broken fields shake, everything else on
+     * the step dims for 400ms.
+     *
+     * Only the fields that ACTUALLY have a problem, not every field on the
+     * step — shaking a correctly filled name because the email is malformed
+     * says the opposite of what it means to say.
+     */
+    const broken = keys.filter((k) => problemWith(k) !== null);
+    if (broken.length === 0) return;
+
+    setAttention({ keys: broken, nonce: attentionNonce.current++ });
+    if (attentionTimer.current) window.clearTimeout(attentionTimer.current);
+    // 400ms covers the shake (260ms) and leaves the dim held a beat past it,
+    // so the neighbours come back after the movement has finished rather than
+    // during it.
+    attentionTimer.current = window.setTimeout(() => setAttention(null), 400);
   }
+
+  const [attention, setAttention] = useState<Attention>(null);
+  const attentionNonce = useRef(1);
+  const attentionTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (attentionTimer.current) window.clearTimeout(attentionTimer.current);
+    },
+    [],
+  );
 
   const CONTACT_KEYS = ["name", "email", "phone"];
   const planKeys: string[] = activePlan?.fields ?? [];
@@ -152,6 +281,9 @@ export function StartForm() {
    * the first field.
    */
   function goToStep(next: number) {
+    // Recorded BEFORE the step changes, because the exiting step needs to know
+    // which way it is leaving and by then the new step is the only one left.
+    setDirection(next >= step ? 1 : -1);
     setStep(next);
     if (typeof window === "undefined") return;
     const top = formRef.current?.getBoundingClientRect().top ?? 0;
@@ -185,21 +317,58 @@ export function StartForm() {
         Four short steps. Nothing here is binding.
       </p>
 
+      {/*
+        The bar LEADS.
+
+        It used to change with the step, which made it a report of where you
+        already were. It now starts moving while the outgoing step is still on
+        screen and the incoming one has not begun — see PROGRESS_LEAD — so it
+        reads as taking you somewhere rather than as catching up.
+      */}
       <ol aria-label="Progress" className="mt-8 flex gap-2">
         {Array.from({ length: TOTAL }, (_, i) => i + 1).map((n) => (
           <li
             key={n}
             aria-current={step === n ? "step" : undefined}
-            className={`h-1 flex-1 rounded-full ${
-              n <= step ? "bg-accent" : "bg-surface-3"
-            }`}
-          />
+            className="relative h-1 flex-1 overflow-hidden rounded-full bg-surface-3"
+          >
+            <motion.span
+              aria-hidden="true"
+              className="absolute inset-0 block origin-left rounded-full bg-accent"
+              initial={false}
+              animate={{ scaleX: n <= step ? 1 : 0 }}
+              transition={{
+                duration: reduceMotion ? 0 : 0.3,
+                ease: EASE,
+              }}
+            />
+          </li>
         ))}
       </ol>
 
+      <AttentionContext.Provider value={attention}>
       <div className="mt-10">
+        {/*
+          mode="wait" so the outgoing step is gone before the incoming one
+          arrives. Overlapping them would put two sets of the same labels on
+          screen at once, which on a form is confusing rather than fluid.
+        */}
+        <AnimatePresence mode="wait" custom={direction} initial={false}>
+          <motion.div
+            key={step}
+            custom={direction}
+            variants={reduceMotion ? undefined : STEP_VARIANTS}
+            initial="enter"
+            animate="centre"
+            exit="exit"
+            transition={{
+              duration: reduceMotion ? 0 : 0.3,
+              ease: EASE,
+              delay: reduceMotion ? 0 : PROGRESS_LEAD,
+            }}
+          >
         {step === 1 ? (
-          <Reveal>
+          <>
             <fieldset>
               <legend className="text-lg">What kind of project?</legend>
               <p className="mt-2 text-sm text-secondary">
@@ -225,7 +394,7 @@ export function StartForm() {
                         if (!plan) track("form_start", { step: p.id });
                         setPlan(p.id);
                       }}
-                      className={`hairline block w-full rounded-lg px-5 py-4 text-left transition-colors duration-fast ${
+                      className={`hairline block w-full rounded-lg px-5 py-4 text-left transition-colors duration-hover ease-hover ${
                         active
                           ? "border-[color:var(--accent)] bg-surface-2"
                           : "bg-surface-1 hover:bg-surface-2"
@@ -242,11 +411,11 @@ export function StartForm() {
                 })}
               </div>
             </fieldset>
-          </Reveal>
+          </>
         ) : null}
 
         {step === 2 ? (
-          <Reveal>
+          <>
             <fieldset>
               <legend className="text-lg">How do I reach you?</legend>
               <div className="mt-6 space-y-4">
@@ -297,11 +466,11 @@ export function StartForm() {
                 />
               </div>
             </fieldset>
-          </Reveal>
+          </>
         ) : null}
 
         {step === 3 && activePlan ? (
-          <Reveal>
+          <>
             <fieldset>
               <legend className="text-lg">About the project</legend>
               {activePlan.skipsPricing ? (
@@ -324,23 +493,22 @@ export function StartForm() {
                 ))}
               </div>
             </fieldset>
-          </Reveal>
+          </>
         ) : null}
 
         {step === 4 && activePlan ? (
-          <Reveal>
+          <>
             <fieldset>
               <legend className="text-lg">Anything else?</legend>
               <div className="mt-6">
                 <label htmlFor="message" className="text-sm text-secondary">
                   {activePlan.messagePrompt}
                 </label>
-                <textarea
+                <SweptTextarea
                   id="message"
                   rows={6}
                   value={values.message ?? ""}
-                  onChange={(e) => set("message")(e.target.value)}
-                  className="hairline mt-2 w-full rounded-lg bg-surface-1 px-4 py-3 text-sm text-primary"
+                  onChange={set("message")}
                 />
               </div>
 
@@ -373,7 +541,7 @@ export function StartForm() {
                 By sending this you agree to the{" "}
                 <a
                   href="/legal/privacy"
-                  className="text-accent transition-colors duration-fast hover:text-primary"
+                  className="text-accent transition-colors duration-hover ease-hover hover:text-primary"
                 >
                   privacy policy
                 </a>
@@ -429,12 +597,18 @@ export function StartForm() {
                 </p>
               </div>
             </fieldset>
-          </Reveal>
+          </>
         ) : null}
+          </motion.div>
+        </AnimatePresence>
       </div>
+      </AttentionContext.Provider>
 
-      {/* Honeypot. aria-hidden plus tabIndex -1 keeps it away from screen
-          readers and keyboard users; only a bot filling every field hits it. */}
+      {/* Honeypot. Never animated, never dimmed, never touched — anything that
+          moves it is a change in behaviour a bot can measure.
+
+          aria-hidden plus tabIndex -1 keeps it away from screen readers and
+          keyboard users; only a bot filling every field hits it. */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -left-[9999px] h-0 w-0 overflow-hidden"
@@ -455,7 +629,7 @@ export function StartForm() {
           type="button"
           onClick={() => goToStep(Math.max(1, step - 1))}
           disabled={step === 1}
-          className="rounded-full px-4 py-2 text-sm text-secondary transition-colors duration-fast hover:text-primary disabled:opacity-40"
+          className="rounded-full px-4 py-2 text-sm text-secondary transition-colors duration-hover ease-hover hover:text-primary disabled:opacity-40"
         >
           Back
         </button>
@@ -479,12 +653,62 @@ export function StartForm() {
               goToStep(step + 1);
             }}
             disabled={step === 1 && !planChosen}
-            className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+            className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-40"
           >
             Next
           </button>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * A textarea with the focus sweep under it.
+ *
+ * Its own component because the sweep needs a `relative` box around the control
+ * alone, and three call sites were otherwise going to grow the same wrapper and
+ * the same focus state independently.
+ */
+function SweptTextarea({
+  id,
+  rows,
+  value,
+  placeholder,
+  onChange,
+  onBlur,
+  error,
+  className = "mt-2",
+}: {
+  id: string;
+  rows: number;
+  value: string;
+  placeholder?: string;
+  onChange: (v: string) => void;
+  onBlur?: () => void;
+  error?: string | null;
+  /** Applied to the positioned wrapper, not to the control. */
+  className?: string;
+}) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <div className={`relative ${className}`}>
+      <textarea
+        id={id}
+        rows={rows}
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          setFocused(false);
+          onBlur?.();
+        }}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
+        className="hairline block w-full rounded-lg bg-surface-1 px-4 py-3 text-sm text-primary"
+      />
+      <FocusSweep active={focused} />
     </div>
   );
 }
@@ -553,27 +777,25 @@ function PlanField({
 
   if (def.kind === "textarea") {
     return (
-      <div>
+      <FieldAttention id={id}>
         <label htmlFor={id} className="text-sm text-secondary">
           {def.label}
           {def.required ? null : " (optional)"}
         </label>
-        <textarea
+        <SweptTextarea
           id={id}
           rows={3}
           value={value}
           placeholder={def.placeholder}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={onChange}
           onBlur={onBlur}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? `${id}-error` : undefined}
-          className="hairline mt-2 w-full rounded-lg bg-surface-1 px-4 py-3 text-sm text-primary"
+          error={error}
         />
         {def.help ? (
           <p className="mt-1.5 text-xs text-secondary">{def.help}</p>
         ) : null}
         <FieldError id={`${id}-error`}>{error}</FieldError>
-      </div>
+      </FieldAttention>
     );
   }
 
@@ -619,37 +841,48 @@ function Field({
   autoComplete?: string;
 }) {
   const helpId = help ? `${id}-help` : undefined;
+  const [focused, setFocused] = useState(false);
+
   return (
-    <div>
+    <FieldAttention id={id}>
       <label htmlFor={id} className="text-sm text-secondary">
         {label}
       </label>
-      <input
-        id={id}
-        type={type}
-        // No `required` attribute: validation is ours, so the browser never
-        // raises its own unstyleable bubble. aria-required keeps the semantics
-        // for assistive technology.
-        aria-required={required || undefined}
-        value={value}
-        placeholder={placeholder}
-        autoComplete={autoComplete}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={
-          [error ? `${id}-error` : null, helpId].filter(Boolean).join(" ") ||
-          undefined
-        }
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={onBlur}
-        className="hairline mt-2 w-full rounded-lg bg-surface-1 px-4 py-2.5 text-sm text-primary"
-      />
+      {/* relative, and only around the control: the sweep belongs to the input,
+          not to its label or its error text. */}
+      <div className="relative mt-2">
+        <input
+          id={id}
+          type={type}
+          // No `required` attribute: validation is ours, so the browser never
+          // raises its own unstyleable bubble. aria-required keeps the semantics
+          // for assistive technology.
+          aria-required={required || undefined}
+          value={value}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={
+            [error ? `${id}-error` : null, helpId].filter(Boolean).join(" ") ||
+            undefined
+          }
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => {
+            setFocused(false);
+            onBlur?.();
+          }}
+          className="hairline w-full rounded-lg bg-surface-1 px-4 py-2.5 text-sm text-primary"
+        />
+        <FocusSweep active={focused} />
+      </div>
       {help ? (
         <p id={helpId} className="mt-1.5 text-xs text-secondary">
           {help}
         </p>
       ) : null}
       <FieldError id={`${id}-error`}>{error}</FieldError>
-    </div>
+    </FieldAttention>
   );
 }
 

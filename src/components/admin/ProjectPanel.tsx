@@ -78,7 +78,7 @@ export function ProjectPanel({
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 text-sm text-secondary transition-colors duration-fast hover:text-primary"
+            className="shrink-0 text-sm text-secondary transition-colors duration-hover ease-hover hover:text-primary"
           >
             Close
           </button>
@@ -98,7 +98,7 @@ export function ProjectPanel({
               role="tab"
               aria-selected={tab === id}
               onClick={() => setTab(id)}
-              className={`hairline rounded-full px-3.5 py-1.5 text-xs transition-colors duration-fast ${
+              className={`hairline rounded-full px-3.5 py-1.5 text-xs transition-colors duration-hover ease-hover ${
                 tab === id ? "bg-surface-2 text-primary" : "text-secondary"
               }`}
             >
@@ -221,7 +221,7 @@ function Milestones({ projectId }: { projectId: Id<"clientProjects"> }) {
                       // saves on click rather than waiting for Save.
                       void commit(next);
                     }}
-                    className={`rounded-full px-2.5 py-1 text-[11px] transition-colors duration-fast ${
+                    className={`rounded-full px-2.5 py-1 text-[11px] transition-colors duration-hover ease-hover ${
                       row.status === s
                         ? "bg-surface-3 text-primary"
                         : "text-secondary hover:text-primary"
@@ -239,7 +239,7 @@ function Milestones({ projectId }: { projectId: Id<"clientProjects"> }) {
                   setRows(next);
                   void commit(next);
                 }}
-                className="text-xs text-secondary transition-colors duration-fast hover:text-[color:var(--text-notice)]"
+                className="text-xs text-secondary transition-colors duration-hover ease-hover hover:text-[color:var(--text-notice)]"
               >
                 Remove
               </button>
@@ -262,7 +262,7 @@ function Milestones({ projectId }: { projectId: Id<"clientProjects"> }) {
           type="button"
           disabled={saving}
           onClick={() => void commit(rows)}
-          className="rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+          className="rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-40"
         >
           {saving ? "Saving…" : "Save"}
         </button>
@@ -416,7 +416,7 @@ function Chat({ projectId }: { projectId: Id<"clientProjects"> }) {
           type="button"
           onClick={() => void send()}
           disabled={body.trim() === ""}
-          className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+          className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-40"
         >
           Send
         </button>

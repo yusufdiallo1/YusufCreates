@@ -175,7 +175,7 @@ export function LeadDrawer({
                 type="button"
                 onClick={onClose}
                 aria-label="Close"
-                className="shrink-0 rounded-full p-1.5 text-secondary transition-colors duration-fast hover:text-primary"
+                className="shrink-0 rounded-full p-1.5 text-secondary transition-colors duration-hover ease-hover hover:text-primary"
               >
                 <svg width={16} height={16} viewBox="0 0 16 16" aria-hidden="true">
                   <path
@@ -198,14 +198,14 @@ export function LeadDrawer({
             <div className="mt-6 flex flex-wrap gap-2">
               <a
                 href={mailto}
-                className="rounded-full bg-primary px-4 py-2 text-xs font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+                className="rounded-full bg-primary px-4 py-2 text-xs font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
               >
                 Reply by email
               </a>
               {lead.phone ? (
                 <a
                   href={`tel:${lead.phone.replace(/\s/g, "")}`}
-                  className="hairline rounded-full px-4 py-2 text-xs text-primary transition-colors duration-fast hover:bg-surface-2"
+                  className="hairline rounded-full px-4 py-2 text-xs text-primary transition-colors duration-hover ease-hover hover:bg-surface-2"
                 >
                   Call
                 </a>
@@ -315,7 +315,7 @@ export function LeadDrawer({
                     setSavingNote(false);
                   }
                 }}
-                className="mt-2 rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+                className="mt-2 rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-40"
               >
                 {savingNote ? "Saving…" : "Add note"}
               </button>

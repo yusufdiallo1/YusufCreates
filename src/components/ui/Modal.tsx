@@ -90,7 +90,7 @@ export function Modal({
                   <button
                     type="button"
                     aria-label="Close"
-                    className="absolute top-4 right-4 flex size-8 items-center justify-center rounded-full text-secondary transition-colors duration-fast hover:bg-surface-2 hover:text-primary"
+                    className="absolute top-4 right-4 flex size-8 items-center justify-center rounded-full text-secondary transition-colors duration-hover ease-hover hover:bg-surface-2 hover:text-primary"
                   >
                     <svg
                       viewBox="0 0 16 16"
