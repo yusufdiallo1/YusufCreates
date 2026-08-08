@@ -3,7 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import {
+  animate,
+  AnimatePresence,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useTransform,
+} from "motion/react";
 import { AnimatedLogo } from "@/components/ui/AnimatedLogo";
 import { Magnetic } from "@/components/motion/Magnetic";
 import { cn } from "@/lib/utils";
@@ -26,6 +33,10 @@ const NAV_ITEMS = [
   { href: "/blog", label: "Blog" },
 ] as const;
 
+/** Resting width of the pill, in px. Tailwind's max-w-3xl, stated in a number
+    so the overshoot can be a fraction of it rather than a second magic value. */
+const PILL_WIDTH = 768;
+
 export function Nav() {
   const reduceMotion = useReducedMotion();
   const pathname = usePathname();
@@ -35,12 +46,86 @@ export function Nav() {
   // follows on a mouse does not toggle it straight back.
   const pointerHandled = useRef(false);
 
+  /*
+   * The expand overshoot.
+   *
+   * maxWidth rather than scaleX: four per cent of scale is small on a box and
+   * very visible on the type inside it, and a wordmark that stretches every
+   * time you scroll up is worse than no overshoot at all.
+   *
+   * Out fast and back on a spring — the settle is the part that reads as
+   * responsiveness.
+   */
+  const overshoot = useMotionValue(0);
+  const pillMaxWidth = useTransform(
+    overshoot,
+    [0, 1],
+    [PILL_WIDTH, PILL_WIDTH * 1.04],
+  );
+  /** Blocks a re-trigger until the current overshoot has been and come back. */
+  const expandingUntil = useRef(0);
+
+  /*
+   * Scroll POSITION decides the condensed state; scroll DIRECTION decides
+   * whether the pill overshoots on the way back out.
+   *
+   * Scrolling up after having been condensed is intent — you are going back
+   * for something, and the nav is usually where it is. Letting it pass its
+   * resting width by a few per cent and spring back makes it feel like a
+   * response to that rather than to a threshold being crossed. Position alone
+   * cannot tell those apart, which is why the last offset is kept.
+   */
   useEffect(() => {
-    const onScroll = () => setCondensed(window.scrollY > 24);
+    let last = window.scrollY;
+    let wasCondensed = last > 24;
+
+    /*
+     * ONE overshoot per gesture, not one per scroll event.
+     *
+     * A wheel scroll upward fires dozens of events, and the first version
+     * restarted the animation on every one of them — the outward leg never
+     * finished, so the spring back never started, and the pill simply stayed
+     * 4% too wide until the next reload. The guard is on time rather than on
+     * the animation's own state because the return leg is what has to be
+     * allowed to finish.
+     *
+     * Driven straight from here rather than through React state: this fires
+     * per scroll event, and a setState per event would re-render the nav.
+     */
+    const expand = () => {
+      if (reduceMotion) return;
+      const now = performance.now();
+      if (now < expandingUntil.current) return;
+      expandingUntil.current = now + 700;
+
+      animate(overshoot, 1, {
+        duration: 0.16,
+        ease: "easeOut",
+        onComplete: () => {
+          animate(overshoot, 0, {
+            type: "spring",
+            stiffness: 300,
+            damping: 22,
+          });
+        },
+      });
+    };
+
+    const onScroll = () => {
+      const y = window.scrollY;
+      const nowCondensed = y > 24;
+      if (wasCondensed && y < last - 2) expand();
+      wasCondensed = nowCondensed;
+      last = y;
+      // React bails out when the value is unchanged, so this is a no-op on
+      // all but the two scroll events that actually cross the threshold.
+      setCondensed(nowCondensed);
+    };
+
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [reduceMotion, overshoot]);
 
   // Close the overlay on navigation. Adopting the new pathname during render
   // avoids a setState in an effect body, which would cascade an extra render.
@@ -96,8 +181,11 @@ export function Nav() {
               : { paddingTop: condensed ? 8 : 14, paddingBottom: condensed ? 8 : 14 }
           }
           transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          /* max-w-3xl as a motion value rather than a class, so the overshoot
+             above has something to drive. PILL_WIDTH is that same 768px. */
+          style={{ maxWidth: pillMaxWidth }}
           className={cn(
-            "nav-pill flex w-full max-w-3xl items-center justify-between gap-6 rounded-full px-5",
+            "nav-pill flex w-full items-center justify-between gap-6 rounded-full px-5",
             condensed && "nav-pill-condensed",
           )}
         >
