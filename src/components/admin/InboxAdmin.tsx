@@ -76,14 +76,18 @@ function Message({ row }: { row: Doc<"inboundEmails"> }) {
   return (
     <li className="py-4">
       <div className="flex items-baseline justify-between gap-4">
-        <p className="min-w-0 text-sm text-primary">
+        {/* truncate belongs on the <p>, not on an inner span: overflow does
+            not apply to a non-replaced inline box, so on the span it would
+            contribute nothing but white-space:nowrap and a 400-character
+            subject would run straight through the date. */}
+        <p className="min-w-0 truncate text-sm text-primary">
           {!row.read ? (
             <span
               aria-label="Unread"
               className="mr-2 inline-block size-1.5 rounded-full bg-[color:var(--accent)] align-middle"
             />
           ) : null}
-          <span className="truncate">{row.subject}</span>
+          {row.subject}
         </p>
         <span className="shrink-0 text-xs text-secondary tabular-nums">
           {new Date(row.receivedAt).toLocaleDateString("en-GB", {

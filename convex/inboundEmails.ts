@@ -129,24 +129,6 @@ export const listAll = query({
   },
 });
 
-/**
- * How many are unread.
- *
- * Its own query rather than `listAll().length` so the sidebar badge and the
- * "needs you" feed do not each pull two hundred message bodies to count them.
- */
-export const unreadCount = query({
-  args: {},
-  handler: async (ctx) => {
-    await requireAdmin(ctx);
-    const unread = await ctx.db
-      .query("inboundEmails")
-      .withIndex("by_read", (q) => q.eq("read", false))
-      .take(100);
-    return unread.length;
-  },
-});
-
 export const markRead = mutation({
   args: { id: v.id("inboundEmails"), read: v.boolean() },
   handler: async (ctx, args) => {

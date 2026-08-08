@@ -138,8 +138,16 @@ export async function POST(request: Request) {
    * and never the body. Resend split it that way because serverless request
    * bodies have size limits a long thread would exceed, so the body is a second
    * call. Unlike verify() above, this one returns { data, error }.
+   *
+   * html_format 'cid' rather than the default 'data_uri', which base64-inlines
+   * every inline image into `html`. That field is read only when `text` is
+   * empty, and stripped of markup when it is — so the default would pull
+   * roughly 1.33x the bytes of every signature logo down this route on every
+   * delivery and every retry, to throw them away.
    */
-  const { data, error } = await resend.emails.receiving.get(emailId);
+  const { data, error } = await resend.emails.receiving.get(emailId, {
+    html_format: "cid",
+  });
 
   if (error || !data) {
     console.error(
