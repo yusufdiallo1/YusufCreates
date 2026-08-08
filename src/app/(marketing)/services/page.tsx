@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Reveal } from "@/components/motion/Reveal";
 import { TextReveal } from "@/components/motion/TextReveal";
-import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { Parallax } from "@/components/motion/Parallax";
 import { ContactCTA } from "@/components/marketing/ContactCTA";
 import { ServiceGlyph } from "@/components/marketing/ServiceGlyph";
@@ -67,7 +66,6 @@ export default function ServicesPage() {
     <>
       {/* How far through you are. The list is long enough that this is a
           real question by the third service. */}
-      <ScrollProgress />
 
       <div className="mx-auto max-w-4xl px-6 pt-32 pb-16">
         <TextReveal as="h1" by="word" className="block text-4xl">

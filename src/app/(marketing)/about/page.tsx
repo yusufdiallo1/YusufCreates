@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Reveal } from "@/components/motion/Reveal";
 import { TextReveal } from "@/components/motion/TextReveal";
-import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { Typewriter } from "@/components/motion/Typewriter";
 import { NameMark } from "@/components/ui/NameMark";
 import { personJsonLd } from "@/lib/jsonld";
@@ -40,7 +39,6 @@ export default function AboutPage() {
     <>
       <JsonLd data={personJsonLd} />
 
-      <ScrollProgress />
 
       <div className="mx-auto max-w-3xl px-6 pt-32 pb-24">
         {/* The name is set with the Y and D drawn as marks. */}

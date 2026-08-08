@@ -3,7 +3,6 @@ import { preloadQuery } from "convex/nextjs";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 import { BlogIndex } from "./BlogIndex";
 import { TextReveal } from "@/components/motion/TextReveal";
-import { ScrollProgress } from "@/components/motion/ScrollProgress";
 import { Typewriter } from "@/components/motion/Typewriter";
 import { SITE } from "@/lib/constants";
 
@@ -21,7 +20,6 @@ export default async function BlogPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 pt-32 pb-24">
-      <ScrollProgress />
 
       <TextReveal as="h1" by="word" className="block text-4xl">
         Blog

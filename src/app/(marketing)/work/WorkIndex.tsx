@@ -9,7 +9,6 @@ import { TextReveal } from "@/components/motion/TextReveal";
 import { Typewriter } from "@/components/motion/Typewriter";
 import { Parallax } from "@/components/motion/Parallax";
 import { SpotlightGroup } from "@/components/motion/Spotlight";
-import { ScrollProgress } from "@/components/motion/ScrollProgress";
 
 /**
  * Work — the case-study index.
@@ -53,7 +52,6 @@ export function WorkIndex({
     <>
       {/* A thin bar showing how far through the page you are. Cheap, and it
           answers "how much more is there" without a number. */}
-      <ScrollProgress />
 
       <div className="mx-auto max-w-5xl px-6 py-24">
         <TextReveal as="h1" by="word" className="block text-4xl">
