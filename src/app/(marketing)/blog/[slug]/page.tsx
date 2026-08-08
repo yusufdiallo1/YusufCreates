@@ -81,7 +81,7 @@ export default async function BlogPostPage({
 
         <Link
           href="/blog"
-          className="text-sm text-secondary transition-colors duration-fast hover:text-primary"
+          className="text-sm text-secondary transition-colors duration-hover ease-hover hover:text-primary"
         >
           ← All posts
         </Link>

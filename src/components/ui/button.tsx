@@ -28,7 +28,7 @@ export function Button({
       className={cn(
         "inline-flex h-10 items-center justify-center rounded-md px-4",
         "text-sm font-medium tracking-tight",
-        "transition-[background-color,filter,opacity] duration-fast ease-out-expo",
+        "transition-[background-color,filter,opacity] duration-hover ease-hover",
         VARIANTS[variant],
         className,
       )}

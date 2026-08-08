@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
 import { ADMIN_PATH } from "@/lib/constants";
 import { PageHeader } from "@/components/admin/PageHeader";
+import { useUpdateFlash } from "@/lib/useUpdateFlash";
 
 /**
  * The operator dashboard.
@@ -67,6 +68,10 @@ export function Overview() {
         }
       />
 
+      {/* Above the numbers, because it is the thing that reads in five
+          seconds. The tiles are the evidence; this is the conclusion. */}
+      <DailyBriefing />
+
       {/* Metrics. One column on a phone rather than four squeezed tiles. */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric
@@ -114,7 +119,7 @@ export function Overview() {
                 <li key={item.id}>
                   <Link
                     href={`${ADMIN_PATH}${item.href}`}
-                    className="flex items-start gap-3 px-3 py-2.5 transition-colors duration-fast hover:bg-surface-2"
+                    className="flex items-start gap-3 px-3 py-2.5 transition-colors duration-hover ease-hover hover:bg-surface-2"
                   >
                     <span
                       aria-hidden="true"
@@ -197,8 +202,19 @@ function Metric({
   hint?: string;
   spark?: number[];
 }) {
+  /*
+   * The universal update signal.
+   *
+   * Convex is reactive, so these figures change under the reader with nothing
+   * having asked them to. A number that silently becomes a different number is
+   * a discrepancy rather than an update — you notice it minutes later and
+   * cannot tell whether you misread it. One flash at the accent, the same one
+   * used everywhere else in the product, and the change is unmissable.
+   */
+  const flashRef = useUpdateFlash<HTMLDivElement>(value);
+
   return (
-    <div className="admin-card">
+    <div ref={flashRef} className="admin-card">
       <p className="admin-meta">{label}</p>
       <div className="mt-1.5 flex items-baseline gap-2">
         <span className="text-xl text-primary tabular-nums">{value}</span>
@@ -272,4 +288,52 @@ function age(hours: number): string {
   if (hours < 1) return "now";
   if (hours < 24) return `${hours}h`;
   return `${Math.round(hours / 24)}d`;
+}
+
+/**
+ * The morning briefing.
+ *
+ * Written once a day by /api/cron/digest and stored, so this is a plain read —
+ * opening the Overview never waits on a model, and refreshing does not rewrite
+ * the paragraph in front of you.
+ *
+ * RENDERS NOTHING UNTIL THERE IS ONE. An empty "no briefing yet" card on a
+ * fresh install is a permanent apology for a feature nobody asked about. The
+ * first cron run makes it appear.
+ *
+ * Staleness is shown rather than hidden: a briefing written yesterday is still
+ * worth reading, but only if you can tell that is what it is.
+ */
+function DailyBriefing() {
+  const digest = useQuery(api.digest.latest, {});
+
+  if (!digest) return null;
+
+  const written = new Date(digest.createdAt);
+  const today = written.toDateString() === new Date().toDateString();
+  const when = today
+    ? `Today, ${written.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`
+    : written.toLocaleDateString("en-GB", {
+        weekday: "long",
+        day: "numeric",
+        month: "short",
+      });
+
+  return (
+    <section aria-labelledby="briefing-heading" className="admin-card">
+      <div className="flex items-baseline justify-between gap-4">
+        <h2
+          id="briefing-heading"
+          className="font-mono text-[11px] tracking-[0.08em] text-muted uppercase"
+        >
+          Briefing
+        </h2>
+        <span className="font-mono text-[11px] text-muted tabular-nums">
+          {when}
+        </span>
+      </div>
+
+      <p className="mt-3 text-sm text-secondary">{digest.summary}</p>
+    </section>
+  );
 }

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Reveal } from "@/components/motion/Reveal";
 import { TextReveal } from "@/components/motion/TextReveal";
 import { Parallax } from "@/components/motion/Parallax";
+import { SpotlightGroup } from "@/components/motion/Spotlight";
 import { ContactCTA } from "@/components/marketing/ContactCTA";
 import { ServiceGlyph } from "@/components/marketing/ServiceGlyph";
 import { SITE } from "@/lib/constants";
@@ -104,17 +105,27 @@ export default function ServicesPage() {
                   {/* The points were a bulleted list under a paragraph, which
                       reads as more of the same prose. As cards they are
                       scannable — you can take the four in without reading
-                      any of them as a sentence. */}
-                  <ul className="mt-6 grid gap-3 sm:grid-cols-2">
-                    {service.points.map((point) => (
-                      <li
+                      any of them as a sentence.
+
+                      They arrived all at once and sat completely inert. Now
+                      each one reveals on its own beat and lifts under the
+                      pointer, so the four read as four things rather than as
+                      one block of four. */}
+                  <SpotlightGroup className="mt-6 grid gap-3 sm:grid-cols-2">
+                    {service.points.map((point, pointIndex) => (
+                      <Reveal
                         key={point}
-                        className="hairline rounded-xl bg-surface-1 px-4 py-3.5 text-sm text-secondary"
+                        delay={index * 0.06 + 0.08 + pointIndex * 0.05}
                       >
-                        {point}
-                      </li>
+                        <div
+                          data-spotlight=""
+                          className="hairline h-full rounded-xl bg-surface-1 px-4 py-3.5 text-sm text-secondary transition-[transform,border-color,color] duration-hover ease-hover hover:-translate-y-0.5 hover:border-[color:var(--border-glass)] hover:text-primary"
+                        >
+                          {point}
+                        </div>
+                      </Reveal>
                     ))}
-                  </ul>
+                  </SpotlightGroup>
                 </Reveal>
               </Parallax>
             </li>
@@ -127,7 +138,7 @@ export default function ServicesPage() {
               Prices for each of these are on the{" "}
               <Link
                 href="/pricing"
-                className="text-accent transition-colors duration-fast hover:text-primary"
+                className="text-accent transition-colors duration-hover ease-hover hover:text-primary"
               >
                 pricing page
               </Link>

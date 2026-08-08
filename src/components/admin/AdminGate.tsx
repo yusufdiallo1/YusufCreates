@@ -53,35 +53,33 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
   );
 }
 
-/*
- * Remembered for the page session, at module scope.
- *
- * This was useState, which is per component INSTANCE — so it survived
- * navigation inside the admin but reset the moment you visited a public page
- * and came back, because the whole admin layout unmounts. That is the
- * "Checking…" blank on every crossing between the site and the back office.
- *
- * Module scope survives unmount and resets on a full page load, which is
- * exactly the lifetime wanted: it is a cache of "the server already told me
- * yes this session", not a credential.
- *
- * Presentation only. It cannot widen access — every Convex query and mutation
- * behind this calls requireAdmin server-side on every single call, so a
- * revoked session gets empty screens and errors, not data.
- */
-let seenAsAdmin = false;
-
 /**
  * Signed in is not the same as being the admin. A second account could hold a
  * valid session, so the identity is confirmed against the server.
+ *
+ * THERE IS DELIBERATELY NO CACHE HERE ANY MORE.
+ *
+ * A module-scope `seenAsAdmin` flag used to remember "the server said yes once
+ * this page session", so that while `amIAdmin` was in flight the admin
+ * rendered immediately instead of showing "Checking…". It was justified as
+ * presentation-only, and strictly speaking that is true — every Convex
+ * function behind this calls requireAdmin, so the cache could never hand over
+ * real data.
+ *
+ * But it is the reason the back office APPEARS to open with no authentication.
+ * Navigating to the admin URL painted the entire interface before the server
+ * had been asked anything, and only corrected itself once the query resolved.
+ * A gate that shows you the room while it decides whether to let you in is not
+ * doing the one job it has, and "the data is safe anyway" is not an answer to
+ * someone watching it happen.
+ *
+ * The cost is a brief "Checking…" when crossing from the public site into the
+ * admin. That is the honest state: at that instant we genuinely do not know.
  */
 function AdminOnly({ children }: { children: React.ReactNode }) {
   const allowed = useQuery(api.admin.amIAdmin, {});
 
-  if (allowed === true && !seenAsAdmin) seenAsAdmin = true;
-
   if (allowed === undefined) {
-    if (seenAsAdmin) return <>{children}</>;
     return <div className="py-24 text-center text-sm text-secondary">Checking…</div>;
   }
 
@@ -114,7 +112,7 @@ function Notice({
       {action ? (
         <Link
           href={action.href}
-          className="mt-8 inline-block rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+          className="mt-8 inline-block rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
         >
           {action.label}
         </Link>

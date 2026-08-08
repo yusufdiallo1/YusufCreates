@@ -118,7 +118,7 @@ export function ShareWithFriend({ inModal = false }: { inModal?: boolean }) {
                 // an error and must not surface as one.
               }
             }}
-            className="rounded-full bg-primary px-4 py-2 text-xs font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+            className="rounded-full bg-primary px-4 py-2 text-xs font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
           >
             Share
           </button>
@@ -135,7 +135,7 @@ export function ShareWithFriend({ inModal = false }: { inModal?: boolean }) {
               // Clipboard can be blocked; selecting the text still works.
             }
           }}
-          className="hairline rounded-full px-4 py-2 text-xs text-primary transition-colors duration-fast hover:bg-surface-2"
+          className="hairline rounded-full px-4 py-2 text-xs text-primary transition-colors duration-hover ease-hover hover:bg-surface-2"
           aria-live="polite"
         >
           {copied ? "Link copied" : "Copy link"}
@@ -146,7 +146,7 @@ export function ShareWithFriend({ inModal = false }: { inModal?: boolean }) {
           target="_blank"
           rel="noopener noreferrer"
           onClick={() => track("cta_click", { cta: "share_whatsapp" })}
-          className="hairline rounded-full px-4 py-2 text-xs text-primary transition-colors duration-fast hover:bg-surface-2"
+          className="hairline rounded-full px-4 py-2 text-xs text-primary transition-colors duration-hover ease-hover hover:bg-surface-2"
         >
           WhatsApp
         </a>
@@ -154,7 +154,7 @@ export function ShareWithFriend({ inModal = false }: { inModal?: boolean }) {
         <a
           href={`mailto:?subject=${encodeURIComponent("A developer worth knowing")}&body=${encoded}`}
           onClick={() => track("cta_click", { cta: "share_email" })}
-          className="hairline rounded-full px-4 py-2 text-xs text-primary transition-colors duration-fast hover:bg-surface-2"
+          className="hairline rounded-full px-4 py-2 text-xs text-primary transition-colors duration-hover ease-hover hover:bg-surface-2"
         >
           Email
         </a>

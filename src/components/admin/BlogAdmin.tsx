@@ -74,7 +74,7 @@ export function BlogAdmin() {
         <button
           type="button"
           onClick={() => setEditing("new")}
-          className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+          className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
         >
           New post
         </button>
@@ -94,7 +94,7 @@ export function BlogAdmin() {
                 <button
                   type="button"
                   onClick={() => setEditing(post)}
-                  className="admin-card block w-full text-left transition-colors duration-fast hover:bg-surface-2"
+                  className="admin-card block w-full text-left transition-colors duration-hover ease-hover hover:bg-surface-2"
                 >
                   <div className="flex flex-wrap items-center gap-2.5">
                     <span className="text-sm text-primary">{post.title}</span>
@@ -284,7 +284,7 @@ function PostDrawer({
                   role="radio"
                   aria-checked={active}
                   onClick={() => set("kind", k.id)}
-                  className={`rounded-xl border p-3 text-left transition-colors duration-fast ${
+                  className={`rounded-xl border p-3 text-left transition-colors duration-hover ease-hover ${
                     active
                       ? "border-[color:var(--accent)] bg-surface-2"
                       : "border-[color:var(--border-hairline)] bg-surface-1 hover:bg-surface-2"
@@ -352,7 +352,7 @@ function PostDrawer({
                   setDrafting(false);
                 }
               }}
-              className="mt-3 rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+              className="mt-3 rounded-full bg-accent px-4 py-2 text-sm font-medium text-primary transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-40"
             >
               {drafting ? "Drafting…" : "Draft with AI"}
             </button>

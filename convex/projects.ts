@@ -14,7 +14,18 @@ export const listPublished = query({
   },
 });
 
-/** Featured, published projects for the homepage grid. */
+/**
+ * Featured, published projects for the homepage grid.
+ *
+ * The default used to be 3, which meant ticking "featured" on a fourth project
+ * in the admin saved fine and then silently did nothing on the live site —
+ * there was no cap in the mutation and no warning in the UI, just a read-side
+ * `.take(3)` quietly discarding the rest. Marking something featured should
+ * feature it.
+ *
+ * 12 is a guard against an accidental "feature everything", not a design
+ * limit; callers that want fewer pass an explicit limit.
+ */
 export const listFeatured = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
@@ -23,7 +34,7 @@ export const listFeatured = query({
       .withIndex("by_featured", (q) =>
         q.eq("featured", true).eq("status", "published"),
       )
-      .take(args.limit ?? 3);
+      .take(args.limit ?? 12);
   },
 });
 

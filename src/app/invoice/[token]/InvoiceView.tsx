@@ -94,7 +94,7 @@ export function InvoiceView({ invoice }: { invoice: Invoice }) {
           {invoice.stripePdfUrl ? (
             <a
               href={invoice.stripePdfUrl}
-              className="mt-5 inline-block text-sm text-accent transition-colors duration-fast hover:text-primary"
+              className="mt-5 inline-block text-sm text-accent transition-colors duration-hover ease-hover hover:text-primary"
             >
               Download receipt
             </a>

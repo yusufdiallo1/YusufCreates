@@ -186,4 +186,40 @@ crons.monthly(
   internal.monitoring.sendMonthlyReports,
 );
 
+/*
+ * Chase and expire contracts.
+ *
+ * Earns a cron by the test at the top of this file: both stages have an
+ * external consequence at a particular time. Whether a contract is still
+ * SIGNABLE is derived on read, so a missed run cannot let an expired one be
+ * signed — what the job produces is the chasing email at 48 hours and the
+ * lapse notice at 14 days, neither of which can be derived by anyone.
+ *
+ * Fifteen minutes, matching the invoice sweep. See the note in
+ * src/app/api/cron/notify/route.ts about why stamping frequently and sending
+ * daily was not good enough here.
+ */
+crons.interval(
+  "chase and expire contracts",
+  { minutes: 15 },
+  internal.contracts.sweepContracts,
+);
+
+/*
+ * Deliver what the sweep queued, without waiting for the daily Vercel cron.
+ *
+ * Sending lives in a Next route because Convex cannot talk to Resend, and that
+ * route is on a DAILY schedule — Vercel's Hobby plan rejects anything faster
+ * at deploy time. So a 48-hour alert stamped on time could still arrive at 72.
+ *
+ * Convex's scheduler has no such limit and Convex actions can fetch, so this
+ * calls the same route on a sane cadence. The Vercel cron stays as the
+ * backstop: if this fails, mail is late rather than lost.
+ */
+crons.interval(
+  "deliver queued contract email",
+  { minutes: 20 },
+  internal.contracts.pokeNotify,
+);
+
 export default crons;

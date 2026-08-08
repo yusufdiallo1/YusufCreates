@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { fetchMutation, fetchQuery } from "convex/nextjs";
+import { fetchQuery } from "convex/nextjs";
 import { convexAuthNextjsToken } from "@convex-dev/auth/nextjs/server";
 import { api, isConvexConfigured } from "@/lib/convex-api";
-import { getStripe, toMinorUnits } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
+import { issueInvoiceToStripe } from "@/lib/issueInvoice";
 import { sendEmail } from "@/lib/email";
 import { logEmailSend } from "@/lib/emailLog";
 import { InvoiceIssued } from "@emails/InvoiceIssued";
@@ -84,62 +85,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Reuse a customer for the same email so a returning client keeps their
-    // saved details — which is what makes Link one-click for them.
-    const existing = await stripe.customers.list({
-      email: invoice.clientEmail,
-      limit: 1,
-    });
-    const customer =
-      existing.data[0] ??
-      (await stripe.customers.create(
-        { email: invoice.clientEmail, name: invoice.clientName },
-        { idempotencyKey: `cust:${invoice._id}` },
-      ));
-
-    const stripeInvoice = await stripe.invoices.create(
-      {
-        customer: customer.id,
-        // The client is emailed a link and pays when they choose; charging a
-        // saved card automatically would be wrong for project work.
-        collection_method: "send_invoice",
-        days_until_due: 14,
-        automatic_tax: { enabled: false },
-        payment_settings: {
-          payment_method_types: ["card", "link"],
-        },
-        description: invoice.description,
-        // Our reference, so a bank line or a client email can be matched back.
-        metadata: {
-          convexInvoiceId: invoice._id,
-          reference: invoice.reference,
-          stage: invoice.stage,
-        },
-      },
-      { idempotencyKey: `inv:${invoice._id}` },
-    );
-
-    await stripe.invoiceItems.create(
-      {
-        customer: customer.id,
-        invoice: stripeInvoice.id,
-        amount: toMinorUnits(invoice.amount, invoice.currency),
-        currency: invoice.currency.toLowerCase(),
-        description: `${invoice.description} — ${invoice.stage === "deposit" ? "40% deposit" : "balance on completion"}`,
-      },
-      { idempotencyKey: `item:${invoice._id}` },
-    );
-
-    const finalised = await stripe.invoices.finalizeInvoice(stripeInvoice.id!);
-
-    await fetchMutation(api.invoices.attachStripe, {
-      secret: serverSecret,
-      id: invoice._id,
-      stripeInvoiceId: finalised.id!,
-      stripeCustomerId: customer.id,
-      stripeHostedUrl: finalised.hosted_invoice_url ?? undefined,
-      stripePdfUrl: finalised.invoice_pdf ?? undefined,
-    });
+    const issued = await issueInvoiceToStripe(invoice, serverSecret);
+    if (!issued.ok) {
+      return NextResponse.json({ error: issued.error }, { status: 502 });
+    }
 
     // Our own branded email carries the link, rather than Stripe's default —
     // the client should recognise who is asking them for money.
@@ -154,7 +103,7 @@ export async function POST(request: Request) {
         amount: invoice.amount,
         currency: invoice.currency,
         stage: invoice.stage,
-        payUrl: finalised.hosted_invoice_url ?? "",
+        payUrl: issued.url ?? "",
       }),
     });
     await logEmailSend({
@@ -183,7 +132,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       emailed,
-      url: finalised.hosted_invoice_url,
+      url: issued.url,
       ...(emailed
         ? {}
         : {

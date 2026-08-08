@@ -54,7 +54,7 @@ export function TopBar({
         type="button"
         onClick={openPalette}
         aria-label="Search"
-        className="hairline flex h-8 items-center gap-2 rounded-lg bg-surface-1 px-2.5 text-[13px] text-secondary transition-colors duration-fast hover:text-primary sm:w-56 lg:w-64"
+        className="hairline flex h-8 items-center gap-2 rounded-lg bg-surface-1 px-2.5 text-[13px] text-secondary transition-colors duration-hover ease-hover hover:text-primary sm:w-56 lg:w-64"
       >
         <SearchIcon />
         <span className="hidden truncate sm:inline">Search everything…</span>
@@ -97,7 +97,7 @@ function DensityToggle({
           aria-pressed={density === option.id}
           title={option.label}
           aria-label={option.label}
-          className={`rounded-md p-1.5 transition-colors duration-fast ${
+          className={`rounded-md p-1.5 transition-colors duration-hover ease-hover ${
             density === option.id
               ? "bg-surface-2 text-primary"
               : "text-secondary hover:text-primary"

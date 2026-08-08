@@ -2,9 +2,7 @@ import Link from "next/link";
 import { fetchQuery } from "convex/nextjs";
 import { Reveal } from "@/components/motion/Reveal";
 import { CountUp } from "@/components/motion/CountUp";
-import { Typewriter } from "@/components/motion/Typewriter";
 import { WordReveal } from "@/components/motion/WordReveal";
-import { Motto } from "@/components/marketing/Motto";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 
 /**
@@ -49,20 +47,17 @@ export async function About() {
       {/* Capped at prose width. Without this the paragraphs would run the
           full 5xl and become hard to track line to line. */}
       <div className="max-w-2xl">
-        {/* Typed rather than faded: the opening line is the one sentence that
-            has to land, and watching it written reads as someone talking. */}
-        <Typewriter
-          as="p"
-          speed={22}
-          className="mt-6 text-secondary"
-        >
-          {"I’m Yusuf. I build websites and web apps on my own — design, build, deploy, and the part after launch that most people leave out."}
-        </Typewriter>
+        {/* Both paragraphs now brighten word by word as they scroll into view.
 
-        {/* Word-brightened rather than plain: this is the paragraph that says
-            who the work is for, so it earns the emphasis. Deliberately NOT
-            the one above — that already has a Typewriter, and two attention
-            devices stacked cancel each other out. */}
+            The first one used to be a Typewriter. Typing holds the reader
+            waiting on a machine before they can read a sentence they could
+            have read instantly, and it re-runs on every visit. A scroll-linked
+            brighten gives the same "this line matters" emphasis while the text
+            is legible the whole time. */}
+        <WordReveal className="mt-6 text-secondary">
+          {"I’m Yusuf. I build websites and web apps on my own — design, build, deploy, and the part after launch that most people leave out."}
+        </WordReveal>
+
         <WordReveal className="mt-4 text-secondary">
           {`Most of my work is for small businesses and founders who have been quoted too much by an agency, or who had something built cheaply and now cannot change a price without breaking the page. I take those on as often as new builds — usually the fastest way to understand what someone actually needs is to fix what they have.`}
         </WordReveal>
@@ -86,13 +81,6 @@ export async function About() {
             else afterwards, nothing is holding you here.
           </p>
         </Reveal>
-
-        {/* The motto closes the prose and separates it from the figures.
-            Hairline above rather than a heading: it is a mark, not a section,
-            and labelling it would flatten it into another paragraph. */}
-        <div className="hairline-t mt-10 pt-8">
-          <Motto />
-        </div>
 
         <Reveal delay={0.32}>
           {/* Two figures, so two columns — a three-column grid left a third
@@ -123,7 +111,7 @@ export async function About() {
         <Reveal delay={0.26}>
           <Link
             href="/about"
-            className="mt-8 inline-block text-sm text-accent transition-colors duration-fast hover:text-primary"
+            className="mt-8 inline-block text-sm text-accent transition-colors duration-hover ease-hover hover:text-primary"
           >
             More about how I work →
           </Link>

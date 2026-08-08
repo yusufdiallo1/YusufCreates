@@ -57,7 +57,7 @@ export default async function ConfirmPage({
 
       <Link
         href="/"
-        className="mt-10 inline-block text-sm text-accent transition-colors duration-fast hover:text-primary"
+        className="mt-10 inline-block text-sm text-accent transition-colors duration-hover ease-hover hover:text-primary"
       >
         Back to the site
       </Link>

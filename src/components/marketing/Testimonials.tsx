@@ -95,8 +95,12 @@ export function Testimonials({
             Low priority: a marquee card is decoration, and should never take
             blur from a pricing tier or a hero slab that is standing still.
           */}
+          {/* pauseOnHover is gone on purpose. Stopping both rows to look at one
+              quote made the section feel like it had jammed; the card under the
+              pointer now lifts out of a row that keeps flowing. Keyboard focus
+              still stops everything — see Marquee. */}
           <BlurBudgetGroup priority={-1}>
-            <Marquee speed={70} gap={24} pauseOnHover>
+            <Marquee speed={70} gap={24}>
               {rowOne.map((item) => (
                 <TestimonialCard key={item._id} item={item} />
               ))}
@@ -106,7 +110,7 @@ export function Testimonials({
           {/* Opposite direction, different speed — the two rows must not
               appear to be one block sliding. */}
           <BlurBudgetGroup priority={-1}>
-            <Marquee speed={95} gap={24} direction="right" pauseOnHover>
+            <Marquee speed={95} gap={24} direction="right">
               {(rowTwo.length > 0 ? rowTwo : rowOne).map((item) => (
                 <TestimonialCard key={`b-${item._id}`} item={item} />
               ))}
@@ -194,7 +198,7 @@ function TestimonialCard({
                   href={item.website}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-accent transition-opacity duration-fast hover:opacity-80"
+                  className="text-accent transition-opacity duration-hover ease-hover hover:opacity-80"
                 >
                   {item.company}
                 </a>

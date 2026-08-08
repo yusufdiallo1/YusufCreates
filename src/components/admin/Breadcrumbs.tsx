@@ -33,6 +33,7 @@ const LABELS: Record<string, string> = {
   kb: "AI",
   invoices: "Invoices",
   proposals: "Proposals",
+  contracts: "Contracts",
   clients: "Clients",
   content: "Content",
   promos: "Promotions",
@@ -82,7 +83,7 @@ export function Breadcrumbs() {
               ) : (
                 <Link
                   href={href}
-                  className="transition-colors duration-fast hover:text-primary"
+                  className="transition-colors duration-hover ease-hover hover:text-primary"
                 >
                   {labelFor(segment)}
                 </Link>

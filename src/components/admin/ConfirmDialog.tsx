@@ -43,14 +43,21 @@ export function ConfirmDialog({
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center p-4"
       role="presentation"
-      onMouseDown={(e) => {
-        // Backdrop click cancels. mousedown rather than click so a drag that
-        // starts inside the panel and ends outside does not dismiss it.
-        if (e.target === e.currentTarget) onClose();
-      }}
     >
+      {/*
+        Backdrop click cancels, and the handler lives on the backdrop itself.
+
+        It used to sit on this container as `e.target === e.currentTarget`,
+        which never matched: the dim layer below covers the container
+        completely, so every click outside the panel landed on that layer
+        instead and the comparison always failed.
+
+        mousedown rather than click, so a drag that starts inside the panel and
+        releases outside does not dismiss it.
+      */}
       <div
         aria-hidden="true"
+        onMouseDown={onClose}
         className="absolute inset-0 bg-[color:var(--bg-canvas)]/70 backdrop-blur-sm"
       />
 
@@ -96,7 +103,7 @@ export function ConfirmDialog({
         <button
           type="button"
           onClick={onClose}
-          className="mt-4 w-full py-2 text-[13px] text-secondary transition-colors duration-fast hover:text-primary"
+          className="mt-4 w-full py-2 text-[13px] text-secondary transition-colors duration-hover ease-hover hover:text-primary"
         >
           Cancel
         </button>

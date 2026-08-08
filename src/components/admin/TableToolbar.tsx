@@ -118,7 +118,7 @@ export function TableToolbar({
               type="button"
               onClick={() => setDraft("")}
               aria-label="Clear search"
-              className="text-secondary transition-colors duration-fast hover:text-primary"
+              className="text-secondary transition-colors duration-hover ease-hover hover:text-primary"
             >
               ×
             </button>
@@ -137,7 +137,7 @@ export function TableToolbar({
           <button
             type="button"
             onClick={onExport}
-            className="admin-meta rounded-lg px-2 py-1 transition-colors duration-fast hover:text-primary"
+            className="admin-meta rounded-lg px-2 py-1 transition-colors duration-hover ease-hover hover:text-primary"
           >
             Export
           </button>
@@ -159,7 +159,7 @@ export function TableToolbar({
                 key={id}
                 type="button"
                 onClick={() => onFilter(id, null)}
-                className="hairline inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs text-primary transition-colors duration-fast hover:bg-surface-2"
+                className="hairline inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs text-primary transition-colors duration-hover ease-hover hover:bg-surface-2"
               >
                 <span className="text-secondary">{facet?.label ?? id}:</span>
                 {label}
@@ -172,7 +172,7 @@ export function TableToolbar({
             <button
               type="button"
               onClick={() => active.forEach(([id]) => onFilter(id, null))}
-              className="px-2 py-1 text-xs text-secondary transition-colors duration-fast hover:text-primary"
+              className="px-2 py-1 text-xs text-secondary transition-colors duration-hover ease-hover hover:text-primary"
             >
               Clear all
             </button>
@@ -199,7 +199,7 @@ function FilterMenu({
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
-          className="hairline flex h-9 items-center gap-1.5 rounded-lg px-3 text-[13px] text-secondary transition-colors duration-fast hover:text-primary"
+          className="hairline flex h-9 items-center gap-1.5 rounded-lg px-3 text-[13px] text-secondary transition-colors duration-hover ease-hover hover:text-primary"
         >
           Filters
           {count ? (

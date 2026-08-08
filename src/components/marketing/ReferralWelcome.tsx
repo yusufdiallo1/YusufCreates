@@ -174,7 +174,7 @@ export function ReferralWelcome() {
           <button
             type="button"
             onClick={dismiss}
-            className="mt-3 text-xs text-secondary transition-colors duration-fast hover:text-primary"
+            className="mt-3 text-xs text-secondary transition-colors duration-hover ease-hover hover:text-primary"
           >
             Close
           </button>

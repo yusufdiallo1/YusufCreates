@@ -1,4 +1,6 @@
 import { mutation, query } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { requireAdmin } from "./lib/auth";
 
@@ -131,17 +133,106 @@ export const listByStatus = query({
 });
 
 /**
+ * The 40/60 split, in one place.
+ *
+ * The balance is the remainder, not a second rounded percentage. Rounding both
+ * independently lets the two instalments sum to a penny either side of the
+ * agreed total — a client who adds up their invoices and gets a different
+ * number to their quote is right to ask why.
+ */
+export function splitAmount(amount: number): {
+  deposit: number;
+  balance: number;
+} {
+  const deposit = Math.round(amount * DEPOSIT_SHARE);
+  return { deposit, balance: amount - deposit };
+}
+
+export type InvoicePairArgs = {
+  leadId?: Id<"leads">;
+  projectId?: Id<"projects">;
+  proposalId?: Id<"proposals">;
+  contractId?: Id<"contracts">;
+  clientName: string;
+  clientEmail: string;
+  description: string;
+  /** Full project value; split 40% deposit, 60% on completion. */
+  amount: number;
+  currency: string;
+  tier?: string;
+  dueDate?: number;
+};
+
+/**
  * Creates both instalments at once, so a half-invoiced project cannot exist.
  * The deposit is issued immediately; the balance stays draft until delivery.
+ *
+ * A PLAIN HELPER, not a mutation, and deliberately ungated.
+ *
+ * It has two callers with two different claims to authority: the admin dialog,
+ * which proves identity with requireAdmin, and the contract signing route,
+ * which proves it with the server secret because the person triggering it is a
+ * client who has just signed and is not an admin at all. The gate belongs to
+ * the caller; the invoice logic is the same either way, and duplicating it so
+ * each could carry its own gate is how the two copies drift and one of them
+ * quietly stops matching the quote.
+ *
+ * Nothing exported from a Convex module file is callable from a browser unless
+ * it is wrapped in mutation() or query(), so this is not a hole.
  */
+export async function insertInvoicePair(
+  ctx: MutationCtx,
+  args: InvoicePairArgs,
+): Promise<{
+  depositId: Id<"invoices">;
+  balanceId: Id<"invoices">;
+  deposit: number;
+  balance: number;
+}> {
+  const amounts = splitAmount(args.amount);
+
+  const stages: ("deposit" | "balance")[] = ["deposit", "balance"];
+  const ids: Id<"invoices">[] = [];
+
+  for (const stage of stages) {
+    ids.push(
+      await ctx.db.insert("invoices", {
+        leadId: args.leadId,
+        projectId: args.projectId,
+        proposalId: args.proposalId,
+        contractId: args.contractId,
+        clientName: args.clientName,
+        clientEmail: args.clientEmail,
+        description: args.description,
+        amount: amounts[stage],
+        currency: args.currency,
+        stage,
+        tier: args.tier,
+        status: stage === "deposit" ? "sent" : "draft",
+        token: makeToken(),
+        reference: makeReference(stage),
+        dueDate: stage === "deposit" ? args.dueDate : undefined,
+        issuedAt: stage === "deposit" ? Date.now() : undefined,
+      }),
+    );
+  }
+
+  return {
+    depositId: ids[0],
+    balanceId: ids[1],
+    deposit: amounts.deposit,
+    balance: amounts.balance,
+  };
+}
+
 export const createPair = mutation({
   args: {
     leadId: v.optional(v.id("leads")),
     projectId: v.optional(v.id("projects")),
+    proposalId: v.optional(v.id("proposals")),
     clientName: v.string(),
     clientEmail: v.string(),
     description: v.string(),
-    /** Full project value; split 40% deposit, 60% on completion. */
     amount: v.number(),
     currency: v.string(),
     /** Plan id — decides whether wallets are offered. Enterprise only. */
@@ -150,41 +241,8 @@ export const createPair = mutation({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-
-    /*
-     * The balance is the remainder, not a second rounded percentage.
-     * Rounding both independently lets the two instalments sum to a penny
-     * either side of the agreed total — a client who adds up their invoices
-     * and gets a different number to their quote is right to ask why.
-     */
-    const deposit = Math.round(args.amount * DEPOSIT_SHARE);
-    const amounts = { deposit, balance: args.amount - deposit };
-
-    const stages: ("deposit" | "balance")[] = ["deposit", "balance"];
-    const ids: string[] = [];
-
-    for (const stage of stages) {
-      ids.push(
-        await ctx.db.insert("invoices", {
-          leadId: args.leadId,
-          projectId: args.projectId,
-          clientName: args.clientName,
-          clientEmail: args.clientEmail,
-          description: args.description,
-          amount: amounts[stage],
-          currency: args.currency,
-          stage,
-          tier: args.tier,
-          status: stage === "deposit" ? "sent" : "draft",
-          token: makeToken(),
-          reference: makeReference(stage),
-          dueDate: stage === "deposit" ? args.dueDate : undefined,
-          issuedAt: stage === "deposit" ? Date.now() : undefined,
-        }),
-      );
-    }
-
-    return { depositId: ids[0], balanceId: ids[1] };
+    const { depositId, balanceId } = await insertInvoicePair(ctx, args);
+    return { depositId, balanceId };
   },
 });
 

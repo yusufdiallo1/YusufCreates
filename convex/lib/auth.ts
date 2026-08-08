@@ -57,6 +57,25 @@ export async function requireAdmin(
 }
 
 /**
+ * The gate for server-to-server mutations, where the caller is one of our own
+ * route handlers rather than a browser session.
+ *
+ * Several modules already carry a private copy of this (invoices, express,
+ * chat, automation). New code uses this one rather than adding a fifth —
+ * consolidating the existing four is a separate change and not worth churning
+ * working payment code for.
+ *
+ * Fails closed: an unset secret denies everyone rather than admitting all,
+ * which is the only safe direction for a misconfiguration.
+ */
+export function requireServerSecret(secret: string): void {
+  const expected = process.env.EMAIL_LOG_SECRET;
+  if (!expected || secret !== expected) {
+    throw new Error("Not authorised.");
+  }
+}
+
+/**
  * The same check phrased as a question.
  *
  * The admin shell needs to know whether to render a signed-out state, and

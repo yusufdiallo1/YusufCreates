@@ -1,7 +1,7 @@
 "use client";
 
+import { motion } from "motion/react";
 import { Reveal } from "@/components/motion/Reveal";
-import { ProcessConnector } from "@/components/motion/ProcessConnector";
 import { WordReveal } from "@/components/motion/WordReveal";
 
 /**
@@ -60,20 +60,60 @@ export function Process() {
         </WordReveal>
       </Reveal>
 
-      {/* The grid stays a grid — see the note at the top of this file for why
-          the pinned version was removed. The connector is drawn behind it and
-          adds no layout of its own. */}
-      <div className="relative">
-        <ProcessConnector />
+      {/*
+        THE FLOATING CONNECTOR IS GONE.
 
+        It drew a cyan SVG path behind the grid, positioned from measured step
+        boxes. Two things were wrong with it. It sat at its own vertical
+        offset, so it crossed THROUGH the step rules rather than joining them —
+        which read as a rendering fault rather than a design. And it was
+        --dev-cyan, the one colour on a site whose accent is indigo, so the
+        eye went straight to the part that was broken.
+
+        The sequence is now drawn ON the rules themselves. Each step's own top
+        hairline fills with the accent as it scrolls into view, left to right,
+        staggered down the row. It cannot misalign — it IS the rule — and it
+        costs one transform per step instead of a measured path and a
+        ResizeObserver.
+      */}
+      <div className="relative">
         <ol className="relative mt-16 grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((step, index) => (
             <li key={step.n}>
               <Reveal delay={index * 0.07}>
-                {/* The rule doubles as the step's visual anchor, and is where
-                    the connector anchors too. */}
-                <div data-process-step className="hairline-t pt-5">
-                  <p className="text-xs text-secondary tabular-nums">{step.n}</p>
+                {/*
+                  The rule doubles as the step's visual anchor, and is where
+                  the connector anchors too.
+
+                  `group` + peer-less hover on the whole step rather than just
+                  the heading: the target is the column, not the four words at
+                  the top of it. The number is the element that changes most —
+                  it goes from quiet meta to the accent, which is the only
+                  colour this section spends.
+                */}
+                <div
+                  data-process-step
+                  className="group hairline-t relative pt-5 transition-colors duration-hover ease-hover hover:border-[color:var(--border-glass)]"
+                >
+                  {/* The rule fills with accent as the step arrives, then
+                      brightens further on hover. scaleX from the left rather
+                      than animating width: a transform is composited, a width
+                      is a layout change on every frame. */}
+                  <motion.span
+                    aria-hidden="true"
+                    initial={{ scaleX: 0 }}
+                    whileInView={{ scaleX: 1 }}
+                    viewport={{ once: true, amount: "some" }}
+                    transition={{
+                      duration: 0.7,
+                      delay: 0.1 + index * 0.12,
+                      ease: [0.33, 1, 0.68, 1],
+                    }}
+                    className="absolute -top-px left-0 h-px w-full origin-left bg-[color:var(--accent)] opacity-60 transition-opacity duration-hover ease-hover group-hover:opacity-100"
+                  />
+                  <p className="font-mono text-xs text-secondary tabular-nums transition-colors duration-hover ease-hover group-hover:text-accent">
+                    {step.n}
+                  </p>
                   <h3 className="mt-3 text-lg">{step.title}</h3>
                   <p className="mt-2 text-sm text-secondary">{step.body}</p>
                 </div>

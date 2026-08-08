@@ -254,7 +254,7 @@ export function DataTable<T>({
                     <button
                       type="button"
                       onClick={() => cycleSort(col.id)}
-                      className="inline-flex items-center gap-1 transition-colors duration-fast hover:text-primary"
+                      className="inline-flex items-center gap-1 transition-colors duration-hover ease-hover hover:text-primary"
                       aria-label={`Sort by ${col.header}`}
                     >
                       {col.header}
@@ -286,7 +286,7 @@ export function DataTable<T>({
                   onFocus={() => setFocused(index)}
                   onClick={() => onRowClick?.(row)}
                   aria-selected={selected?.has(key)}
-                  className={`border-b border-[color:var(--border-hairline)] outline-none transition-colors duration-fast last:border-0 hover:bg-surface-2 focus-visible:bg-surface-2 ${
+                  className={`border-b border-[color:var(--border-hairline)] outline-none transition-colors duration-hover ease-hover last:border-0 hover:bg-surface-2 focus-visible:bg-surface-2 ${
                     onRowClick ? "cursor-pointer" : ""
                   }`}
                   style={{ height: "var(--row-h)" }}
@@ -396,7 +396,7 @@ function RowMenu<T>({ row, actions }: { row: T; actions: RowAction<T>[] }) {
           aria-label="Row actions"
           /* 44px target even in compact density — this is the one control on
              the row that has to be hittable with a thumb. */
-          className="flex size-9 items-center justify-center rounded-lg text-secondary transition-colors duration-fast hover:bg-surface-3 hover:text-primary"
+          className="flex size-9 items-center justify-center rounded-lg text-secondary transition-colors duration-hover ease-hover hover:bg-surface-3 hover:text-primary"
         >
           <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
             <circle cx="3" cy="8" r="1.4" fill="currentColor" />
@@ -457,7 +457,7 @@ function ColumnToggle<T>({
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
-          className="admin-meta hidden items-center gap-1.5 rounded-lg px-2 py-1 transition-colors duration-fast hover:text-primary sm:inline-flex"
+          className="admin-meta hidden items-center gap-1.5 rounded-lg px-2 py-1 transition-colors duration-hover ease-hover hover:text-primary sm:inline-flex"
         >
           Columns
         </button>

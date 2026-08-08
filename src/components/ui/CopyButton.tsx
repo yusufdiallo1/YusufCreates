@@ -74,7 +74,7 @@ export function CopyButton({
       aria-label={copied ? "Copied" : label}
       className={cn(
         "inline-flex items-center gap-2 rounded-md px-2 py-1",
-        "text-sm text-secondary transition-colors duration-fast",
+        "text-sm text-secondary transition-colors duration-hover ease-hover",
         "hover:text-primary",
         className,
       )}

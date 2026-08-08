@@ -69,7 +69,7 @@ export function KbAdmin({
         <button
           type="button"
           onClick={() => setEditing("new")}
-          className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+          className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
         >
           Add entry
         </button>
@@ -87,7 +87,7 @@ export function KbAdmin({
           <button
             type="button"
             onClick={() => setShowPrompt((v) => !v)}
-            className="hairline rounded-full px-3.5 py-1.5 text-xs text-primary transition-colors duration-fast hover:bg-surface-2"
+            className="hairline rounded-full px-3.5 py-1.5 text-xs text-primary transition-colors duration-hover ease-hover hover:bg-surface-2"
           >
             {showPrompt ? "Hide" : "Show prompt"}
           </button>
@@ -122,7 +122,7 @@ export function KbAdmin({
                 <button
                   type="button"
                   onClick={() => setEditing(entry)}
-                  className="admin-card block w-full text-left transition-colors duration-fast hover:bg-surface-2"
+                  className="admin-card block w-full text-left transition-colors duration-hover ease-hover hover:bg-surface-2"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <span className="text-sm text-primary">

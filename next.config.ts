@@ -28,23 +28,40 @@ const csp = [
   "font-src 'self' data:",
   // wss:// matters as much as https:// — Convex holds an open websocket, and
   // omitting the scheme silently breaks every live query.
-  "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://api.stripe.com https://api.anthropic.com",
+  /*
+   * Agora needs a lot of hosts, and omitting any of them breaks calling in a
+   * way that is hard to read from the symptom — the SDK reports a generic join
+   * failure, not a CSP violation.
+   *
+   *   *.agora.io          — signalling, gateway and the SD-RTN edge
+   *   *.sd-rtn.com        — the same network under its newer domain
+   *   *.agoralab.co       — config and analytics endpoints
+   *
+   * Both https:// and wss:// are required: the SDK negotiates over HTTPS and
+   * then holds a websocket open for the duration of the call.
+   */
+  "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://api.stripe.com https://api.anthropic.com https://*.agora.io wss://*.agora.io https://*.sd-rtn.com wss://*.sd-rtn.com https://*.agoralab.co",
   // Video embeds are framed, so their hosts belong here — without them a
   // pasted YouTube link renders an empty box and the only clue is a console
   // warning nobody is looking at. nocookie is the domain the player uses.
   "frame-src https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com https://www.instagram.com",
   // Uploaded video is served from Convex storage and played, not framed.
+  // blob: covers both uploaded video and the local camera/mic streams Agora
+  // attaches to <video> elements during a call.
   "media-src 'self' https://*.convex.cloud blob:",
   /*
-   * The push service worker at /sw.js.
+   * Two workers need this, and 'self' blob: covers both.
    *
-   * Stated explicitly rather than left to fall through child-src to
-   * default-src. It would work either way today, but this policy is
-   * report-only and will eventually be enforced — and a service worker that
-   * silently fails to register takes the outage alerts with it, which is the
-   * one failure nobody would notice until it mattered.
+   * Agora spawns its audio processing in a worker created from a blob URL —
+   * blocked without the blob: source, and it surfaces as silent audio rather
+   * than as anything anyone would connect to the CSP. The push service worker
+   * at /sw.js is the 'self' half.
+   *
+   * Stated rather than left to fall through child-src to default-src. This
+   * policy is report-only and will eventually be enforced, and a service
+   * worker that silently fails to register takes the outage alerts with it.
    */
-  "worker-src 'self'",
+  "worker-src 'self' blob:",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

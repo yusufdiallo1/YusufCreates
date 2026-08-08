@@ -185,7 +185,7 @@ export function SettingsAdmin({
                   type="button"
                   onClick={() => setSection(s.id)}
                   aria-current={section === s.id ? "page" : undefined}
-                  className={`w-full rounded-lg px-3 py-2 text-left text-[13px] whitespace-nowrap transition-colors duration-fast ${
+                  className={`w-full rounded-lg px-3 py-2 text-left text-[13px] whitespace-nowrap transition-colors duration-hover ease-hover ${
                     section === s.id
                       ? "bg-surface-2 text-primary"
                       : "text-secondary hover:text-primary"
@@ -333,7 +333,7 @@ export function SettingsAdmin({
                 <button
                   type="button"
                   onClick={() => setDraft({})}
-                  className="px-3 py-2 text-[13px] text-secondary transition-colors duration-fast hover:text-primary"
+                  className="px-3 py-2 text-[13px] text-secondary transition-colors duration-hover ease-hover hover:text-primary"
                 >
                   Discard
                 </button>
@@ -341,7 +341,7 @@ export function SettingsAdmin({
                   type="button"
                   onClick={() => void save()}
                   disabled={saving}
-                  className="rounded-full bg-primary px-4 py-2 text-[13px] font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40"
+                  className="rounded-full bg-primary px-4 py-2 text-[13px] font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-40"
                 >
                   {saving ? "Saving…" : "Save"}
                 </button>
@@ -420,12 +420,12 @@ function Toggle({
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className={`relative h-6 w-10 shrink-0 rounded-full transition-colors duration-fast ${
+      className={`relative h-6 w-10 shrink-0 rounded-full transition-colors duration-hover ease-hover ${
         checked ? "bg-[color:var(--accent-solid)]" : "bg-surface-3"
       }`}
     >
       <span
-        className={`absolute top-1 size-4 rounded-full bg-white transition-transform duration-fast ${
+        className={`absolute top-1 size-4 rounded-full bg-white transition-transform duration-hover ease-hover ${
           checked ? "translate-x-5" : "translate-x-1"
         }`}
       />

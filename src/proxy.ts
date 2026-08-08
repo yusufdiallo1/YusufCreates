@@ -10,10 +10,17 @@ import { ADMIN_PATH } from "@/lib/constants";
 /**
  * Route protection.
  *
- * Every back-office route requires an authenticated session. This is
- * the edge gate; it is NOT the only check — each Convex query and mutation
- * re-verifies identity server-side, because middleware cannot protect data
- * reached by any other path.
+ * PROXY, NOT MIDDLEWARE. Next.js 16 renamed the convention — same file
+ * position, same signature, same behaviour, new name; `middleware.ts` still
+ * works but logs a deprecation warning on every dev boot. The Convex helpers
+ * are still called convexAuthNextjsMiddleware because that is the package's
+ * own naming, and renaming the file does not rename their exports.
+ *
+ * Every back-office route requires an authenticated session. This is the edge
+ * gate; it is NOT the only check — each Convex query and mutation re-verifies
+ * identity server-side, because a proxy cannot protect data reached by any
+ * other path. Next's own docs are explicit that this layer is for optimistic
+ * checks and must not be treated as the authorization boundary.
  */
 /*
  * The back office, plus /admin itself.
@@ -78,7 +85,7 @@ const convexMiddleware = convexAuthNextjsMiddleware(
   },
 );
 
-export default function middleware(
+export default function proxy(
   request: NextRequest,
   event: Parameters<typeof convexMiddleware>[1],
 ) {

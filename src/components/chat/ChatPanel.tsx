@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { sessionId, track } from "@/lib/track";
+import { getLenis } from "@/lib/lenis-instance";
 import { ThinkingMark } from "@/components/chat/ThinkingMark";
 
 /**
@@ -35,11 +36,21 @@ interface Turn {
  * MIN_MS is a floor on the whole exchange, not a fixed delay before it: the
  * text is being written the entire time, so the wait is spent reading rather
  * than watching a spinner.
+ *
+ * This was 7000ms with a 45 chars/sec ceiling, which meant every answer —
+ * including a one-line one — took at least seven seconds to finish appearing,
+ * and a long one took far longer. Groq returns the whole paragraph in well
+ * under a second, so the pacing was the entire perceived latency of the
+ * assistant. The typing effect is worth keeping; making someone watch it for
+ * seven seconds is not.
+ *
+ * 1200ms floor and ~170 chars/sec: still visibly written rather than pasted,
+ * but a short reply lands in about a second.
  */
-const MIN_MS = 7000;
+const MIN_MS = 1200;
 
-/** ~45 chars/sec — a shade quicker than a fast typist, still readable. */
-const CHARS_PER_MS = 0.045;
+/** ~170 chars/sec — reads as fast typing rather than as a delay. */
+const CHARS_PER_MS = 0.17;
 
 export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
   const reduceMotion = useReducedMotion();
@@ -106,6 +117,62 @@ export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
+  }, [open]);
+
+  /*
+   * Lock the page behind the panel.
+   *
+   * There was no lock at all, so flicking anywhere scrolled the page
+   * underneath the panel, which read as the panel being frozen — the thing
+   * moving was behind it.
+   *
+   * The getLenis calls are vestigial and harmless: smooth scroll is gone and
+   * getLenis permanently returns null, so these are no-ops kept only so this
+   * does not need to change again if it ever comes back. `overflow: hidden` on
+   * <body> is now the whole lock.
+   */
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    getLenis()?.stop();
+    return () => {
+      document.body.style.overflow = previous;
+      getLenis()?.start();
+    };
+  }, [open]);
+
+  /*
+   * Track the visual viewport so the panel clears the keyboard. Two numbers,
+   * not one.
+   *
+   * The panel is anchored to the bottom, so to clear the keyboard it has to
+   * know where the visible bottom actually IS — not merely how tall the
+   * visible area is. On iOS the layout viewport never moves, so an element at
+   * `bottom: 0` stays pinned behind the keys however short you make it.
+   *
+   * offsetTop + height is the visible bottom edge in layout coordinates;
+   * innerHeight minus that is exactly the keyboard's height, which is what the
+   * panel lifts by. Both are 0 with no keyboard open.
+   */
+  const [vp, setVp] = useState<{ lift: number; height: number } | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const read = () =>
+      setVp({
+        lift: Math.max(0, window.innerHeight - (vv.offsetTop + vv.height)),
+        height: vv.height,
+      });
+    read();
+    vv.addEventListener("resize", read);
+    vv.addEventListener("scroll", read);
+    return () => {
+      vv.removeEventListener("resize", read);
+      vv.removeEventListener("scroll", read);
+      setVp(null);
+    };
   }, [open]);
 
   // Keep the newest message in view as it streams.
@@ -211,7 +278,10 @@ export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
         );
         shown = Math.min(visible.length, Math.max(shown, Math.ceil(target)));
 
-        setTurns([...next, { role: "assistant", content: visible.slice(0, shown) }]);
+        setTurns([
+          ...next,
+          { role: "assistant", content: visible.slice(0, shown) },
+        ]);
 
         // One frame. Typing faster than the screen refreshes is not typing.
         await new Promise((r) => requestAnimationFrame(() => r(null)));
@@ -262,173 +332,229 @@ export function ChatPanel({ suggestions = [] }: { suggestions?: string[] }) {
           aria-haspopup="dialog"
           className="glass-depth glass-near glass-pill fixed right-5 bottom-5 z-40 flex items-center gap-2 px-4 py-3 text-sm text-primary shadow-lg lg:right-8 lg:bottom-8"
         >
-          <span aria-hidden="true" className="size-1.5 rounded-full bg-accent" />
+          <span
+            aria-hidden="true"
+            className="size-1.5 rounded-full bg-accent"
+          />
           Ask a question
         </button>
       )}
 
       <AnimatePresence>
         {open ? (
-          <motion.div
-            ref={panelRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Site assistant"
-            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.98 }}
-            transition={{ duration: reduceMotion ? 0.12 : 0.28, ease: EASE }}
-            /*
-              Full-screen on mobile, a floating panel from sm up.
+          <>
+            {/*
+              An INVISIBLE click-catcher, not a scrim.
 
-              Anchored to the bottom at a fixed height, the on-screen keyboard
-              pushed the panel off the top of the viewport — the input stayed
-              visible but everything above it disappeared. Pinning to all four
-              edges lets the browser resize it as the keyboard opens instead.
+              It exists only so that clicking the page beside the panel closes
+              it — the one gesture everyone tries first, which previously did
+              nothing because there was no overlay at all.
 
-              dvh, never vh: on mobile Safari vh is the LARGEST viewport
-              height, so a vh-sized panel extends under the browser chrome.
+              It deliberately paints NOTHING. It used to carry a 55% canvas
+              fill and a blur, which dimmed and smeared the entire site the
+              moment the chat opened. The assistant is a small panel in the
+              corner, not a modal that takes the page hostage; the page behind
+              it should stay exactly as it was. The panel itself is glass and
+              already reads as sitting above the page — see the glass-panel
+              class on the panel below. That is where the blur belongs.
 
-              h-dvh alongside inset-0 because the root viewport is set to
-              resizes-content — dvh tracks the shrinking visual viewport as
-              the keyboard opens, so the composer stays above the keys
-              instead of behind them.
-            */
-            className="glass-depth glass-near fixed inset-0 z-50 flex h-dvh w-full flex-col !rounded-none !p-0 sm:inset-auto sm:right-5 sm:bottom-5 sm:h-[min(32rem,80dvh)] sm:w-[min(24rem,calc(100vw-2.5rem))] sm:!rounded-[28px] lg:right-8 lg:bottom-8"
-          >
-            <div className="flex items-center justify-between px-5 py-4">
-              <p className="text-sm text-primary">Ask about the work</p>
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  pillRef.current?.focus();
-                }}
-                aria-label="Close assistant"
-                className="rounded-full p-1.5 text-secondary transition-colors duration-fast hover:text-primary"
-              >
-                <svg width={16} height={16} viewBox="0 0 16 16" aria-hidden="true">
-                  <path
-                    d="M4 4l8 8M12 4l-8 8"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </button>
-            </div>
-
+              A real element rather than a document listener, because a
+              document handler has to reason about what counts as "inside" and
+              gets it wrong for anything portalled.
+            */}
             <div
-              ref={logRef}
-              className="flex-1 space-y-4 overflow-y-auto px-5 pb-4"
-            >
-              {turns.length === 0 ? (
-                <div>
-                  <p className="text-sm text-secondary">
-                    I can answer questions about services, pricing and how
-                    Yusuf works. For anything else, the contact form is
-                    quicker.
-                  </p>
-                  {suggestions.length > 0 ? (
-                    <ul className="mt-4 space-y-2">
-                      {suggestions.map((q) => (
-                        <li key={q}>
-                          <button
-                            type="button"
-                            onClick={() => void send(q)}
-                            className="w-full rounded-lg bg-surface-2/60 px-3 py-2 text-left text-xs text-primary transition-colors duration-fast hover:bg-surface-2"
-                          >
-                            {q}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {turns.map((turn, i) => (
-                <div
-                  key={i}
-                  className={
-                    turn.role === "user"
-                      ? "ml-auto w-fit max-w-[85%] rounded-2xl bg-surface-2 px-3.5 py-2 text-sm text-primary"
-                      : "text-sm whitespace-pre-wrap text-secondary"
-                  }
-                >
-                  {turn.content ||
-                    (turn.role === "assistant" && busy ? (
-                      <ThinkingMark className="size-7 text-accent" />
-                    ) : (
-                      ""
-                    ))}
-                </div>
-              ))}
-
-              {showCta ? (
-                <Link
-                  href="/pricing"
-                  onClick={() => track("cta_click", { cta: "chat-start" })}
-                  className="inline-block rounded-full bg-[color:var(--accent-solid)] px-4 py-2 text-xs font-medium text-white"
-                >
-                  Start a project
-                </Link>
-              ) : null}
-
-              {error ? (
-                <p
-                  role="alert"
-                  className="text-xs text-[color:var(--text-notice)]"
-                >
-                  {error}
-                </p>
-              ) : null}
-            </div>
-
-            {/* Completed replies only. Announcing every token makes a screen
-                reader interrupt itself continuously. */}
-            <p className="sr-only" role="status" aria-live="polite">
-              {!busy && last?.role === "assistant" ? last.content : ""}
-            </p>
-
-            <form
-              noValidate
-              onSubmit={(e) => {
-                e.preventDefault();
-                void send(draft);
+              aria-hidden="true"
+              onClick={() => {
+                setOpen(false);
+                pillRef.current?.focus();
               }}
-              /* Tighter on a phone, where the keyboard already takes half
+              className="fixed inset-0 z-40"
+            />
+
+            <motion.div
+              ref={panelRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Site assistant"
+              initial={
+                reduceMotion
+                  ? { opacity: 0 }
+                  : { opacity: 0, y: 16, scale: 0.98 }
+              }
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={
+                reduceMotion
+                  ? { opacity: 0 }
+                  : { opacity: 0, y: 16, scale: 0.98 }
+              }
+              transition={{ duration: reduceMotion ? 0.12 : 0.28, ease: EASE }}
+              /*
+              A CARD ON EVERY SIZE. It used to be `inset-0` below sm — a
+              full-screen sheet of glass-panel, which is translucent and
+              blurred, so opening the assistant on a phone turned the entire
+              site into a grey wash. That is the thing this panel must not do:
+              it is a question box in the corner, not a takeover.
+
+              So on mobile it is inset from the edges and capped in height,
+              with the page still visible around it. The blur now reads as one
+              card floating over the page, which is what it was always meant to
+              say.
+
+              --chat-lift is the keyboard's height and --chat-vh the visible
+              viewport, both from visualViewport above. Lifting by the keyboard
+              rather than shrinking to fit it is what keeps the composer above
+              the keys on iOS, where the layout viewport does not move at all.
+              Both fall back to 0/100dvh before the first measurement.
+            */
+              style={
+                vp
+                  ? ({
+                      "--chat-lift": `${vp.lift}px`,
+                      "--chat-vh": `${vp.height}px`,
+                    } as React.CSSProperties)
+                  : undefined
+              }
+              className="glass-depth glass-near glass-panel fixed inset-x-3 bottom-[calc(var(--chat-lift,0px)+0.75rem)] z-50 flex h-[min(30rem,calc(var(--chat-vh,100dvh)-6rem))] flex-col !p-0 sm:inset-x-auto sm:right-5 sm:bottom-5 sm:h-[min(32rem,80dvh)] sm:w-[min(24rem,calc(100vw-2.5rem))] lg:right-8 lg:bottom-8"
+            >
+              <div className="flex items-center justify-between px-5 py-4">
+                <p className="text-sm text-primary">Ask about the work</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    pillRef.current?.focus();
+                  }}
+                  aria-label="Close assistant"
+                  className="rounded-full p-1.5 text-secondary transition-colors duration-hover ease-hover hover:text-primary"
+                >
+                  <svg
+                    width={16}
+                    height={16}
+                    viewBox="0 0 16 16"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M4 4l8 8M12 4l-8 8"
+                      stroke="currentColor"
+                      strokeWidth={1.5}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <div
+                ref={logRef}
+                className="flex-1 space-y-4 overflow-y-auto px-5 pb-4"
+              >
+                {turns.length === 0 ? (
+                  <div>
+                    <p className="text-sm text-secondary">
+                      I can answer questions about services, pricing and how
+                      Yusuf works. For anything else, the contact form is
+                      quicker.
+                    </p>
+                    {suggestions.length > 0 ? (
+                      <ul className="mt-4 space-y-2">
+                        {suggestions.map((q) => (
+                          <li key={q}>
+                            <button
+                              type="button"
+                              onClick={() => void send(q)}
+                              className="w-full rounded-lg bg-surface-2/60 px-3 py-2 text-left text-xs text-primary transition-colors duration-hover ease-hover hover:bg-surface-2"
+                            >
+                              {q}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {turns.map((turn, i) => (
+                  <div
+                    key={i}
+                    /* The assistant's replies are the reason the panel exists,
+                     so they get the primary ink. They were text-secondary,
+                     which put the actual answer a step below the question the
+                     visitor had just typed. */
+                    className={
+                      turn.role === "user"
+                        ? "ml-auto w-fit max-w-[85%] rounded-2xl bg-surface-2 px-3.5 py-2 text-sm text-primary"
+                        : "text-sm whitespace-pre-wrap text-primary"
+                    }
+                  >
+                    {turn.content ||
+                      (turn.role === "assistant" && busy ? (
+                        <ThinkingMark className="size-7 text-accent" />
+                      ) : (
+                        ""
+                      ))}
+                  </div>
+                ))}
+
+                {showCta ? (
+                  <Link
+                    href="/pricing"
+                    onClick={() => track("cta_click", { cta: "chat-start" })}
+                    className="inline-block rounded-full bg-[color:var(--accent-solid)] px-4 py-2 text-xs font-medium text-white"
+                  >
+                    Start a project
+                  </Link>
+                ) : null}
+
+                {error ? (
+                  <p
+                    role="alert"
+                    className="text-xs text-[color:var(--text-notice)]"
+                  >
+                    {error}
+                  </p>
+                ) : null}
+              </div>
+
+              {/* Completed replies only. Announcing every token makes a screen
+                reader interrupt itself continuously. */}
+              <p className="sr-only" role="status" aria-live="polite">
+                {!busy && last?.role === "assistant" ? last.content : ""}
+              </p>
+
+              <form
+                noValidate
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void send(draft);
+                }}
+                /* Tighter on a phone, where the keyboard already takes half
                  the screen — and padded for the home indicator so the input
                  does not sit under it. */
-              className="flex items-center gap-2 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-3 sm:pb-3"
-            >
-              <label htmlFor="chat-input" className="sr-only">
-                Your question
-              </label>
-              <input
-                ref={inputRef}
-                id="chat-input"
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder="Ask something…"
-                disabled={busy}
-                /* 16px on mobile: anything smaller makes iOS Safari zoom the
-                   whole page on focus, which is its own bug to then undo. */
-                className="hairline min-w-0 flex-1 rounded-full bg-surface-1 px-3.5 py-2 text-base text-primary placeholder:text-secondary disabled:opacity-60 sm:px-4 sm:py-2.5 sm:text-sm"
-              />
-              <button
-                type="submit"
-                disabled={busy || draft.trim() === ""}
-                className="shrink-0 rounded-full bg-primary px-3.5 py-2 text-xs font-medium text-canvas transition-opacity duration-fast hover:opacity-90 disabled:opacity-40 sm:px-4 sm:py-2.5"
+                className="flex items-center gap-2 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-3 sm:pb-3"
               >
-                {busy ? (
-                  <ThinkingMark className="size-4" />
-                ) : (
-                  "Send"
-                )}
-              </button>
-            </form>
-          </motion.div>
+                <label htmlFor="chat-input" className="sr-only">
+                  Your question
+                </label>
+                <input
+                  ref={inputRef}
+                  id="chat-input"
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  placeholder="Ask something…"
+                  disabled={busy}
+                  /* 16px on mobile: anything smaller makes iOS Safari zoom the
+                   whole page on focus, which is its own bug to then undo. */
+                  className="hairline min-w-0 flex-1 rounded-full bg-surface-1 px-3.5 py-2 text-base text-primary placeholder:text-secondary disabled:opacity-60 sm:px-4 sm:py-2.5 sm:text-sm"
+                />
+                <button
+                  type="submit"
+                  disabled={busy || draft.trim() === ""}
+                  className="shrink-0 rounded-full bg-primary px-3.5 py-2 text-xs font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90 disabled:opacity-40 sm:px-4 sm:py-2.5"
+                >
+                  {busy ? <ThinkingMark className="size-4" /> : "Send"}
+                </button>
+              </form>
+            </motion.div>
+          </>
         ) : null}
       </AnimatePresence>
     </>

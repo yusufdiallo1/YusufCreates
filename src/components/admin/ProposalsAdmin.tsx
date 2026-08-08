@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/lib/convex-api";
 import { Field, TextArea } from "@/components/admin/shared/Fields";
@@ -17,6 +17,15 @@ import {
 } from "@/components/admin/TableToolbar";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import type { Doc, Id } from "@convex/_generated/dataModel";
+
+/** Green means done, warm means it still wants something from you. */
+function statusTone(status: string): string {
+  if (status === "signed") return "badge-live";
+  if (status === "accepted") return "badge-warm";
+  if (status === "lost") return "badge-cold";
+  if (status === "draft") return "badge-cold";
+  return "";
+}
 
 /**
  * Proposals.
@@ -98,7 +107,14 @@ export function ProposalsAdmin() {
       id: "status",
       header: "Status",
       sortValue: (p) => p.status,
-      cell: (p) => <span className="badge">{p.status}</span>,
+      /* "accepted" and "signed" are one step apart and mean very different
+         things — accepted is still waiting on a signature, signed is money
+         owed. They must not look alike at a glance. */
+      cell: (p) => (
+        <span className={`badge ${statusTone(p.status)}`}>
+          {p.status.replace(/_/g, " ")}
+        </span>
+      ),
     },
     {
       id: "sent",
@@ -172,12 +188,15 @@ export function ProposalsAdmin() {
     <div className="space-y-6">
       <PageHeader
         title="Proposals"
-        description="Hosted links, not PDFs. They report when they were opened."
+        /* Says what a proposal is FOR, not just what it is. Every packaged
+           tier has a published price and its own request flow; enterprise is
+           the only engagement scoped on a call and priced in a document. */
+        description="Enterprise engagements — scoped on a call, priced here. Hosted links, not PDFs, and they report when they were opened."
         action={
           <button
             type="button"
             onClick={() => setEditing("new")}
-            className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+            className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
           >
             New proposal
           </button>
@@ -201,6 +220,7 @@ export function ProposalsAdmin() {
               "sent",
               "security_review",
               "procurement",
+              "accepted",
               "signed",
               "lost",
             ].map((v) => ({ value: v, label: v.replace(/_/g, " ") })),
@@ -250,7 +270,7 @@ export function ProposalsAdmin() {
             <button
               type="button"
               onClick={() => setEditing("new")}
-              className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+              className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
             >
               New proposal
             </button>
@@ -312,14 +332,29 @@ function Drawer({
     timeline?: string;
     paymentTerms?: string;
     assumptions?: string;
+    siteType?: string;
+    domain?: string;
   }) => Promise<void>;
 }) {
-  const [leadId, setLeadId] = useState<string>(
-    proposal?.leadId ?? leads[0]?.id ?? "",
+  /*
+   * `null` means "not chosen yet", which is different from "chosen as empty".
+   *
+   * The default used to be applied by a useEffect that wrote the first lead
+   * into state once the list arrived — a setState-in-effect that fired on
+   * every render where the list was present and the selection blank. Deriving
+   * it instead means there is no second render, no cascade, and no window in
+   * which `valid` is false because the list has loaded but state has not
+   * caught up.
+   */
+  const [chosenLead, setChosenLead] = useState<string | null>(
+    proposal?.leadId ?? null,
   );
+  const leadId = chosenLead ?? leads[0]?.id ?? "";
+  const setLeadId = setChosenLead;
 
   /*
-   * Adopt the first lead once the list arrives.
+   * (Historical note, kept because the bug is easy to reintroduce.)
+   * Adopting the first lead once the list arrives
    *
    * useState only reads its initial value on the first render. The drawer
    * mounts as soon as it is opened, which can be before api.admin.leads has
@@ -330,11 +365,20 @@ function Drawer({
    * Only fills a blank selection, so it can never overwrite a choice or the
    * lead an existing proposal already points at.
    */
-  useEffect(() => {
-    if (leadId === "" && leads.length > 0) setLeadId(leads[0].id);
-  }, [leadId, leads]);
   const [amount, setAmount] = useState(String(proposal?.amount ?? ""));
-  const [currency] = useState(proposal?.currency ?? "USD");
+
+  /*
+   * Currency is now selectable.
+   *
+   * It was `const [currency] = useState(...)` — state with no setter, and no
+   * control anywhere in the form. Every proposal was therefore fixed at
+   * whatever it was created with, which for a new one meant USD forever. An
+   * enterprise proposal to a Gulf client priced in dollars is the kind of
+   * detail that costs a deal.
+   */
+  const [currency, setCurrency] = useState<string>(
+    proposal?.currency ?? "USD",
+  );
   const [fields, setFields] = useState({
     understanding: proposal?.understanding ?? "",
     scope: proposal?.scope ?? "",
@@ -344,6 +388,11 @@ function Drawer({
       proposal?.paymentTerms ??
       "40% to start, 60% on completion. Pay by card or Link from your portal.",
     assumptions: proposal?.assumptions ?? "",
+    // Both flow straight into the contract. siteType is its opening line and
+    // domain is its own clause, so they are captured here rather than being
+    // fished back out of the scope text later.
+    siteType: proposal?.siteType ?? "",
+    domain: proposal?.domain ?? "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -398,7 +447,46 @@ function Drawer({
             </select>
           </div>
 
-          <Field label="Amount" type="number" value={amount} onChange={setAmount} />
+          <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+            <Field label="Amount" type="number" value={amount} onChange={setAmount} />
+
+            {/* Was fixed at USD with no control at all — see the note on the
+                currency state. An enterprise proposal to a Gulf client priced
+                in dollars is the kind of detail that costs a deal. */}
+            <div>
+              <label
+                htmlFor="proposal-currency"
+                className="block text-xs text-secondary"
+              >
+                Currency
+              </label>
+              <select
+                id="proposal-currency"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="hairline mt-1.5 rounded-lg bg-surface-1 px-3 py-2 text-sm text-primary"
+              >
+                {["USD", "GBP", "EUR", "SAR", "AED"].map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <Field
+            label="Site type"
+            value={fields.siteType}
+            onChange={(v) => setFields({ ...fields, siteType: v })}
+            help="The contract's opening line. e.g. “A five-page marketing site with a CMS”."
+          />
+          <Field
+            label="Domain"
+            value={fields.domain}
+            onChange={(v) => setFields({ ...fields, domain: v })}
+            help="Leave blank if it is not decided — the contract will say so."
+          />
 
           <TextArea
             label="What I understand"

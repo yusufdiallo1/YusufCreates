@@ -3,7 +3,7 @@ import { preloadQuery } from "convex/nextjs";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 import { BlogIndex } from "./BlogIndex";
 import { TextReveal } from "@/components/motion/TextReveal";
-import { Typewriter } from "@/components/motion/Typewriter";
+import { WordReveal } from "@/components/motion/WordReveal";
 import { SITE } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -27,9 +27,9 @@ export default async function BlogPage() {
 
       {/* Typed rather than faded: it is one line, and watching it written
           reads as someone talking rather than a page loading. */}
-      <Typewriter as="p" speed={22} className="mt-4 max-w-xl text-secondary">
+      <WordReveal as="p" className="mt-4 max-w-xl text-secondary">
         {"Notes on what things actually cost, what breaks, and why bilingual sites are harder than people expect."}
-      </Typewriter>
+      </WordReveal>
 
       {preloaded ? (
         <BlogIndex preloaded={preloaded} />

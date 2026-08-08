@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 import { Reveal } from "@/components/motion/Reveal";
-import { CountUp } from "@/components/motion/CountUp";
 import { SpotlightGroup } from "@/components/motion/Spotlight";
+import { Sweep, sweepHold } from "@/components/motion/Sweep";
+import { RippleNumber } from "@/components/ui/RippleNumber";
 import { BorderBeam } from "@/components/motion/BorderBeam";
 import { Magnetic } from "@/components/motion/Magnetic";
 import { SceneHost } from "@/components/three/SceneHost";
@@ -36,7 +37,6 @@ import {
   convert,
   discountLabel,
   discountedPrice,
-  formatCarePrice,
   growthPriceUsd,
   splitPrice,
   tierPrice,
@@ -65,6 +65,25 @@ import {
  * here that are not cleanly reversible. Every other tier CTA is an ordinary
  * link into the lead form.
  */
+
+/**
+ * Width held open for a price, in characters.
+ *
+ * Six covers "12,000" — the widest figure any of these cards shows, in SAR and
+ * AED where the numbers are largest. Without it the digits animating in and out
+ * of their slots would resize the box on every currency change and shove the
+ * struck-through old price sideways.
+ */
+const PRICE_RESERVE = 6;
+
+/**
+ * Where the second band picks up the sweep's stagger.
+ *
+ * The light crosses the three packaged tiers first and then continues through
+ * the four cards below them, so a currency change reads as ONE thing travelling
+ * down the page rather than two rows reacting independently.
+ */
+const BAND_TWO_OFFSET = 3;
 
 /**
  * The currency's symbol, drawn or typed.
@@ -176,7 +195,7 @@ export function PricingTables() {
                    which is under every published minimum and genuinely fiddly
                    with a thumb — five of them in a row means the neighbour is
                    the likely hit. */
-                className={`min-h-11 rounded-full px-4 py-1.5 text-xs transition-colors duration-fast sm:min-h-0 ${
+                className={`min-h-11 rounded-full px-4 py-1.5 text-xs transition-colors duration-hover ease-hover sm:min-h-0 ${
                   currency === code
                     ? "bg-primary text-canvas"
                     : "text-secondary hover:text-primary"
@@ -251,7 +270,7 @@ export function PricingTables() {
 
               <Link
                 href="/express"
-                className="mt-4 inline-block rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-fast hover:opacity-90"
+                className="mt-4 inline-block rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
               >
                 Start now
               </Link>
@@ -326,8 +345,17 @@ export function PricingTables() {
                       : "border-[color:var(--border-hairline)] bg-surface-1"
                   }`}
                 >
-                  {/* One of exactly two beams on the site. See BorderBeam. */}
-                  {tier.popular ? <BorderBeam duration={7} /> : null}
+                  {/* The currency sweep. Staggered by position, so a change
+                      travels along the row rather than happening everywhere. */}
+                  <Sweep trigger={currency} index={index} />
+
+                  {/* One of exactly two beams on the site. See BorderBeam.
+
+                      burst: on arrival the beam runs fast for two circuits and
+                      then eases back to its resting speed, so it catches the
+                      eye once and then stops competing with the copy it is
+                      supposed to be pointing at. */}
+                  {tier.popular ? <BorderBeam duration={5} burst /> : null}
 
                   {tier.popular ? (
                     <span className="mb-4 w-fit rounded-full bg-accent px-3 py-1 text-xs font-medium text-primary">
@@ -352,8 +380,14 @@ export function PricingTables() {
                       <span className="text-base text-secondary">From </span>
                     ) : null}
                     <Sym code={currency} />
-                    {/* Animates rather than snapping when the figure changes. */}
-                    <CountUp value={discounted ?? amount} duration={0.5} />
+                    {/* Ripples across the digit positions rather than swapping
+                        as a block, and adopts its new figure as the currency
+                        sweep reaches this card. */}
+                    <RippleNumber
+                      value={discounted ?? amount}
+                      holdMs={sweepHold(index)}
+                      reserve={PRICE_RESERVE}
+                    />
 
                     {discounted !== null ? (
                       <span className="ml-2.5 align-middle text-base text-[color:var(--danger)] line-through decoration-[color:var(--danger)]">
@@ -437,7 +471,7 @@ export function PricingTables() {
                   >
                     <Link
                       href={`/start?tier=${tier.id}${isGrowth ? `&pages=${pages}` : ""}`}
-                      className={`${tier.popular ? "w-full" : "mt-8"} rounded-full px-5 py-2.5 text-center text-sm font-medium transition-opacity duration-fast hover:opacity-90 ${
+                      className={`${tier.popular ? "w-full" : "mt-8"} rounded-full px-5 py-2.5 text-center text-sm font-medium transition-opacity duration-hover ease-hover hover:opacity-90 ${
                         tier.popular
                           ? "bg-primary text-canvas"
                           : "border border-[color:var(--border-hairline)] text-primary"
@@ -472,6 +506,8 @@ export function PricingTables() {
               data-spotlight=""
               className="enterprise-band relative flex h-full flex-col rounded-xl p-6"
             >
+              <Sweep trigger={currency} index={BAND_TWO_OFFSET + 0} />
+
               <h2 className="text-xl">{NATIVE_TIER.name}</h2>
               <p className="mt-1 text-sm text-secondary">
                 {NATIVE_TIER.blurb}
@@ -486,7 +522,11 @@ export function PricingTables() {
               <p className="mt-6 text-3xl tabular-nums">
                 <span className="text-base text-secondary">From </span>
                 <Sym code={currency} />
-                <CountUp value={nativeShown} duration={0.5} />
+                <RippleNumber
+                  value={nativeShown}
+                  holdMs={sweepHold(BAND_TWO_OFFSET + 0)}
+                  reserve={PRICE_RESERVE}
+                />
                 {nativeCut !== null ? (
                   <span className="ml-2.5 align-middle text-base text-[color:var(--danger)] line-through decoration-[color:var(--danger)]">
                     <Sym code={currency} />
@@ -556,6 +596,8 @@ export function PricingTables() {
                   tier's 7s so the two never peak together. */}
               <BorderBeam duration={9} delay={2} />
 
+              <Sweep trigger={currency} index={BAND_TWO_OFFSET + 1} />
+
               <h2 className="text-xl">Enterprise</h2>
               <p className="mt-1 text-sm text-secondary">
                 Scoped on a call, priced in the proposal.
@@ -564,9 +606,10 @@ export function PricingTables() {
               <p className="mt-6 text-3xl tabular-nums">
                 <span className="text-base text-secondary">From </span>
                 <Sym code={currency} />
-                <CountUp
+                <RippleNumber
                   value={tierPrice("enterprise", currency, rates)}
-                  duration={0.5}
+                  holdMs={sweepHold(BAND_TWO_OFFSET + 1)}
+                  reserve={PRICE_RESERVE}
                 />
               </p>
 
@@ -585,16 +628,24 @@ export function PricingTables() {
               </ul>
 
               <div className="mt-8">
-                {/* Enterprise needs company, role, procurement and NDA details,
-                    so this routes into the enterprise branch of the lead form
-                    rather than submitting anything inline. */}
+                {/*
+                  Goes to /enterprise, not straight into the lead form.
+
+                  An enterprise buyer is rarely the person who can commit on
+                  the spot — they have a security review to clear and a
+                  procurement process to satisfy, and none of that fits in a
+                  pricing card. The dedicated page answers those questions and
+                  carries the same "Request a proposal" action at the end, so
+                  the path is one click longer for someone already decided and
+                  vastly shorter for everyone else.
+                */}
                 <SlideToConfirm
                   purpose="submit-lead"
-                  label="Slide to request a proposal"
-                  completedLabel="Request received"
-                  ariaLabel="Slide to request an enterprise proposal"
+                  label="Slide to see how it works"
+                  completedLabel="Opening"
+                  ariaLabel="Slide to read about enterprise engagements"
                   onConfirm={async () => {
-                    router.push("/start?tier=enterprise");
+                    router.push("/enterprise");
                   }}
                 />
               </div>
@@ -610,6 +661,8 @@ export function PricingTables() {
               data-spotlight=""
               className="relative flex h-full flex-col rounded-xl border border-[color:var(--border-hairline)] bg-surface-1 p-6"
             >
+              <Sweep trigger={currency} index={BAND_TWO_OFFSET + 2} />
+
               <h2 className="text-xl">Revive</h2>
               <p className="mt-1 text-sm text-secondary">
                 You already have a site. Make it work.
@@ -618,9 +671,10 @@ export function PricingTables() {
               <p className="mt-6 text-3xl tabular-nums">
                 <span className="text-base text-secondary">From </span>
                 <Sym code={currency} />
-                <CountUp
+                <RippleNumber
                   value={convert(REVIVE_PRICE_USD, currency, rates)}
-                  duration={0.5}
+                  holdMs={sweepHold(BAND_TWO_OFFSET + 2)}
+                  reserve={PRICE_RESERVE}
                 />
               </p>
 
@@ -644,7 +698,7 @@ export function PricingTables() {
 
               <Link
                 href="/audit"
-                className="mt-8 rounded-full border border-[color:var(--border-hairline)] px-5 py-2.5 text-center text-sm font-medium text-primary transition-colors duration-fast hover:bg-surface-2"
+                className="mt-8 rounded-full border border-[color:var(--border-hairline)] px-5 py-2.5 text-center text-sm font-medium text-primary transition-colors duration-hover ease-hover hover:bg-surface-2"
               >
                 Get a free audit first
               </Link>
@@ -656,6 +710,8 @@ export function PricingTables() {
               data-spotlight=""
               className="relative flex h-full flex-col rounded-xl border border-[color:var(--border-hairline)] bg-surface-1 p-6"
             >
+              <Sweep trigger={currency} index={BAND_TWO_OFFSET + 3} />
+
               <h2 className="text-xl">Care Plan</h2>
               <p className="mt-1 text-sm text-secondary">
                 Aftercare, not a build tier. Add it to any project.
@@ -674,7 +730,7 @@ export function PricingTables() {
                     type="button"
                     onClick={() => setPeriod(option)}
                     aria-pressed={period === option}
-                    className={`min-h-11 rounded-full px-4 py-1 text-xs transition-colors duration-fast sm:min-h-0 sm:px-3 ${
+                    className={`min-h-11 rounded-full px-4 py-1 text-xs transition-colors duration-hover ease-hover sm:min-h-0 sm:px-3 ${
                       period === option
                         ? "bg-primary text-canvas"
                         : "text-secondary hover:text-primary"
@@ -687,7 +743,11 @@ export function PricingTables() {
 
               <p className="mt-5 text-3xl tabular-nums">
                 <Sym code={currency} />
-                {(careCut ?? careFull).toLocaleString("en-US")}
+                <RippleNumber
+                  value={careCut ?? careFull}
+                  holdMs={sweepHold(BAND_TWO_OFFSET + 3)}
+                  reserve={PRICE_RESERVE}
+                />
                 {careCut !== null ? (
                   <span className="ml-2.5 align-middle text-base text-[color:var(--danger)] line-through decoration-[color:var(--danger)]">
                     <Sym code={currency} />

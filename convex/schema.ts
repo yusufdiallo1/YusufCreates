@@ -19,13 +19,34 @@ export const leadStatus = v.union(
   v.literal("lost"),
 );
 
+/**
+ * `accepted` and `signed` are different events and always were.
+ *
+ * Accepting a hosted proposal used to write "signed", which was a lie the
+ * proposal page itself contradicted two lines above the button: "Accepting is
+ * not a signature — I'll send the contract next." Now that a contract really
+ * is sent, the two states have to be told apart — "accepted" means the client
+ * said yes, "signed" means a contract carrying their signature exists.
+ *
+ * The old literal stays in the union so pre-migration rows keep validating.
+ */
 export const proposalStatus = v.union(
   v.literal("draft"),
   v.literal("sent"),
   v.literal("security_review"),
   v.literal("procurement"),
+  v.literal("accepted"),
   v.literal("signed"),
   v.literal("lost"),
+);
+
+export const contractStatus = v.union(
+  v.literal("draft"),
+  v.literal("sent"),
+  v.literal("viewed"),
+  v.literal("signed"),
+  v.literal("declined"),
+  v.literal("expired"),
 );
 
 export const publishStatus = v.union(
@@ -133,6 +154,38 @@ export default defineSchema({
     notes: v.optional(v.string()),
     score: v.optional(v.number()),
     status: leadStatus,
+
+    /* ---------------------------------------------------------------------
+       The decision.
+
+       Separate from `status` on purpose. `status` is a pipeline position and
+       moves in both directions — a lead can go back from "proposal" to
+       "contacted" when a conversation stalls. A decision is a single, dated
+       act that either happened or did not, and conflating the two means you
+       cannot tell "won, eventually" from "I accepted this on Tuesday and
+       promised them a setup window".
+       --------------------------------------------------------------------- */
+
+    decision: v.optional(
+      v.union(v.literal("approved"), v.literal("declined")),
+    ),
+    decidedAt: v.optional(v.number()),
+
+    /**
+     * Instant starts only: the deadline for getting them set up.
+     *
+     * Twelve hours from acceptance. Distinct from the Express tier's WINDOW_MS
+     * (two hours), which is a DELIVERY promise to the client — this is an
+     * internal commitment about onboarding, and the two are different clocks
+     * that happened to look alike enough to be confused for one.
+     */
+    setupDueAt: v.optional(v.number()),
+
+    /** Slot starts only: the month booked, as "2026-09". */
+    scheduledMonth: v.optional(v.string()),
+
+    /** Why it was declined. Shown back to me, never sent automatically. */
+    declineReason: v.optional(v.string()),
     source: v.optional(v.string()),
     currency: v.optional(v.string()),
     vatNumber: v.optional(v.string()),
@@ -654,6 +707,11 @@ export default defineSchema({
     timeline: v.optional(v.string()),
     paymentTerms: v.optional(v.string()),
     assumptions: v.optional(v.string()),
+    /* Carried into the contract. Per-project rather than a global default,
+       because "a five-page marketing site" and "the domain" are the two
+       things a client checks first and they differ every time. */
+    siteType: v.optional(v.string()),
+    domain: v.optional(v.string()),
     /** Set on first open, never reset — so silence can be read correctly. */
     viewedAt: v.optional(v.number()),
     acceptedAt: v.optional(v.number()),
@@ -780,6 +838,16 @@ export default defineSchema({
   invoices: defineTable({
     leadId: v.optional(v.id("leads")),
     projectId: v.optional(v.id("projects")),
+    /*
+     * What this invoice was raised for.
+     *
+     * Optional because invoices predate contracts and admin-raised ones still
+     * have neither. But when a signature is what caused the invoice to exist,
+     * the trail has to join up — "why does this client owe me money" should be
+     * answerable from the row, not from memory.
+     */
+    proposalId: v.optional(v.id("proposals")),
+    contractId: v.optional(v.id("contracts")),
     clientName: v.string(),
     clientEmail: v.string(),
     description: v.string(),
@@ -879,7 +947,15 @@ export default defineSchema({
    * limiter cannot offer.
    */
   chatLimits: defineTable({
-    kind: v.union(v.literal("session"), v.literal("ip")),
+    kind: v.union(
+      v.literal("session"),
+      v.literal("ip"),
+      // Contract signing and share-code issuance reuse this limiter rather
+      // than growing a second one — the transaction argument above applies
+      // identically, and two limiters would drift.
+      v.literal("share"),
+      v.literal("sign"),
+    ),
     /** Session id, or a salted hash of the IP — never a raw address. */
     key: v.string(),
     windowStart: v.number(),
@@ -953,6 +1029,22 @@ export default defineSchema({
     startedAt: v.optional(v.number()),
     targetLaunch: v.optional(v.number()),
     createdAt: v.number(),
+
+    /*
+     * Typing presence, as an EXPIRY rather than a boolean.
+     *
+     * Two timestamps on the project instead of a presence table. A boolean
+     * needs someone to reliably clear it, and nothing does that when a laptop
+     * lid closes mid-sentence — the indicator would say "typing…" forever. An
+     * expiry is self-healing: the writer keeps pushing it a few seconds into
+     * the future while keys are being pressed, and it lapses on its own the
+     * moment they stop, crash or disconnect.
+     *
+     * On the project rather than in their own table because Convex pushes the
+     * whole document to subscribers anyway, so this costs no extra query.
+     */
+    clientTypingUntil: v.optional(v.number()),
+    adminTypingUntil: v.optional(v.number()),
   }).index("by_client", ["clientId"]),
 
   clients: defineTable({
@@ -1009,9 +1101,112 @@ export default defineSchema({
     authorType: v.union(v.literal("client"), v.literal("admin")),
     authorName: v.string(),
     body: v.string(),
+    /**
+     * Reached the recipient's device.
+     *
+     * Distinct from readAt, and the distinction is the whole point of showing
+     * either. "Delivered" means their browser has the message — set when the
+     * recipient's live query first returns it. "Read" means they were actually
+     * looking at the thread. Without both, a silent recipient is ambiguous
+     * between "hasn't seen it" and "saw it and didn't reply", which is exactly
+     * the thing a client waiting on an answer wants to know.
+     */
+    deliveredAt: v.optional(v.number()),
     readAt: v.optional(v.number()),
     createdAt: v.number(),
   }).index("by_project", ["projectId", "createdAt"]),
+
+  /* -------------------------------------------------------------------------
+     Calls: voice, video, whiteboard and notes.
+
+     Agora carries the MEDIA. Everything else — who may join, what was drawn,
+     what was said — lives here, because it is project data that has to outlive
+     the call. A whiteboard that vanishes when the last person hangs up is a
+     whiteboard nobody will use for anything that matters.
+     ------------------------------------------------------------------------- */
+
+  calls: defineTable({
+    projectId: v.id("clientProjects"),
+    /**
+     * The Agora channel name. Derived from the call id, never from the project
+     * name — a channel name is effectively a shared secret in testing mode,
+     * and one guessable from public information is not a boundary at all.
+     */
+    channel: v.string(),
+    title: v.optional(v.string()),
+    scheduledAt: v.optional(v.number()),
+    startedAt: v.optional(v.number()),
+    endedAt: v.optional(v.number()),
+    createdBy: v.union(v.literal("client"), v.literal("admin")),
+    createdAt: v.number(),
+    /**
+     * Opaque token that lets a GUEST join without a portal account.
+     *
+     * Separate from the channel name so it can be revoked by clearing this
+     * field while the call carries on — otherwise "uninvite someone" would
+     * mean ending the call and starting a new one.
+     */
+    guestKey: v.optional(v.string()),
+    /** Claude's summary, written once the call ends. */
+    summary: v.optional(v.string()),
+    summaryAt: v.optional(v.number()),
+  })
+    .index("by_project", ["projectId", "createdAt"])
+    .index("by_channel", ["channel"])
+    .index("by_guest_key", ["guestKey"]),
+
+  /**
+   * Whiteboard strokes, one row per stroke.
+   *
+   * Convex rather than a second realtime vendor: the reactive query that
+   * already powers the portal delivers strokes to every participant with no
+   * extra SDK, no extra token and no extra failure mode — and the board is
+   * still there tomorrow.
+   *
+   * A stroke is the unit, not a point: one row per pointer-down-to-up. Storing
+   * points individually would be thousands of writes for a single sentence of
+   * handwriting, and undo would have nothing coherent to remove.
+   */
+  whiteboardStrokes: defineTable({
+    callId: v.id("calls"),
+    /** Flat [x0,y0,x1,y1,…] in 0–1 space, so it scales to any canvas size. */
+    points: v.array(v.number()),
+    colour: v.string(),
+    width: v.number(),
+    /** Who drew it, for undo-your-own and for the cursor label. */
+    authorId: v.string(),
+    authorName: v.string(),
+    createdAt: v.number(),
+  }).index("by_call", ["callId", "createdAt"]),
+
+  /**
+   * Live transcript lines, which the AI note taker summarises.
+   *
+   * Kept as discrete lines with a speaker and a timestamp rather than one
+   * growing blob: a summary is far better when it can see who said what, and
+   * an append-only line is a single small write instead of rewriting the whole
+   * transcript on every utterance.
+   */
+  callTranscript: defineTable({
+    callId: v.id("calls"),
+    speaker: v.string(),
+    text: v.string(),
+    at: v.number(),
+  }).index("by_call", ["callId", "at"]),
+
+  /**
+   * The daily AI overview.
+   *
+   * One row per morning. No index: it is only ever read newest-first and
+   * trimmed to thirty rows on write, so the table's default order is already
+   * the only access pattern it has.
+   */
+  digests: defineTable({
+    summary: v.string(),
+    /** The figures the summary was written from, for tracing a wrong one. */
+    basis: v.optional(v.string()),
+    createdAt: v.number(),
+  }),
 
   /**
    * Promotions.
@@ -1376,4 +1571,217 @@ export default defineSchema({
     auth: v.string(),
     createdAt: v.number(),
   }).index("by_endpoint", ["endpoint"]),
+  /**
+   * Contracts. The step between "yes" and "paid".
+   *
+   * The signature mechanism is ours rather than a provider's, which puts the
+   * whole burden of enforceability on this table. Under the federal ESIGN Act
+   * and state UETA an electronic signature holds when four things are
+   * captured: intent to sign, consent to transact electronically, attribution
+   * to the signer, and a retained reproducible record. Every field below
+   * exists to satisfy one of those — none of it is decoration.
+   *
+   * What this cannot do is have a THIRD PARTY attest the record was not
+   * altered by me. The hash chain in contractEvents proves internal
+   * consistency to anyone who recomputes it; it cannot prove I did not
+   * recompute the whole chain. That is the one thing a provider buys, and the
+   * `provider` field is the seam for adding one later.
+   */
+  contracts: defineTable({
+    proposalId: v.id("proposals"),
+    leadId: v.id("leads"),
+    /**
+     * Resolved at signature from clients.by_email, and back-filled when the
+     * portal account is created later. A contract is usually signed before
+     * the client has an account, so this cannot be required.
+     */
+    clientId: v.optional(v.id("clients")),
+    templateId: v.id("contractTemplates"),
+    templateVersion: v.number(),
+
+    /**
+     * THE SNAPSHOT, and the reason the template is versioned rather than
+     * edited. This is the exact text the client was shown and agreed to.
+     * Never re-rendered, never re-merged, never patched after signing —
+     * editing the template a month later must not silently rewrite what
+     * somebody already put their name to.
+     */
+    bodySnapshot: v.string(),
+    /** The merged values, so the snapshot can be explained without the template. */
+    variables: v.any(),
+
+    provider: v.union(
+      v.literal("internal"),
+      v.literal("documenso"),
+      v.literal("dropbox_sign"),
+    ),
+    /* Unused while provider is "internal". The seam, kept honest by being typed. */
+    externalId: v.optional(v.string()),
+    signingUrl: v.optional(v.string()),
+
+    token: v.string(),
+    status: contractStatus,
+    clientName: v.string(),
+    clientEmail: v.string(),
+    amount: v.number(),
+    currency: v.string(),
+
+    sentAt: v.optional(v.number()),
+    /** Set on first open, never reset — same reasoning as proposals.viewedAt. */
+    viewedAt: v.optional(v.number()),
+    signedAt: v.optional(v.number()),
+    declinedAt: v.optional(v.number()),
+    expiresAt: v.number(),
+    expiredAt: v.optional(v.number()),
+
+    /* --- Signature evidence. --- */
+    signerTypedName: v.optional(v.string()),
+    signerSignatureFileId: v.optional(v.id("_storage")),
+    /**
+     * The RAW address, deliberately, breaking this file's own convention.
+     *
+     * chatLimits stores a salted hash because there it is a rate-limit key and
+     * the address itself is nobody's business. Here it is evidence, and a
+     * hashed IP is worthless as evidence — you cannot show a hash to anyone
+     * and have it mean anything. Retention is indefinite, so this is PII kept
+     * forever; the justification is that it is necessary to complete and
+     * defend the transaction it belongs to.
+     */
+    signerIp: v.optional(v.string()),
+    signerUserAgent: v.optional(v.string()),
+    consentAcceptedAt: v.optional(v.number()),
+    /** The exact wording consented to, not a boolean. A boolean proves nothing. */
+    consentText: v.optional(v.string()),
+    /** SHA-256 of bodySnapshot — the fingerprint of the exact bytes signed. */
+    bodyHash: v.optional(v.string()),
+    /** Final chain hash at signature. Printed on the certificate page. */
+    auditRoot: v.optional(v.string()),
+
+    signedPdfFileId: v.optional(v.id("_storage")),
+    /*
+     * Retry stamps. Signing commits before Stripe or the PDF is attempted, so
+     * either can fail without losing the signature — these say what still owes
+     * doing, and a sweep picks them up.
+     */
+    pdfPendingAt: v.optional(v.number()),
+    depositPendingAt: v.optional(v.number()),
+    depositInvoiceId: v.optional(v.id("invoices")),
+    /** Stamped with the alert itself, so 48h chasing fires exactly once. */
+    staleAlertAt: v.optional(v.number()),
+    expiredEmailAt: v.optional(v.number()),
+    signedEmailAt: v.optional(v.number()),
+    voidedAt: v.optional(v.number()),
+    voidReason: v.optional(v.string()),
+  })
+    .index("by_token", ["token"])
+    .index("by_status", ["status"])
+    .index("by_proposal", ["proposalId"])
+    .index("by_client", ["clientId"]),
+
+  /**
+   * Contract templates, immutable and versioned.
+   *
+   * Saving an edit inserts the next version rather than mutating the row. A
+   * signed contract keeps its own snapshot regardless, so versioning is not
+   * what protects it — but being able to say "this contract came from v3, and
+   * here is v3" is the difference between an audit trail and an assertion.
+   */
+  contractTemplates: defineTable({
+    name: v.string(),
+    body: v.string(),
+    /** Declared merge keys, validated against the body on save. */
+    variables: v.array(v.string()),
+    version: v.number(),
+    active: v.boolean(),
+    createdAt: v.number(),
+    createdBy: v.optional(v.string()),
+    /** What changed. Required on save — a version history without it is a list of dates. */
+    note: v.optional(v.string()),
+  }).index("by_active", ["active"]),
+
+  /**
+   * The audit chain. Append-only: nothing patches or deletes a row here.
+   *
+   * Each row's hash covers the previous row's hash, so removing or editing any
+   * event breaks every hash after it. contracts.verifyChain recomputes the
+   * whole thing and says so.
+   */
+  contractEvents: defineTable({
+    contractId: v.id("contracts"),
+    seq: v.number(),
+    type: v.union(
+      v.literal("created"),
+      v.literal("sent"),
+      v.literal("viewed"),
+      v.literal("consented"),
+      v.literal("signed"),
+      v.literal("declined"),
+      v.literal("expired"),
+      v.literal("voided"),
+      v.literal("pdf_stored"),
+      v.literal("share_created"),
+      v.literal("share_code_issued"),
+      v.literal("share_code_failed"),
+      v.literal("share_opened"),
+    ),
+    at: v.number(),
+    ip: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    meta: v.optional(v.any()),
+    prevHash: v.string(),
+    hash: v.string(),
+  }).index("by_contract", ["contractId", "seq"]),
+
+  /**
+   * A link that grants nothing on its own.
+   *
+   * Reaching the content behind it takes two codes emailed in sequence, so a
+   * forwarded or leaked URL is inert without access to the recipient's inbox.
+   */
+  contractShares: defineTable({
+    contractId: v.id("contracts"),
+    token: v.string(),
+    recipientEmail: v.string(),
+    scope: v.union(
+      v.literal("contract"),
+      v.literal("pdf"),
+      v.literal("audit"),
+    ),
+    createdBy: v.optional(v.string()),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    revokedAt: v.optional(v.number()),
+    lastAccessAt: v.optional(v.number()),
+    accessCount: v.number(),
+  })
+    .index("by_token", ["token"])
+    .index("by_contract", ["contractId"]),
+
+  /**
+   * The two codes. Only ever stored hashed.
+   *
+   * Stage one is 10 digits and dies after 60 seconds; stage two is 14 digits.
+   * Five wrong attempts burns the challenge rather than letting someone grind
+   * a 10-digit space.
+   */
+  contractShareChallenges: defineTable({
+    shareId: v.id("contractShares"),
+    stage: v.union(v.literal("one"), v.literal("two")),
+    codeHash: v.string(),
+    salt: v.string(),
+    issuedAt: v.number(),
+    expiresAt: v.number(),
+    attempts: v.number(),
+    consumedAt: v.optional(v.number()),
+  }).index("by_share_stage", ["shareId", "stage"]),
+
+  /** Granted only after both codes. The cookie holds the token; this holds its hash. */
+  contractShareSessions: defineTable({
+    shareId: v.id("contractShares"),
+    sessionTokenHash: v.string(),
+    issuedAt: v.number(),
+    expiresAt: v.number(),
+    ip: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+  }).index("by_token", ["sessionTokenHash"]),
 });

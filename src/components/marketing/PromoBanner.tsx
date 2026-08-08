@@ -159,7 +159,7 @@ export function PromoBanner() {
                 // Private browsing refuses writes; it just reappears.
               }
             }}
-            className="-mt-1 -mr-1 flex size-8 shrink-0 items-center justify-center rounded-full text-secondary transition-colors duration-fast hover:bg-surface-2 hover:text-primary"
+            className="-mt-1 -mr-1 flex size-8 shrink-0 items-center justify-center rounded-full text-secondary transition-colors duration-hover ease-hover hover:bg-surface-2 hover:text-primary"
           >
             <svg width={12} height={12} viewBox="0 0 12 12" aria-hidden="true">
               <path
