@@ -144,9 +144,22 @@ export function Skills() {
         {SKILL_GROUPS.map((group, groupIndex) => (
           <div key={group.heading} className="mb-4 break-inside-avoid">
             <Reveal delay={Math.min(groupIndex * 0.06, 0.3)}>
+              {/*
+                The panel answers, rather than only changing its edge colour.
+
+                A border-colour swap on a 300px card is close to invisible —
+                it was the only feedback here, so the panels read as inert next
+                to the work cards, which lift. This adds the surface step and a
+                1px rise on the same --dur-hover everything else uses.
+
+                One pixel, not four. These are a masonry column: a real lift
+                would break the optical alignment of three panels sitting side
+                by side, and the point is to acknowledge the pointer, not to
+                pick the card up.
+              */}
               <div
                 data-spotlight=""
-                className="hairline rounded-2xl bg-surface-1/50 p-5 transition-colors duration-hover ease-hover hover:border-[color:var(--border-glass)]"
+                className="hairline rounded-2xl bg-surface-1/50 p-5 transition-[background-color,border-color,transform] duration-hover ease-hover hover:-translate-y-px hover:border-[color:var(--border-glass)] hover:bg-surface-1 motion-reduce:hover:translate-y-0"
               >
                 <div className="hairline-b flex items-baseline justify-between gap-3 pb-3">
                   <h3 className="font-mono text-xs tracking-[0.08em] text-secondary uppercase">

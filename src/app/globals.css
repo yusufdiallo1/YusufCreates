@@ -580,6 +580,35 @@
   }
 
   html {
+    /*
+     * Smooth for JUMPS ONLY. The wheel is untouched.
+     *
+     * This is not smooth-scrolling in the sense the note in
+     * motion/SmoothScroll.tsx warns about. That was Lenis taking the wheel into
+     * a JS rAF loop and leaving the page unscrollable when the ticker was never
+     * claimed. `scroll-behavior` is the browser's own, applies only to anchor
+     * navigation and scrollIntoView, and cannot strand a scroll: momentum,
+     * rubber-banding and 120Hz stay exactly as the platform ships them.
+     *
+     * The reduced-motion block near the bottom of this file already forces this
+     * back to `auto`, so nobody gets an unrequested journey down the page.
+     */
+    scroll-behavior: smooth;
+
+    /*
+     * Anchors land BELOW the nav, not underneath it.
+     *
+     * The nav is fixed at top-0 with pt-4 and roughly a 56px pill, so without
+     * this the skip link — the one control a keyboard user reaches first —
+     * scrolled #main to y=0 and put the heading behind the glass. Same for the
+     * two scrollIntoView call sites.
+     *
+     * 6rem clears the pill at its resting height with a little air; it does not
+     * need to track the condensed height, because by the time the nav has
+     * condensed the page has already scrolled.
+     */
+    scroll-padding-top: 6rem;
+
     background-color: var(--bg-canvas);
     color: var(--text-primary);
     font-family: var(--font-sans);
