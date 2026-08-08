@@ -99,10 +99,10 @@ export const enqueue = internalMutation({
 /**
  * Pokes the Next.js dispatcher.
  *
- * Fire-and-forget by design. Every failure path here is silent because the
- * queue is durable and retried — logging a stack trace every five minutes
- * during a Vercel deploy would train me to ignore this log, and the one time
- * it matters I would scroll past it.
+ * Fire-and-forget: a failure here loses nothing, because the row stays queued
+ * and the daily cron drain is the safety net. But it is NOT silent. What it
+ * costs is immediacy — an outage alert degrades from "seconds" to "tomorrow
+ * morning" — and a degradation nobody can see is one nobody fixes.
  */
 export const dispatchNow = internalAction({
   args: {},
@@ -111,10 +111,11 @@ export const dispatchNow = internalAction({
     const secret = process.env.EMAIL_LOG_SECRET;
 
     /*
-     * Said out loud exactly once per call, because the failure it causes is
-     * silence — notifications queue up forever and nothing anywhere explains
-     * why. These are Convex environment variables, set with `npx convex env
-     * set`, and they are NOT the same store as Vercel's.
+     * Said out loud, because the failure it causes is silence — notifications
+     * queue up and nothing anywhere explains why. These are CONVEX
+     * environment variables, set with `npx convex env set`, and they are NOT
+     * the same store as Vercel's. Each deployment has its own, so dev can be
+     * stale while prod is correct.
      */
     if (!base || !secret) {
       console.warn(
@@ -124,15 +125,47 @@ export const dispatchNow = internalAction({
     }
 
     try {
-      await fetch(`${base}/api/notify/dispatch`, {
+      const res = await fetch(`${base}/api/notify/dispatch`, {
         method: "POST",
         headers: { authorization: `Bearer ${secret}` },
-        // Short. The dispatcher does the work; this only needs to start it,
-        // and holding a Convex action open on a slow mailer helps nobody.
+        /*
+         * Redirects are NOT followed, deliberately.
+         *
+         * If SITE_URL is the apex and the site canonicalises to www (or the
+         * reverse), following the redirect strips the Authorization header —
+         * fetch drops it on any CROSS-ORIGIN hop, and apex→www is
+         * cross-origin. The dispatcher would then answer 401 with a correct
+         * secret, which is a genuinely baffling thing to debug.
+         *
+         * Refusing to follow turns that into a 308 logged below, naming the
+         * exact variable to change.
+         */
+        redirect: "manual",
+        // Short. The dispatcher does the work; this only starts it, and
+        // holding a Convex action open on a slow mailer helps nobody.
         signal: AbortSignal.timeout(20_000),
       });
-    } catch {
-      // The row stays queued. The cron drain is the safety net.
+
+      if (res.status >= 300 && res.status < 400) {
+        console.warn(
+          `[notify] SITE_URL (${base}) redirects — it must be the canonical origin, or the auth header is dropped on the hop. Notifications will only send on the daily cron drain until it is fixed.`,
+        );
+        return;
+      }
+
+      if (!res.ok) {
+        console.warn(
+          `[notify] the dispatcher answered ${res.status}. Notifications stay queued for the daily cron drain.`,
+        );
+      }
+    } catch (err) {
+      // Unreachable, DNS, or the timeout above. Still worth a line: the queue
+      // is safe, but the immediacy this whole path exists for is gone.
+      console.warn(
+        `[notify] could not reach the dispatcher at ${base}: ${
+          err instanceof Error ? err.message : "unknown error"
+        }`,
+      );
     }
   },
 });
