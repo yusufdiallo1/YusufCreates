@@ -47,6 +47,10 @@ const PRIMARY = [
      now the whole arc — undecided requests, active clients, full archive — and
      ${ADMIN_PATH}/leads redirects here. */
   { href: `${ADMIN_PATH}/clients`, label: "Clients" },
+  /* Primary, not Tools: mail to hello@ is a daily read, and because EMAIL_FROM
+     is that address, every reply to a proposal, contract or invoice arrives
+     here too. Anything buried under a heading would go unchecked. */
+  { href: `${ADMIN_PATH}/inbox`, label: "Inbox" },
 ];
 
 const GROUPS: { heading: string; items: { href: string; label: string }[] }[] = [

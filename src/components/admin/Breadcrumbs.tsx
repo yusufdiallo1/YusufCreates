@@ -24,6 +24,7 @@ const LABELS: Record<string, string> = {
    */
   [ADMIN_PATH.replace(/^\//, "")]: "YusufCreates",
   leads: "Leads",
+  inbox: "Inbox",
   analytics: "Analytics",
   projects: "Projects",
   testimonials: "Testimonials",

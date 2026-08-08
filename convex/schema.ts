@@ -835,6 +835,64 @@ export default defineSchema({
     .index("by_to", ["to"])
     .index("by_template", ["template"]),
 
+  /**
+   * Mail that arrived, as opposed to emailLog above, which is mail that left.
+   *
+   * Not a column on emailLog, and the reason is that they share almost nothing:
+   * a send is something I decided to do and can retry, an arrival is something
+   * a stranger did to me and cannot be replayed. The only field they have in
+   * common is a subject line.
+   *
+   * This table is why it matters: EMAIL_FROM is hello@yusufcreates.com, so
+   * every reply to a proposal, a contract or an invoice comes back here. Before
+   * this existed those replies reached Resend and stopped — nothing read them.
+   *
+   * ONLY THE PLAIN-TEXT PART IS STORED. Inbound mail is the most hostile input
+   * surface in the application, strictly worse than siteFeedback, whose comment
+   * already warns that someone will eventually put a script tag in an open
+   * input. Keeping the HTML part would be an invitation to render it one day,
+   * so it is discarded at the door rather than guarded downstream.
+   *
+   * Attachments are metadata only. The bytes stay at Resend and are fetched
+   * through a signed URL when I actually click one — pulling arbitrary files
+   * from strangers into storage is a cost and a liability for something most
+   * of which will never be opened.
+   */
+  inboundEmails: defineTable({
+    /** Resend's id for the message. The dedupe key: webhooks get retried. */
+    resendEmailId: v.string(),
+    from: v.string(),
+    to: v.array(v.string()),
+    cc: v.optional(v.array(v.string())),
+    /**
+     * Which of my addresses it was delivered FOR.
+     *
+     * Worth keeping separate from `to`: the MX record sits on the root domain,
+     * so this catches every address at yusufcreates.com, not just hello@. When
+     * those diverge — a bcc, a mailing list — `to` is what the sender typed and
+     * this is where it actually landed.
+     */
+    receivedFor: v.optional(v.array(v.string())),
+    subject: v.string(),
+    /** Plain text. Never HTML — see the note above; that is the whole rule. */
+    text: v.string(),
+    /** The RFC Message-ID, so a reply can thread if I ever answer from here. */
+    messageId: v.optional(v.string()),
+    attachments: v.array(
+      v.object({
+        /** Resend's attachment id, needed to mint a fresh download URL. */
+        id: v.string(),
+        filename: v.string(),
+        contentType: v.string(),
+        size: v.number(),
+      }),
+    ),
+    read: v.boolean(),
+    receivedAt: v.number(),
+  })
+    .index("by_read", ["read", "receivedAt"])
+    .index("by_resend_id", ["resendEmailId"]),
+
   invoices: defineTable({
     leadId: v.optional(v.id("leads")),
     projectId: v.optional(v.id("projects")),

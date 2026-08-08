@@ -126,6 +126,7 @@ export function CommandPalette() {
          the same page twice under different names. The old vocabulary lives on
          as keywords so typing "leads" still finds it. */
       { id: "nav:clients", label: "Requests and clients", group: "Go to", keywords: "inbox enquiries leads clients portal access", run: () => go(`${ADMIN_PATH}/clients`) },
+      { id: "nav:inbox", label: "Inbox — mail sent to hello@", group: "Go to", keywords: "email mail reply replies received hello inbound", run: () => go(`${ADMIN_PATH}/inbox`) },
       { id: "nav:analytics", label: "Analytics", group: "Go to", keywords: "traffic stats", run: () => go(`${ADMIN_PATH}/analytics`) },
       { id: "nav:content", label: "Content — portfolio, blog, testimonials", group: "Go to", keywords: "work portfolio posts writing quotes", run: () => go(`${ADMIN_PATH}/content`) },
       { id: "nav:feedback", label: "Feedback", group: "Go to", run: () => go(`${ADMIN_PATH}/feedback`) },

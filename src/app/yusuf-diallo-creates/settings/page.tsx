@@ -29,6 +29,12 @@ export default function AdminSettingsPage() {
       configured: Boolean(process.env.EMAIL_FROM),
     },
     {
+      name: "Resend webhook",
+      env: "RESEND_WEBHOOK_SECRET",
+      what: "Verifies inbound mail. Without it nothing sent to hello@ reaches the Inbox.",
+      configured: Boolean(process.env.RESEND_WEBHOOK_SECRET),
+    },
+    {
       name: "Admin email",
       env: "ADMIN_EMAIL",
       what: "Where enquiry notifications go, and the only account allowed to sign in here.",
