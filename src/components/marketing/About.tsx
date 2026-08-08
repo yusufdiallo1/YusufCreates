@@ -131,7 +131,7 @@ export async function About() {
         <Reveal delay={0.26}>
           <Link
             href="/about"
-            className="mt-8 inline-block text-sm text-accent transition-colors duration-hover ease-hover hover:text-primary"
+            className="mt-8 inline-flex min-h-6 items-center text-sm text-accent transition-colors duration-hover ease-hover hover:text-primary"
           >
             More about how I work →
           </Link>

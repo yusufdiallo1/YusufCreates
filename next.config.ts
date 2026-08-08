@@ -66,7 +66,24 @@ const csp = [
   "base-uri 'self'",
   "form-action 'self'",
   "object-src 'none'",
-  "upgrade-insecure-requests",
+  /*
+   * NO upgrade-insecure-requests here.
+   *
+   * It is ignored in a report-only policy — by specification, not by accident:
+   * it changes how requests are made, and a policy that is only reporting is
+   * not allowed to change behaviour. Chrome says so out loud, which meant a
+   * console warning on EVERY page load of every route, on desktop and mobile.
+   *
+   * A permanent warning is worse than the directive is useful. It trains you
+   * to ignore the console on a site whose whole notification story depends on
+   * noticing when something is wrong there, and it buries the real errors it
+   * sits next to.
+   *
+   * Put it back at the same moment the header below becomes
+   * `Content-Security-Policy` — enforced, it both works and stops warning.
+   * Nothing is lost meanwhile: HSTS is what actually stops insecure requests
+   * in production, and this only ever applied to same-page subresources.
+   */
 ].join("; ");
 
 const nextConfig: NextConfig = {

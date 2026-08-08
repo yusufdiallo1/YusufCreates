@@ -73,7 +73,7 @@ export function Projects({ preloaded }: ProjectsProps) {
           </h2>
           <Link
             href="/work"
-            className="text-sm text-secondary transition-colors duration-hover ease-hover hover:text-primary"
+            className="inline-flex min-h-6 items-center text-sm text-secondary transition-colors duration-hover ease-hover hover:text-primary"
           >
             All work
           </Link>

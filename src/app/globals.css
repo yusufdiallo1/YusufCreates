@@ -1018,7 +1018,20 @@
   .glass-range {
     -webkit-appearance: none;
     appearance: none;
-    height: 20px;
+    /*
+     * 44px of TARGET around a 3px track.
+     *
+     * The control measured 16px tall on a phone, which is a drag handle you
+     * have to aim at — and this particular slider is how someone prices their
+     * own project, so a missed grab is a missed price. The track and thumb are
+     * unchanged; the input is simply taller than the thing it draws, and the
+     * extra height is transparent.
+     *
+     * Vertical margin is pulled back in so a control that is now more than
+     * twice as tall does not push the row apart.
+     */
+    height: 44px;
+    margin-block: -12px;
     background: transparent;
     cursor: pointer;
   }

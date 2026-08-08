@@ -209,7 +209,7 @@ export function Nav() {
           <Link
             href="/"
             aria-label="YusufCreates, back to home"
-            className="shrink-0"
+            className="inline-flex min-h-6 shrink-0 items-center"
             onClick={() => setOpen(false)}
           >
             <AnimatedLogo className="h-5 w-auto sm:h-6" />

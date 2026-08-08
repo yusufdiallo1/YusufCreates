@@ -519,7 +519,7 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
           */}
           <motion.div {...step(0.1)}>
             <span className={isReferred ? "hidden" : undefined}>
-              <AvailabilityBadge className="inline-flex items-center gap-2.5 font-mono text-xs tracking-[0.1em] text-secondary uppercase" />
+              <AvailabilityBadge className="inline-flex min-h-6 items-center gap-2.5 font-mono text-xs tracking-[0.1em] text-secondary uppercase" />
             </span>
             <span
               aria-hidden={!isReferred}

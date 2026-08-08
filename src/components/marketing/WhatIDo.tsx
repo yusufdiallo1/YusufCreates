@@ -88,7 +88,7 @@ export function WhatIDo() {
       <Reveal delay={0.3}>
         <Link
           href="/services"
-          className="mt-12 inline-block text-sm text-accent transition-colors duration-hover ease-hover hover:text-primary"
+          className="mt-12 inline-flex min-h-6 items-center text-sm text-accent transition-colors duration-hover ease-hover hover:text-primary"
         >
           More on how each one works →
         </Link>

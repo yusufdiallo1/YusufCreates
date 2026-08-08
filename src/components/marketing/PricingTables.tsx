@@ -430,7 +430,19 @@ export function PricingTables() {
                           })
                         }
                         aria-valuetext={`${pages} pages`}
-                        className="mt-2 w-full accent-[color:var(--accent)]"
+                        /*
+                          h-11 for the TARGET, not for the look.
+
+                          The native control is 16px tall, which is a thumb you
+                          have to aim at on a phone — and this is the slider
+                          someone prices their own project with, so a missed
+                          grab is a missed quote. The track and thumb draw the
+                          same; the extra height is transparent. The negative
+                          margin gives it back to the layout so a control that
+                          is now nearly three times as tall does not open a gap
+                          above the rate line beneath it.
+                        */
+                        className="-my-3.5 mt-2 h-11 w-full accent-[color:var(--accent)]"
                       />
 
                       {/*

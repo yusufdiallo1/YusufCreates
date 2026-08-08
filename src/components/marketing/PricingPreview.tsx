@@ -97,7 +97,7 @@ export function PricingPreview() {
           <Link
             href="/pricing"
             onClick={() => track("cta_click", { cta: "home-pricing-all" })}
-            className="text-sm text-secondary transition-colors duration-hover ease-hover hover:text-primary"
+            className="inline-flex min-h-6 items-center text-sm text-secondary transition-colors duration-hover ease-hover hover:text-primary"
           >
             Full pricing
           </Link>
