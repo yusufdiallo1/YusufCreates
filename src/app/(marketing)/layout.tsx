@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import { CustomCursor } from "@/components/ui/CustomCursor";
 import { SmoothScroll } from "@/components/motion/SmoothScroll";
 import { ScrollTriggerProvider } from "@/components/motion/ScrollTriggerProvider";
 import { AmbientTemperature } from "@/components/motion/AmbientTemperature";
@@ -35,7 +34,6 @@ export default function MarketingLayout({
           {/* First-party, cookieless. See src/lib/track.ts. */}
           <Tracker />
           <ScrollProgress />
-          <CustomCursor />
           <PromoBanner />
           <Nav />
 

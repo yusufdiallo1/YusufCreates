@@ -55,7 +55,6 @@ export function BlogIndex({
           <Reveal delay={index * 0.05}>
             <Link
               href={`/blog/${post.slug}`}
-              data-cursor="view"
               /* Thumbnail beside the text on anything wider than a phone; the
                  list stays linear either way. On a phone the cover would
                  squeeze the title into two words per line, so it stacks. */

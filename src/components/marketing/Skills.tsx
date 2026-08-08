@@ -34,7 +34,6 @@ export function SkillChip({
         short and fixed; the description is the part that should give.
       */}
       <div
-        data-cursor="link"
         className="skill-row group flex w-full items-baseline justify-between gap-4 py-3"
       >
         {/* The mark sits in a fixed box whether or not there is one to show,

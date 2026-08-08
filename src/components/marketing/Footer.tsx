@@ -108,7 +108,6 @@ export function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label={`Instagram, ${INSTAGRAM.handle}`}
-              data-cursor="link"
               className="footer-social mt-3 -ml-2 inline-flex items-center gap-2 rounded-md px-2 py-2"
             >
               <InstagramIcon size={20} />

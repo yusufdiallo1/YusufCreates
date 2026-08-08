@@ -89,9 +89,6 @@ export function Magnetic({
       style={{ x: sx, y: sy, display: "inline-flex" }}
       onPointerMove={handleMove}
       onPointerLeave={handleLeave}
-      // Pulls the custom cursor in too, so the attraction is mutual rather
-      // than the button reaching for a cursor that ignores it.
-      data-cursor-magnetic=""
     >
       <motion.span style={{ x: lx, y: ly, display: "inline-flex" }}>
         {children}

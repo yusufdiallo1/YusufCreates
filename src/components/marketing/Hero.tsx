@@ -280,7 +280,6 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
           >
             <Link
               href="/pricing"
-              data-cursor="link"
               onClick={() => track("cta_click", { cta: "hero-start" })}
               className="rounded-full bg-[color:var(--accent-solid)] px-6 py-3 text-center text-sm font-medium text-white transition-opacity duration-fast hover:opacity-90"
             >
@@ -288,7 +287,6 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
             </Link>
             <Link
               href="/work"
-              data-cursor="link"
               className="rounded-full px-6 py-3 text-center text-sm text-primary transition-colors duration-fast hover:bg-surface-2"
             >
               View work
@@ -452,7 +450,6 @@ function Slab({
       >
         <Link
           href={`/work/${project.slug}`}
-          data-cursor="view"
           aria-label={`${project.title} — view case study`}
           className="group block"
         >
@@ -538,7 +535,6 @@ function SlabStack({ projects }: { projects: HeroProject[] }) {
 
       <Link
         href={`/work/${front.slug}`}
-        data-cursor="view"
         aria-label={`${front.title} — view case study`}
         className="absolute top-[30%] left-[8%] block w-[86%]"
       >

@@ -606,17 +606,6 @@
     }
   }
 
-  /* When the custom cursor is mounted it replaces the system pointer, so the
-     native one is hidden on interactive elements too. The class is applied by
-     CustomCursor only when it actually renders, so touch and reduced-motion
-     users keep their normal cursor. */
-  .has-custom-cursor,
-  .has-custom-cursor a,
-  .has-custom-cursor button,
-  .has-custom-cursor [role="button"] {
-    cursor: none;
-  }
-
   /* Skill rows. Flat and hairline-separated; the only hover affordance is the
      use line resolving from muted to full strength. */
   .skill-row-use {
@@ -842,14 +831,6 @@
     animation: none !important;
   }
 
-  [data-custom-cursor] {
-    display: none !important;
-  }
-
-  /* Restore the system cursor when the custom one is suppressed. */
-  [data-cursor-hidden] {
-    cursor: auto !important;
-  }
 }
 
 /* Increased contrast: stronger borders and text, brighter focus ring. */

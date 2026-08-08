@@ -68,7 +68,6 @@ export function Projects({ preloaded }: ProjectsProps) {
           </h2>
           <Link
             href="/work"
-            data-cursor="link"
             className="text-sm text-secondary transition-colors duration-fast hover:text-primary"
           >
             All work
@@ -188,7 +187,6 @@ function PinnedShowcase({ projects }: { projects: Project[] }) {
 
               <Link
                 href={`/work/${project.slug}`}
-                data-cursor="view"
                 className="mt-8 inline-block text-sm text-accent transition-colors duration-fast hover:text-primary"
               >
                 View case study
@@ -249,7 +247,6 @@ function PinnedShowcase({ projects }: { projects: Project[] }) {
                 >
                   <Link
                     href={`/work/${p.slug}`}
-                    data-cursor="view"
                     aria-hidden={i !== active}
                     tabIndex={i === active ? 0 : -1}
                     className="block h-full w-full"
@@ -296,7 +293,6 @@ export function ProjectCard({ project }: { project: Project }) {
   return (
     <Link
       href={`/work/${project.slug}`}
-      data-cursor="view"
       data-spotlight=""
       className="project-card group relative block h-full overflow-hidden rounded-xl"
     >
