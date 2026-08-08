@@ -40,6 +40,8 @@ const LABELS: Record<string, string> = {
      all said something different — "Express builds", "Express", "Requests". */
   express: "Express",
   audits: "Site audits",
+  monitoring: "Monitoring",
+  onboarding: "Onboarding",
   waitlist: "Waitlist",
   subscribers: "Subscribers",
   settings: "Settings",

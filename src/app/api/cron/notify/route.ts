@@ -9,6 +9,7 @@ import { DepositReminder } from "@emails/DepositReminder";
 import { RequestExpired } from "@emails/RequestExpired";
 import { AdminAlert } from "@emails/AdminAlert";
 import { ADMIN_PATH } from "@/lib/constants";
+import { drain } from "@/lib/notifyDrain";
 
 /**
  * Drains the automation queues: sends the emails and raises the invoices that
@@ -266,13 +267,39 @@ export async function POST(request: Request) {
     }
   }
 
+  /* -------------------------------------------------- notification outbox --- */
+
+  /*
+   * The safety net for convex/notify.ts.
+   *
+   * That queue is normally drained within seconds — a Convex action pokes
+   * /api/notify/dispatch the moment a row comes due, which is what makes an
+   * outage alert immediate despite this cron running only once a day. But a
+   * poke can fail: mid-deploy, a cold start, a network blip. The rows stay
+   * queued when it does, and this is what eventually sends them.
+   *
+   * Called in-process rather than over HTTP. One fewer hop, and it does not
+   * depend on the deployment knowing its own public URL.
+   */
+  const outbox = await drain(secret).catch(() => ({
+    sent: 0,
+    failed: 0,
+    pushed: 0,
+  }));
+
   /* ------------------------------------------------------------- digest --- */
 
   // Logged only when something happened. A line every fifteen minutes saying
   // "nothing to report" trains you to scroll past the one that does.
-  if (sent.length > 0 || raised.length > 0 || failed.length > 0) {
+  if (
+    sent.length > 0 ||
+    raised.length > 0 ||
+    failed.length > 0 ||
+    outbox.sent > 0 ||
+    outbox.failed > 0
+  ) {
     console.info(
-      `[cron/notify] sent=${sent.length} invoices=${raised.length} failed=${failed.length}`,
+      `[cron/notify] sent=${sent.length} invoices=${raised.length} failed=${failed.length} outbox=${outbox.sent}/${outbox.failed}`,
     );
   }
 
@@ -281,5 +308,6 @@ export async function POST(request: Request) {
     sent: sent.length,
     invoicesRaised: raised.length,
     failed,
+    outbox,
   });
 }

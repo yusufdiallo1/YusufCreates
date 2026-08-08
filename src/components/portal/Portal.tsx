@@ -10,6 +10,7 @@ import {
 } from "convex/react";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 import { Logo } from "@/components/ui/Logo";
+import { SiteHealth } from "@/components/portal/SiteHealth";
 import { PayPanel } from "@/components/portal/PayPanel";
 import type { Id } from "@convex/_generated/dataModel";
 
@@ -187,6 +188,17 @@ function PortalContent() {
             ))}
         </>
       )}
+
+      {/*
+        Site health, above invoices.
+
+        Renders null until a site is actually being monitored — including its
+        own heading and spacing — so a client without a Care Plan sees no gap
+        where it would have been. For one with a plan this is the thing they
+        are paying for; £450 a month that shows them nothing is how a retainer
+        gets cancelled.
+      */}
+      <SiteHealth />
 
       {invoices && invoices.length > 0 ? (
         <section aria-labelledby="invoices-heading" className="mt-12">

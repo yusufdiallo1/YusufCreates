@@ -70,4 +70,120 @@ crons.daily(
   {},
 );
 
+/*
+ * Notification outbox housekeeping.
+ *
+ * Only sweeps rows already SENT. Unsent rows are never touched by a timer —
+ * a queued notification that quietly disappeared is indistinguishable from
+ * one that was delivered, and the whole design in convex/notify.ts turns on
+ * the row being the truth.
+ */
+crons.daily(
+  "sweep sent notifications",
+  { hourUTC: 4, minuteUTC: 0 },
+  internal.notify.sweepSent,
+);
+
+/*
+ * Credential expiry.
+ *
+ * The one cron here whose whole purpose is to DELETE data rather than move it
+ * along. A credential store that only ever grows becomes a liability nobody
+ * remembers accepting, so the 30-day timer set at project completion has to
+ * be enforced by something that runs whether or not I remember it exists.
+ *
+ * Only touches rows with a deleteAfter actually set. An unset field means
+ * "keep", not "delete immediately" — see the guard in purgeExpired.
+ */
+crons.daily(
+  "purge expired credentials",
+  { hourUTC: 4, minuteUTC: 30 },
+  internal.credentials.purgeExpired,
+);
+
+/*
+ * Intake nudges, at day 3 and day 7.
+ *
+ * 09:00 UTC so it lands in a working morning rather than overnight — this is
+ * a request for someone's time, and a 4am timestamp on it reads as automated
+ * in a way that makes it easier to ignore.
+ *
+ * Daily rather than hourly because the granularity is days. Running it more
+ * often would only add chances to double-send.
+ */
+crons.daily(
+  "nudge incomplete intakes",
+  { hourUTC: 9, minuteUTC: 0 },
+  internal.intake.sweepNudges,
+);
+
+/*
+ * Site monitoring.
+ *
+ * These run HERE rather than on a Vercel cron because they have to. The Hobby
+ * plan rejects any cron more frequent than once a day at deploy time, so a
+ * five-minute uptime check is impossible there — Convex's scheduler has no
+ * such limit, and a Convex action can fetch.
+ *
+ * Five minutes is the interval the whole incident rule is built on: an
+ * incident opens after two consecutive failures, so the fastest a real outage
+ * is detected is ten minutes, and the client hears at twenty-five. Shortening
+ * this interval means more quota, not more certainty.
+ */
+crons.interval(
+  "check monitored sites",
+  { minutes: 5 },
+  internal.monitoring.sweepUptime,
+);
+
+/*
+ * Rolls 30 days of checks into one figure per site and purges the raw rows
+ * past 35 days. 02:00, before the other daily jobs, so everything reading a
+ * percentage that day reads a fresh one.
+ */
+crons.daily(
+  "roll up uptime",
+  { hourUTC: 2, minuteUTC: 0 },
+  internal.monitoring.rollupUptime,
+);
+
+/*
+ * SSL and domain expiry, with warnings at 30, 14 and 7 days.
+ *
+ * A lapsed domain is the most expensive thing that can happen to a client
+ * site and it is entirely preventable, which is the whole argument for a job
+ * that reports nothing at all for months at a time.
+ */
+crons.daily(
+  "check ssl and domain expiry",
+  { hourUTC: 5, minuteUTC: 0 },
+  internal.monitoring.sweepExpiry,
+);
+
+/*
+ * Weekly Lighthouse. Monday morning, so a regression shipped on Friday is
+ * found at the start of the week rather than at the end of it.
+ *
+ * The sweep only SCHEDULES the runs — one site every three minutes. PageSpeed
+ * is metered and a single run takes 30-60s, so firing them together is how a
+ * quota gets exhausted and every site reports nothing.
+ */
+crons.weekly(
+  "run lighthouse",
+  { dayOfWeek: "monday", hourUTC: 6, minuteUTC: 0 },
+  internal.monitoring.sweepLighthouse,
+);
+
+/*
+ * The monthly report, on the 1st.
+ *
+ * This email is the entire justification for the retainer. 08:00 UTC so it
+ * lands at the top of a working morning rather than overnight.
+ */
+crons.monthly(
+  "send monthly care plan reports",
+  { day: 1, hourUTC: 8, minuteUTC: 0 },
+  internal.monitoring.sendMonthlyReports,
+);
+
 export default crons;

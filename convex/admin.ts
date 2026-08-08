@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireAdmin, isAdmin } from "./lib/auth";
 import { leadStatus } from "./schema";
+import { outstandingLabels } from "./intakeSections";
 
 /**
  * Admin read models.
@@ -393,15 +394,41 @@ export const dashboard = query({
     const hour = 60 * 60 * 1000;
     const day = 24 * hour;
 
-    const [leads, invoices, proposals, builds, testimonials, feedback] =
-      await Promise.all([
-        ctx.db.query("leads").order("desc").take(400),
-        ctx.db.query("invoices").order("desc").take(300),
-        ctx.db.query("proposals").order("desc").take(200),
-        ctx.db.query("expressBuilds").order("desc").take(100),
-        ctx.db.query("testimonials").collect(),
-        ctx.db.query("siteFeedback").order("desc").take(100),
-      ]);
+    const [
+      leads,
+      invoices,
+      proposals,
+      builds,
+      testimonials,
+      feedback,
+      intakes,
+      clientProjects,
+      clients,
+      monitoredSites,
+      openIncidents,
+    ] = await Promise.all([
+      ctx.db.query("leads").order("desc").take(400),
+      ctx.db.query("invoices").order("desc").take(300),
+      ctx.db.query("proposals").order("desc").take(200),
+      ctx.db.query("expressBuilds").order("desc").take(100),
+      ctx.db.query("testimonials").collect(),
+      ctx.db.query("siteFeedback").order("desc").take(100),
+      /*
+       * Collected whole rather than capped. All five are bounded by the
+       * number of live client relationships — tens, not thousands — and a
+       * `.take()` here would silently drop the one project whose intake is
+       * the reason something is late.
+       */
+      ctx.db.query("intakes").collect(),
+      ctx.db.query("clientProjects").collect(),
+      ctx.db.query("clients").collect(),
+      ctx.db.query("monitoredSites").collect(),
+      // An incident with no closedAt is one happening right now.
+      ctx.db
+        .query("incidents")
+        .withIndex("by_open", (q) => q.eq("closedAt", undefined))
+        .collect(),
+    ]);
 
     /*
      * Everything that wants a human, in one list.
@@ -524,6 +551,71 @@ export const dashboard = query({
           waited: Math.round((now - f.createdAt) / hour),
         });
       }
+    }
+
+    /*
+     * 7. A project that has STARTED while its intake is still incomplete.
+     *
+     * The combination is the point, and neither half means much alone. An
+     * unfinished intake on a project that has not begun is just a form
+     * someone has not got to yet; a started project with everything in is
+     * fine. Together they are the shape of every delayed project — work
+     * running against information I do not have.
+     *
+     * Priority 1, alongside an overdue invoice: not screaming, but ahead of
+     * anything that is merely waiting on a reply, because the cost grows
+     * every day it is ignored.
+     */
+    for (const intake of intakes) {
+      if (intake.completedAt) continue;
+
+      const project = clientProjects.find((p) => p._id === intake.projectId);
+      if (!project?.startedAt) continue;
+      if (project.status === "complete") continue;
+
+      const outstanding = outstandingLabels(intake.sections);
+      if (outstanding.length === 0) continue;
+
+      const client = clients.find((c) => c._id === intake.clientId);
+
+      needsYou.push({
+        id: intake._id,
+        priority: 1,
+        kind: "intake",
+        label: `${project.name} started without its onboarding`,
+        // Names what is missing, not how much. "3 sections outstanding" tells
+        // me there is a problem; "your logo and domain access" tells me what
+        // to go and ask for.
+        detail: `Still need ${outstanding.slice(0, 2).join(" and ")}${
+          outstanding.length > 2 ? ` (+${outstanding.length - 2} more)` : ""
+        }${client ? ` — ${client.name}` : ""}`,
+        href: "/clients",
+        waited: Math.round((now - project.startedAt) / hour),
+      });
+    }
+
+    /*
+     * 8. A monitored site that is down right now.
+     *
+     * Priority 0 without qualification. Everything else on this list is
+     * someone waiting; this is a client's site being unreachable while their
+     * customers try to visit it.
+     */
+    for (const incident of openIncidents) {
+      const site = monitoredSites.find((s) => s._id === incident.siteId);
+      if (!site) continue;
+
+      needsYou.push({
+        id: incident._id,
+        priority: 0,
+        kind: "site",
+        label: `${site.url.replace(/^https?:\/\//, "").replace(/\/$/, "")} is down`,
+        detail: `${incident.cause}. ${
+          incident.clientNotifiedAt ? "Client has been told." : "Client not told yet."
+        }`,
+        href: "/monitoring",
+        waited: Math.round((now - incident.openedAt) / hour),
+      });
     }
 
     needsYou.sort((a, b) => a.priority - b.priority || b.waited - a.waited);

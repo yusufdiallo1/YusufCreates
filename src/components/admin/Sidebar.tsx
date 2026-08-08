@@ -43,6 +43,9 @@ const GROUPS: { heading: string; items: { href: string; label: string }[] }[] = 
       { href: `${ADMIN_PATH}/clients`, label: "Clients & projects" },
       { href: `${ADMIN_PATH}/proposals`, label: "Proposals" },
       { href: `${ADMIN_PATH}/invoices`, label: "Invoices" },
+      /* Under Clients rather than Tools: this is the Care Plan, which is a
+         paid relationship with a client, not a utility I run occasionally. */
+      { href: `${ADMIN_PATH}/monitoring`, label: "Monitoring" },
     ],
   },
   {

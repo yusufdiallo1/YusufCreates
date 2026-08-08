@@ -35,6 +35,16 @@ const csp = [
   "frame-src https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com https://www.instagram.com",
   // Uploaded video is served from Convex storage and played, not framed.
   "media-src 'self' https://*.convex.cloud blob:",
+  /*
+   * The push service worker at /sw.js.
+   *
+   * Stated explicitly rather than left to fall through child-src to
+   * default-src. It would work either way today, but this policy is
+   * report-only and will eventually be enforced — and a service worker that
+   * silently fails to register takes the outage alerts with it, which is the
+   * one failure nobody would notice until it mattered.
+   */
+  "worker-src 'self'",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
