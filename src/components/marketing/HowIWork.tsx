@@ -124,9 +124,12 @@ export function HowIWork() {
   );
 
   return (
+    /* Inside the reassurance beat, so no top padding — About runs straight
+       into it. The beat's outer spacing is on Process and TypedQuote. */
     <section
+      id="how-i-work"
       aria-labelledby="how-i-work-heading"
-      className="mx-auto max-w-5xl px-6 py-24"
+      className="mx-auto max-w-5xl px-6 pt-0 pb-16"
     >
       <Reveal>
         {/*

@@ -106,27 +106,41 @@ export function DrawnGlyph({
       aria-hidden="true"
       focusable="false"
     >
-      {paths.map((d, index) =>
-        still ? (
-          <path key={index} d={d} {...STROKE} />
-        ) : (
-          <motion.path
-            key={index}
-            d={d}
-            {...STROKE}
-            initial={{ pathLength: 0, opacity: 0 }}
-            whileInView={{ pathLength: 1, opacity: 1 }}
-            /* once: a glyph that redraws every time it re-enters the viewport
-               turns scrolling back up into a light show. */
-            viewport={{ once: true, margin: "0px", amount: "some" }}
-            transition={{
-              duration: 0.7,
-              delay: delay + index * 0.12,
-              ease: [0.33, 1, 0.68, 1],
-            }}
-          />
-        ),
-      )}
+      {/*
+        ALWAYS motion.path, never a plain one.
+
+        Swapping to <path> under reduced motion changed the element and dropped
+        the four attributes Motion writes to animate a stroke — pathLength,
+        stroke-dasharray, stroke-dashoffset and opacity. useReducedMotion is
+        null on the server and a boolean on the client, so the server emitted
+        all four and a reduced-motion client emitted none. HowIWork alone draws
+        several of these, and one mismatch fails hydration for the whole route.
+
+        `still` collapses the duration instead: the stroke is complete in the
+        first painted frame, which is what the header comment above promises.
+        See Reveal.tsx for the rule this is an instance of.
+      */}
+      {paths.map((d, index) => (
+        <motion.path
+          key={index}
+          d={d}
+          {...STROKE}
+          initial={{ pathLength: 0, opacity: 0 }}
+          whileInView={{ pathLength: 1, opacity: 1 }}
+          /* once: a glyph that redraws every time it re-enters the viewport
+             turns scrolling back up into a light show. */
+          viewport={{ once: true, margin: "0px", amount: "some" }}
+          transition={
+            still
+              ? { duration: 0 }
+              : {
+                  duration: 0.7,
+                  delay: delay + index * 0.12,
+                  ease: [0.33, 1, 0.68, 1],
+                }
+          }
+        />
+      ))}
     </svg>
   );
 }

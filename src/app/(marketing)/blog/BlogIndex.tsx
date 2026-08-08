@@ -251,8 +251,22 @@ function PostCard({
    * one that cannot — the opacity falloff carries the same information at a
    * fraction of the cost, so below `full` only that survives.
    */
-  const focusing = !reduceMotion && tier === "full";
-  const dimming = !reduceMotion && tier !== "minimal";
+  /*
+   * Keyed off the TIER ALONE, not off useReducedMotion.
+   *
+   * The tier already encodes the preference and does it SSR-safely:
+   * detectStaticTier() floors to `minimal` on prefers-reduced-motion, and the
+   * capability store resolves after hydration from a server value the client's
+   * first paint also renders. useReducedMotion does the opposite — null on the
+   * server, boolean on the client — so ANDing it in here made these two flags
+   * differ between the passes and took the /blog route's hydration with them.
+   *
+   * `dimming` therefore goes false on a reduced-motion device anyway, one
+   * commit later, and [data-focus-track] in globals.css covers the gap before
+   * that lands.
+   */
+  const focusing = tier === "full";
+  const dimming = tier !== "minimal";
 
   /* ---------------------------------------------------------- reactions --- */
 
@@ -308,14 +322,23 @@ function PostCard({
     <motion.li
       ref={ref}
       className="relative"
-      style={
-        reduceMotion
-          ? undefined
-          : {
-              opacity: dimming ? focusOpacity : undefined,
-              filter: focusing ? focusFilter : undefined,
-            }
-      }
+      /*
+        NOT GATED ON reduceMotion. `focusOpacity` rests at 0.65 rather than 1,
+        so the server serialised `opacity:0.65` onto every card while a
+        reduced-motion client serialised nothing — an attribute mismatch that
+        failed hydration for the whole /blog route.
+
+        `dimming` and `focusing` still gate these, but they now depend only on
+        the capability tier, which is SSR-safe by construction: the server and
+        the client's first paint both resolve `reduced`. The reduced-motion
+        preference is applied by CSS instead — see [data-focus-track] in the
+        reduced-motion block of globals.css.
+      */
+      data-focus-track
+      style={{
+        opacity: dimming ? focusOpacity : undefined,
+        filter: focusing ? focusFilter : undefined,
+      }}
       onPointerDown={react}
     >
       <Link
@@ -330,9 +353,14 @@ function PostCard({
           <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden rounded-lg bg-surface-1 sm:aspect-square sm:w-28">
             {/* -inset-y-[7%] gives the image the extra height the parallax
                 travels through, so neither end of the range exposes a gap. */}
+            {/* Unconditional for the same reason as the card above: coverY
+                rests at "-7%", not at zero, so gating the prop changed the
+                rendered transform between server and client. The reduced-motion
+                CSS pins it. */}
             <motion.div
               className="absolute inset-x-0 -inset-y-[7%]"
-              style={reduceMotion ? undefined : { y: coverY }}
+              data-parallax-track
+              style={{ y: coverY }}
             >
               <Image
                 src={post.coverUrl}

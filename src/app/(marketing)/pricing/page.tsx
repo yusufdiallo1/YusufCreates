@@ -3,8 +3,10 @@ import { PricingTables } from "@/components/marketing/PricingTables";
 import { PricingComparison } from "@/components/marketing/PricingComparison";
 import { PricingFaq } from "@/components/marketing/PricingFaq";
 import { ContactCTA } from "@/components/marketing/ContactCTA";
+import { CredibilityStrip } from "@/components/marketing/CredibilityStrip";
 import { TextReveal } from "@/components/motion/TextReveal";
 import { Reveal } from "@/components/motion/Reveal";
+import { Quiet } from "@/components/motion/Quiet";
 import { SITE } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -29,7 +31,20 @@ export default function PricingPage() {
         </Reveal>
       </div>
 
-      <PricingTables />
+      {/* Proof, for someone who arrived straight here and has therefore seen
+          none. Renders for everyone and is hidden with CSS unless the entry
+          state is high-intent — inserting a band above the tables after
+          hydration would push the prices down under the reader. */}
+      <CredibilityStrip />
+
+      {/* Still, while the cards hold the viewport. Same treatment as the
+          homepage pricing band and for the same reason: this is where the
+          arithmetic happens, and the closing marquee at the bottom of this
+          page is exactly the sort of thing that has to be ignored while it
+          does. See components/motion/Quiet.tsx. */}
+      <Quiet>
+        <PricingTables />
+      </Quiet>
       {/* After the cards, before the questions. Someone who has read the cards
           and is now weighing two of them wants rows; someone still deciding
           whether to ask at all is heading for the FAQ. */}

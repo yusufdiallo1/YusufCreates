@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion, useMotionValueEvent, useReducedMotion, useScroll } from "motion/react";
+import { motion, useMotionValueEvent, useScroll } from "motion/react";
 import { usePreloadedQuery, type Preloaded } from "convex/react";
 import type { api } from "@/lib/convex-api";
 import { Reveal } from "@/components/motion/Reveal";
@@ -12,6 +12,7 @@ import {
   sharedNames,
 } from "@/components/motion/SharedElement";
 import { cn } from "@/lib/utils";
+import { useEntryContext } from "@/components/providers/EntryStateProvider";
 
 /**
  * Projects — a scroll-driven showcase.
@@ -34,6 +35,8 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 /** Shape consumed by the card. The generated Convex type is a superset. */
 export type Project = {
   _id: string;
+  /** Convex's own insertion timestamp. Drives the "New" marker. */
+  _creationTime: number;
   slug: string;
   title: string;
   client: string;
@@ -51,15 +54,20 @@ type ProjectsProps = {
 
 export function Projects({ preloaded }: ProjectsProps) {
   const projects = usePreloadedQuery(preloaded) as Project[] | undefined;
-  const reduceMotion = useReducedMotion();
 
   // Empty state: the section does not exist.
   if (!projects || projects.length === 0) return null;
 
   return (
+    /* py-16, the tightest section on the page.
+       This is beat 2 now — the first thing after the hero — and it is meant to
+       read dense and fast. Generous padding here would make the proof feel
+       like a leisurely gallery when the job is to answer "is this any good"
+       before the visitor has decided to leave. */
     <section
+      id="work"
       aria-labelledby="work-heading"
-      className="mx-auto max-w-6xl px-6 py-24"
+      className="mx-auto max-w-6xl px-6 py-16"
     >
       <Reveal>
         <div className="flex items-baseline justify-between">
@@ -76,21 +84,30 @@ export function Projects({ preloaded }: ProjectsProps) {
         </div>
       </Reveal>
 
-      {reduceMotion ? (
+      {/*
+        BOTH VARIANTS ALWAYS RENDER. Which one shows is decided by CSS.
+
+        This used to be `reduceMotion ? <StackedList/> : <>…</>`, which chose
+        between two different subtrees from a hook that is null on the server
+        and a boolean on the client — so a reduced-motion visitor hydrated the
+        featured-work section against markup the server never sent, and React
+        discarded it.
+
+        The reduced branch was always a subset of the other one anyway: the
+        non-reduced path already renders StackedList for narrow viewports. So
+        there is nothing to choose. Both are in the DOM, the breakpoint decides
+        on a normal visit, and the reduced-motion media query in globals.css
+        overrides the breakpoint to force the stacked list. See there.
+      */}
+      {/* Pinning needs viewport height to work against, so it is desktop
+          only. Phones get the stacked list, which is also what the
+          reduced-motion path renders. */}
+      <div className="lg:hidden" data-projects-stacked>
         <StackedList projects={projects} />
-      ) : (
-        <>
-          {/* Pinning needs viewport height to work against, so it is desktop
-              only. Phones get the stacked list, which is also what the
-              reduced-motion path renders. */}
-          <div className="lg:hidden">
-            <StackedList projects={projects} />
-          </div>
-          <div className="hidden lg:block">
-            <PinnedShowcase projects={projects} />
-          </div>
-        </>
-      )}
+      </div>
+      <div className="hidden lg:block" data-projects-pinned>
+        <PinnedShowcase projects={projects} />
+      </div>
     </section>
   );
 }
@@ -312,6 +329,22 @@ export function ProjectCard({
   project: Project;
   wide?: boolean;
 }) {
+  /*
+   * "New" — published since they were last here.
+   *
+   * Only ever shown to a returning visitor, and only for work they cannot
+   * have seen. On a first visit everything is new, so marking anything would
+   * be noise; lastVisitAt is 0 then and the comparison is false for every
+   * card, which is the behaviour without a special case.
+   *
+   * The marker is rendered in EVERY state and hidden with CSS rather than
+   * conditionally mounted. Entry state resolves one commit after hydration,
+   * and inserting a node then would reflow the card grid under the reader —
+   * see THE SSR RULE in lib/entryState.ts.
+   */
+  const { lastVisitAt } = useEntryContext();
+  const isNew = lastVisitAt > 0 && project._creationTime > lastVisitAt;
+
   return (
     <Link
       href={`/work/${project.slug}`}
@@ -370,8 +403,22 @@ export function ProjectCard({
               simultaneously moving, and the result reads as a glitch rather
               than as continuity. The cover carries the connection on its own. */}
           <h3 className="text-base text-primary">{project.title}</h3>
-          <span className="shrink-0 text-xs text-secondary tabular-nums">
-            {project.year}
+          <span className="flex shrink-0 items-center gap-2">
+            {/* Quiet on purpose. It is a courtesy to someone who has been
+                here before, not a badge competing with the work. */}
+            <span
+              aria-hidden={!isNew}
+              className={
+                isNew
+                  ? "rounded-full bg-accent/15 px-2 py-0.5 text-[10px] tracking-[0.06em] text-accent uppercase"
+                  : "hidden"
+              }
+            >
+              New
+            </span>
+            <span className="text-xs text-secondary tabular-nums">
+              {project.year}
+            </span>
           </span>
         </div>
 

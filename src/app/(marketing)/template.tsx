@@ -27,19 +27,36 @@ export default function MarketingTemplate({
 }) {
   const reduceMotion = useReducedMotion();
 
-  // Under reduced motion the content is simply there. Not a zero-duration
-  // animation — no animation.
-  if (reduceMotion) return <>{children}</>;
-
+  /*
+   * ONE TREE, ALWAYS.
+   *
+   * This used to `return <>{children}</>` under reduced motion, on the
+   * reasoning that the content should simply be there rather than run a
+   * zero-duration animation. The reasoning was right and the implementation
+   * was the worst possible place to act on it: useReducedMotion is null on the
+   * server and a boolean on the client, so this wrapper existed in the server
+   * HTML and did not exist on a reduced-motion client — an element inserted
+   * around EVERY marketing page, which failed hydration at the root and made
+   * React re-render the entire route client-side.
+   *
+   * The intent survives as `duration: 0`. The content is at rest in the first
+   * painted frame either way; the difference between that and no animation at
+   * all is not perceptible, and it is certainly smaller than the difference
+   * between a hydrated page and a re-rendered one.
+   */
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{
-        duration: 0.32,
-        // The site's own easing token, so this settles like everything else.
-        ease: [0.16, 1, 0.3, 1],
-      }}
+      transition={
+        reduceMotion
+          ? { duration: 0 }
+          : {
+              duration: 0.32,
+              // The site's own easing token, so this settles like everything else.
+              ease: [0.16, 1, 0.3, 1],
+            }
+      }
     >
       {children}
     </motion.div>

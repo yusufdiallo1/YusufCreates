@@ -18,6 +18,8 @@ import { LiquidGlass } from "@/components/ui/LiquidGlass";
 import { TextReveal } from "@/components/motion/TextReveal";
 import { track } from "@/lib/track";
 import { useCapability } from "@/components/providers/CapabilityProvider";
+import { useEntryContext } from "@/components/providers/EntryStateProvider";
+import { visitSnapshot } from "@/lib/journey";
 import { AvailabilityBadge } from "@/components/marketing/AvailabilityBadge";
 
 /**
@@ -186,8 +188,26 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
     if (decided.current) return;
     decided.current = true;
 
+    /*
+     * TWO reasons not to play, and they answer different questions.
+     *
+     * The session flag asks "have you already seen this THIS visit" — coming
+     * back to the homepage mid-session should feel like returning to something
+     * already there, not like the site reloading itself.
+     *
+     * The visit count asks "have you seen it BEFORE" — and on a second or
+     * third visit the assembling slabs stop being an introduction and become
+     * a delay between someone and the thing they came back for. The animation
+     * is a first impression; it only gets made once.
+     *
+     * visitSnapshot() rather than the entry-state store, deliberately. This is
+     * a LAYOUT effect and React runs it before the provider's passive effect,
+     * so the store is still `cold` here. The snapshot is idempotent and
+     * order-independent precisely so this read is safe — see lib/journey.ts.
+     */
     const seen = sessionStorage.getItem(SESSION_KEY);
-    if (!seen) setFirstVisit(true);
+    const returning = visitSnapshot().visits >= 2;
+    if (!seen && !returning) setFirstVisit(true);
     sessionStorage.setItem(SESSION_KEY, "1");
   }, []);
 
@@ -201,13 +221,39 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
     offset: ["start start", "end start"],
   });
 
-  // Springs so scroll-linked movement settles rather than tracking the wheel
-  // one-to-one, which reads as jittery.
-  const rawTextY = useTransform(scrollYProgress, [0, 1], [0, -50]);
-  const rawSlabY = useTransform(scrollYProgress, [0, 1], [0, -120]);
+  /*
+   * Springs so scroll-linked movement settles rather than tracking the wheel
+   * one-to-one, which reads as jittery.
+   *
+   * REDUCED MOTION COLLAPSES THE OUTPUT RANGES rather than dropping the style
+   * prop. These MotionValues used to be passed as `style={reduceMotion ?
+   * undefined : { y: textY, opacity: textOpacity }}`, which meant the server
+   * serialised `opacity:1;transform:none` onto the element and a reduced-motion
+   * client rendered an empty style object — an attribute mismatch at the very
+   * top of the homepage, which took the whole route's hydration with it.
+   *
+   * A collapsed range is inert in the way that matters: the value is pinned at
+   * its resting number for every scroll position, so nothing moves, and the
+   * element keeps the identical style attribute in both passes. See the SSR
+   * rule in lib/entryState.ts — same discipline, different signal.
+   */
+  const rawTextY = useTransform(
+    scrollYProgress,
+    [0, 1],
+    reduceMotion ? [0, 0] : [0, -50],
+  );
+  const rawSlabY = useTransform(
+    scrollYProgress,
+    [0, 1],
+    reduceMotion ? [0, 0] : [0, -120],
+  );
   const textY = useSpring(rawTextY, { stiffness: 90, damping: 30 });
   const slabY = useSpring(rawSlabY, { stiffness: 90, damping: 30 });
-  const textOpacity = useTransform(scrollYProgress, [0, 0.75], [1, 0]);
+  const textOpacity = useTransform(
+    scrollYProgress,
+    [0, 0.75],
+    reduceMotion ? [1, 1] : [1, 0],
+  );
   const glowScale = useTransform(scrollYProgress, [0, 1], [1, 1.2]);
   const glowOpacity = useTransform(scrollYProgress, [0, 1], [1, 0.2]);
 
@@ -355,6 +401,58 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
   const { tier } = useCapability();
   const clearFrost = tier === "full" && !reduceMotion;
 
+  /*
+   * How this visitor arrived, and what to say to them.
+   *
+   * PROPERTIES AND TEXT ONLY. Everything below flips an href, a label or a
+   * className on a tree that is identical in every state — see THE SSR RULE in
+   * lib/entryState.ts. The server and the client's first paint both render
+   * `cold`, so anything that added or removed a node here would be a hydration
+   * failure on exactly the visitors this is meant to help.
+   *
+   * That is also why the availability badge is still rendered for a referred
+   * visitor and simply hidden: removing it would change the element count in
+   * the first commit after hydration.
+   */
+  const { state: entryState, lastSection } = useEntryContext();
+  const isLead = entryState === "lead";
+  const isReferred = entryState === "referred";
+  const isReturning = entryState === "returning";
+
+  /*
+   * The primary action, per arrival.
+   *
+   *   lead        They have already enquired. Selling them the pricing page
+   *               again is worse than useless — it says the site has not
+   *               noticed. The only thing they want is the status of the
+   *               thing they already started.
+   *   referred    Somebody they trust already vouched for the work, so the
+   *               tier browse is a step they do not need. Straight to the
+   *               brief.
+   *   otherwise   Pricing, which is where a cold visitor's real question is.
+   */
+  const primary = isLead
+    ? { href: "/portal", label: "Check your project status", cta: "hero-portal" }
+    : isReferred
+      ? { href: "/start", label: "Start a project", cta: "hero-referred" }
+      : { href: "/pricing", label: "Start a project", cta: "hero-start" };
+
+  /*
+   * The secondary action doubles as the "pick up where you left off" link.
+   *
+   * DELIBERATELY NOT AN AUTO-SCROLL. Restoring the scroll position on load
+   * fights Lenis for control of the same property and, worse, takes the page
+   * out of the reader's hands — they asked for the homepage, not for the
+   * middle of it. Offering the jump as a link keeps the choice theirs.
+   *
+   * Falls back to "View work" whenever there is no recorded section, which is
+   * every first visit and any visit that ended in the hero.
+   */
+  const resume = isReturning && lastSection;
+  const secondary = resume
+    ? { href: `#${lastSection}`, label: "Pick up where you left off" }
+    : { href: "/work", label: "View work" };
+
   return (
     <section
       ref={ref}
@@ -379,20 +477,61 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
          84px, and `items-center` on a short viewport pulls the headline up
          under it. The extra top padding is what the centring is allowed to
          eat into. */
-      className="relative isolate flex min-h-[86dvh] items-center overflow-hidden px-6 pt-32 pb-24"
+      /* 80dvh, down from 86.
+         At 1440x900 — the commonest laptop viewport — 86dvh plus the nav left
+         nothing below the fold at all, so the page gave no reason to scroll:
+         the hero looked like the whole site. 80dvh clears the tech marquee
+         (py-6) and the top edge of the first project card, which is the point.
+         The proof being half-visible is what asks the question the rest of
+         the page answers. */
+      className="relative isolate flex min-h-[80dvh] items-center overflow-hidden px-6 pt-32 pb-24"
     >
       <Backdrop glowScale={glowScale} glowOpacity={glowOpacity} play={play} />
 
       <div className="mx-auto grid w-full max-w-6xl items-center gap-12 lg:grid-cols-12">
         {/* Text. No glass behind it — it sits directly on the void. */}
         <motion.div
-          style={reduceMotion ? undefined : { y: textY, opacity: textOpacity }}
+          /* Unconditional — the MotionValues above are already inert under
+             reduced motion. Dropping the prop instead changed the rendered
+             style attribute between server and client. */
+          style={{ y: textY, opacity: textOpacity }}
           className="lg:col-span-5"
         >
           {/* Live, not a claim. Reads the same capacity as the waitlist, so
-              the hero cannot advertise work that is already booked. */}
+              the hero cannot advertise work that is already booked.
+
+              NO HOVER STYLING HERE. While slots are open this renders a plain
+              status line, and a colour change on hover would promise a click
+              that does nothing. The badge adds its own hover treatment in the
+              one case where it IS a link — see AvailabilityBadge. */}
+          {/*
+            BOTH LINES ARE ALWAYS RENDERED. One of them is hidden.
+
+            A referred visitor gets "referred by someone I have worked with"
+            in place of the capacity line — they arrived on a recommendation,
+            and naming that is worth more than a slot count. But swapping which
+            element EXISTS would change the tree one commit after hydration,
+            which is the failure this file already documents three times. So
+            both are in the DOM in every state and CSS decides which is seen.
+
+            aria-hidden tracks the visual state so a screen reader is never
+            read both.
+          */}
           <motion.div {...step(0.1)}>
-            <AvailabilityBadge className="inline-flex items-center gap-2.5 font-mono text-xs tracking-[0.1em] text-secondary uppercase transition-colors duration-hover ease-hover hover:text-primary" />
+            <span className={isReferred ? "hidden" : undefined}>
+              <AvailabilityBadge className="inline-flex items-center gap-2.5 font-mono text-xs tracking-[0.1em] text-secondary uppercase" />
+            </span>
+            <span
+              aria-hidden={!isReferred}
+              className={
+                isReferred
+                  ? "inline-flex items-center gap-2.5 font-mono text-xs tracking-[0.1em] text-secondary uppercase"
+                  : "hidden"
+              }
+            >
+              <span aria-hidden="true" className="size-1.5 rounded-full bg-accent" />
+              Referred by someone I have worked with
+            </span>
           </motion.div>
 
           <h1
@@ -439,20 +578,28 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
             {...step(0.7)}
             className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center"
           >
+            {/* href and label flip with the entry state; the element does
+                not. See the block above primary/secondary for what each
+                arrival gets and why. */}
             <Link
-              href="/pricing"
+              href={primary.href}
               data-cursor="link"
-              onClick={() => track("cta_click", { cta: "hero-start" })}
+              onClick={() => track("cta_click", { cta: primary.cta })}
               className="rounded-full bg-[color:var(--accent-solid)] px-6 py-3 text-center text-sm font-medium text-white transition-opacity duration-hover ease-hover hover:opacity-90"
             >
-              Start a project
+              {primary.label}
             </Link>
             <Link
-              href="/work"
+              href={secondary.href}
               data-cursor="link"
+              onClick={
+                resume
+                  ? () => track("cta_click", { cta: "hero-resume" })
+                  : undefined
+              }
               className="rounded-full px-6 py-3 text-center text-sm text-primary transition-colors duration-hover ease-hover hover:bg-surface-2"
             >
-              View work
+              {secondary.label}
             </Link>
           </motion.div>
 
@@ -469,7 +616,8 @@ export function Hero({ projects = [] }: { projects?: HeroProject[] }) {
         {shown.length > 0 && isDesktop === true ? (
           <motion.div
             ref={stageRef}
-            style={reduceMotion ? undefined : { y: slabY }}
+            /* Unconditional, same reason as the text column above. */
+            style={{ y: slabY }}
             className="relative h-[30rem] lg:col-span-7"
             /* One leave handler on the stage rather than per slab: moving
                between two overlapping slabs fires leave-then-enter, and
@@ -742,8 +890,13 @@ function Slab({
       className={`absolute ${config.className}`}
       style={{
         zIndex: config.z,
-        rotateX: reduceMotion ? 0 : tiltX,
-        rotateY: reduceMotion ? 0 : tiltY,
+        /* The springs, unconditionally. They are already inert under reduced
+           motion because the section's onPointerMove is not attached, so
+           pointerX/Y never leave zero and these never leave their rest — and a
+           MotionValue and a literal 0 do not serialise identically, which is
+           the whole class of bug being closed out here. */
+        rotateX: tiltX,
+        rotateY: tiltY,
         transformPerspective: 1200,
       }}
       initial={

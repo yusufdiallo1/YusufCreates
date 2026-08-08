@@ -14,6 +14,7 @@ import {
 import { AnimatedLogo } from "@/components/ui/AnimatedLogo";
 import { Magnetic } from "@/components/motion/Magnetic";
 import { cn } from "@/lib/utils";
+import { useEntryState } from "@/components/providers/EntryStateProvider";
 
 /**
  * Nav — fixed glass pill that condenses on scroll.
@@ -47,6 +48,21 @@ export function Nav() {
   // Set when pointerdown has already toggled the menu, so the click that
   // follows on a mouse does not toggle it straight back.
   const pointerHandled = useRef(false);
+
+  /*
+   * The nav's own call to action, for someone who has already enquired.
+   *
+   * This button is on every marketing page, so leaving it saying "start a
+   * project" to an existing client is the single most repeated way the site
+   * can fail to notice who it is talking to.
+   *
+   * Text and href only — the element, its position and its styling are
+   * identical in both states, which is what keeps it safe to resolve after
+   * hydration. See THE SSR RULE in lib/entryState.ts.
+   */
+  const isLead = useEntryState() === "lead";
+  const ctaHref = isLead ? "/portal" : "/pricing";
+  const ctaLabel = isLead ? "Project status" : "Start a project";
 
   /*
    * The expand overshoot.
@@ -258,7 +274,29 @@ export function Nav() {
               const marked = (hovered ?? activeHref) === item.href;
               return (
                 <li key={item.href} className="relative">
-                  {marked && !reduceMotion ? (
+                  {/*
+                    ONE INDICATOR, and reduced motion only changes how it
+                    travels.
+
+                    There used to be two of these — a motion.span with the
+                    shared layoutId, and a plain span for reduced motion —
+                    chosen with `marked && !reduceMotion` / `marked &&
+                    reduceMotion`. useReducedMotion is null on the server and a
+                    boolean on the client, so the server rendered the animated
+                    one and a reduced-motion visitor rendered the plain one.
+
+                    That only bit when an item was actually marked, which is
+                    why it looked route-dependent: the homepage was fine and
+                    /about, /work, /services, /pricing, /enterprise, /start and
+                    /blog all failed, because those are the ones with a nav
+                    item matching the path.
+
+                    A zero-duration transition gives the reduced-motion
+                    behaviour the old branch was reaching for — the marker
+                    appears where it belongs rather than sliding there — with
+                    one element in both passes.
+                  */}
+                  {marked ? (
                     <motion.span
                       layoutId="nav-indicator"
                       aria-hidden="true"
@@ -267,20 +305,15 @@ export function Nav() {
                         background: "var(--bg-surface-2)",
                         boxShadow: "inset 0 -1px 0 0 var(--accent)",
                       }}
-                      transition={{
-                        type: "spring",
-                        stiffness: 420,
-                        damping: 34,
-                      }}
-                    />
-                  ) : null}
-
-                  {/* Reduced motion gets the same information without the
-                      travel — the marker simply appears where it belongs. */}
-                  {marked && reduceMotion ? (
-                    <span
-                      aria-hidden="true"
-                      className="absolute -inset-x-3 -inset-y-1 -z-10 rounded-full bg-surface-2"
+                      transition={
+                        reduceMotion
+                          ? { duration: 0 }
+                          : {
+                              type: "spring",
+                              stiffness: 420,
+                              damping: 34,
+                            }
+                      }
                     />
                   ) : null}
 
@@ -308,10 +341,10 @@ export function Nav() {
           >
             <Magnetic className="hidden sm:inline-flex">
               <Link
-                href="/pricing"
+                href={ctaHref}
                 className="rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
               >
-                Start a project
+                {ctaLabel}
               </Link>
             </Magnetic>
 
@@ -443,10 +476,10 @@ export function Nav() {
             </ul>
 
             <Link
-              href="/pricing"
+              href={ctaHref}
               className="mt-auto rounded-full bg-primary py-3 text-center text-sm font-medium text-canvas"
             >
-              Start a project
+              {ctaLabel}
             </Link>
           </motion.div>
           </>

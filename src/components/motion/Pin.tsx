@@ -1,12 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import {
-  useReducedMotion,
-  useScroll,
-  useTransform,
-  type MotionValue,
-} from "motion/react";
+import { useScroll, useTransform, type MotionValue } from "motion/react";
 
 /**
  * Pin — sticky scroll section.
@@ -34,7 +29,6 @@ interface PinProps {
 }
 
 export function Pin({ steps, children, className }: PinProps) {
-  const reduceMotion = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
 
   const { scrollYProgress } = useScroll({
@@ -44,22 +38,30 @@ export function Pin({ steps, children, className }: PinProps) {
 
   const activeIndex = useTransform(scrollYProgress, [0, 1], [0, steps - 1]);
 
-  if (reduceMotion) {
-    return (
-      <div className={className}>
-        {children({ progress: scrollYProgress, activeIndex, pinned: false })}
-      </div>
-    );
-  }
-
+  /*
+   * One tree, and `pinned` is a constant.
+   *
+   * This used to return a flat <div> under reduced motion against a tall
+   * container with a sticky child otherwise — two different trees, and
+   * `pinned` flipping under the render prop meant the CHILDREN could differ
+   * too. useReducedMotion is null on the server and a boolean on the client,
+   * so that mismatched hydration; see Reveal.tsx for the rule.
+   *
+   * Unpinning is done in CSS instead, by the `data-pin` rules in globals.css:
+   * the container's height collapses and the sticky child goes static, which
+   * is the same resting layout the old branch produced. Pinning is precisely
+   * what someone asking for reduced motion is asking not to have — it detaches
+   * scroll position from page movement — so the override is unconditional.
+   */
   return (
     <div
       ref={ref}
       className={className}
+      data-pin
       // One viewport per step, so each gets equal scroll distance.
       style={{ height: `${steps * 100}dvh` }}
     >
-      <div className="sticky top-0 h-[100dvh] overflow-hidden">
+      <div data-pin-sticky className="sticky top-0 h-[100dvh] overflow-hidden">
         {children({ progress: scrollYProgress, activeIndex, pinned: true })}
       </div>
     </div>

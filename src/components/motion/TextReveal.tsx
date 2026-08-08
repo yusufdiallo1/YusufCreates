@@ -68,12 +68,25 @@ export function TextReveal({
               <motion.span
                 style={{ display: "inline-block" }}
                 /*
+                 * UNCONDITIONAL, and it has to stay that way.
+                 *
                  * Reduced motion keeps this component mounted and simply
-                 * renders at rest. Returning a plain string instead changed
-                 * the element tree between the server and the client, which
-                 * failed hydration and re-rendered the whole page.
+                 * renders at rest. Returning a plain string instead changed the
+                 * element tree between the server and the client, which failed
+                 * hydration and re-rendered the whole page — that much was
+                 * fixed before.
+                 *
+                 * What was left was subtler and failed just as hard: `initial`
+                 * is serialised into the style attribute, so gating it on
+                 * useReducedMotion (null on the server, boolean on the client)
+                 * meant the server sent `transform:translateY(100%);opacity:0`
+                 * and a reduced-motion client wanted neither. One span per word,
+                 * so a single heading mismatched a dozen times.
+                 *
+                 * The `transition` below is where reduced motion is honoured.
+                 * It never reaches the DOM. See Reveal.tsx for the full rule.
                  */
-                initial={reduceMotion ? false : { y: "100%", opacity: 0 }}
+                initial={{ y: "100%", opacity: 0 }}
                 {...(onMount
                   ? { animate: { y: 0, opacity: 1 } }
                   : {

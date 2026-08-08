@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { motion, useReducedMotion } from "motion/react";
 import { useQuery } from "convex/react";
 import { api, isConvexConfigured } from "@/lib/convex-api";
 import { WorkingHours } from "@/components/marketing/WorkingHours";
+import { track } from "@/lib/track";
 
 /**
  * Post-submission state. Deliberately a full panel rather than a toast: the
@@ -36,10 +38,34 @@ const NEXT_STEPS = [
   },
 ];
 
+/**
+ * Which kind of work each plan is, in the words an admin actually types into a
+ * project's category field.
+ *
+ * Matched loosely on purpose. `category` is free text set per project — it is
+ * "Web app", "Marketing site", "Rebuild" and whatever else has seemed right at
+ * the time — so an exact lookup would silently match nothing the first time
+ * someone wrote "SaaS platform" instead of "Web app". Substrings, first hit
+ * wins, and a miss falls through to simply showing the newest piece of work,
+ * which is never a bad answer.
+ */
+const PLAN_CATEGORY_HINTS: Record<string, string[]> = {
+  "one-page": ["landing", "one-page", "one page", "site"],
+  "multi-page": ["site", "marketing", "web"],
+  "web-app": ["app", "saas", "platform", "dashboard", "portal"],
+  native: ["ios", "macos", "native", "mobile", "app"],
+  enterprise: ["platform", "enterprise", "app"],
+  revive: ["rebuild", "rescue", "redesign", "site"],
+  support: ["site", "care", "web"],
+};
+
 export function SubmitSuccess({
   summary,
+  plan,
 }: {
   summary: { label: string; value: string }[];
+  /** Plan id from src/lib/inquiry.ts. Picks the case study shown below. */
+  plan?: string;
 }) {
   const reduceMotion = useReducedMotion();
   const copy = useQuery(
@@ -47,6 +73,34 @@ export function SubmitSuccess({
     isConvexConfigured ? {} : "skip",
   );
   const replyWindow = copy?.replyWindow ?? "24 hours";
+
+  /*
+   * Something to read while they wait.
+   *
+   * This screen used to end on a mailto for urgent things, which is a dead end
+   * dressed as an option: the enquiry has just been sent, so there is nothing
+   * urgent yet, and the only remaining action was to leave. A case study of
+   * roughly the kind of work they just asked about is the one genuinely useful
+   * next thing — it answers "what will this actually be like" while the reply
+   * is still being written.
+   *
+   * A small limit and the pick done in JS. The alternative is a query that
+   * takes a category, which would need an index on a free-text field to be
+   * worth anything and would still miss on the first unexpected spelling.
+   */
+  const projects = useQuery(
+    api.projects.listPublished,
+    isConvexConfigured ? { limit: 24 } : "skip",
+  );
+
+  const hints = plan ? (PLAN_CATEGORY_HINTS[plan] ?? []) : [];
+  const suggestion =
+    projects?.find((p) => {
+      const category = p.category?.toLowerCase() ?? "";
+      return hints.some((hint) => category.includes(hint));
+    }) ??
+    // No category matched — the newest published project still beats nothing.
+    projects?.[0];
 
   return (
     <div>
@@ -134,11 +188,66 @@ export function SubmitSuccess({
         </div>
       ) : null}
 
-      <p className="mt-10 text-center text-sm text-secondary">
-        Something urgent?{" "}
+      {/*
+        THE PROMISE, RESTATED.
+
+        It is already made inside step 01 above, but by the time someone has
+        read three steps and a summary of their own answers it is four hundred
+        pixels up the page. The single question this screen has to leave them
+        holding is "when will I hear back", and the answer should be the last
+        plain thing they read, not something they have to scroll to re-find.
+      */}
+      <p className="hairline-t mt-12 pt-6 text-center text-primary">
+        I&apos;ll reply within {replyWindow}.
+      </p>
+
+      {/*
+        WHILE YOU WAIT — the single obvious next action.
+
+        Rendered only when there is a real project to point at. A heading
+        promising something to read, above nothing, is worse than no heading.
+      */}
+      {suggestion ? (
+        <div className="mt-10">
+          <h2 className="text-xs text-secondary uppercase">While you wait</h2>
+          <Link
+            href={`/work/${suggestion.slug}`}
+            data-cursor="view"
+            onClick={() => track("cta_click", { cta: "success-case-study" })}
+            className="hairline group mt-3 flex items-baseline justify-between gap-4 rounded-[var(--radius-lg)] bg-surface-1 p-5 transition-colors duration-hover ease-hover hover:bg-surface-2"
+          >
+            <span>
+              <span className="block text-base text-primary">
+                {suggestion.title}
+              </span>
+              <span className="mt-1 block text-sm text-secondary">
+                {suggestion.summary}
+              </span>
+            </span>
+            <span
+              aria-hidden="true"
+              className="shrink-0 text-sm text-secondary transition-transform duration-hover ease-hover group-hover:translate-x-0.5"
+            >
+              →
+            </span>
+          </Link>
+        </div>
+      ) : null}
+
+      {/*
+        The mailto, demoted to a footnote.
+
+        It used to be the last and most prominent thing on the screen, which
+        made "email me instead" the closing suggestion of a page whose entire
+        purpose was that they had just successfully emailed me. It stays
+        because occasionally something genuinely is urgent — but quietly, below
+        the thing actually worth doing.
+      */}
+      <p className="mt-8 text-center text-xs text-secondary">
+        Something urgent in the meantime?{" "}
         <a
           href="mailto:hello@yusufcreates.com"
-          className="text-accent transition-colors duration-hover ease-hover hover:text-primary"
+          className="underline decoration-[color:var(--border-hairline)] underline-offset-4 transition-colors duration-hover ease-hover hover:text-primary"
         >
           hello@yusufcreates.com
         </a>
