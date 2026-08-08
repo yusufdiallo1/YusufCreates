@@ -859,22 +859,28 @@
       box-shadow var(--dur-base) var(--ease-out-expo);
   }
 
-  /* Scrolled: properly frosted.
+  /* Scrolled: blurred glass, and unmistakably so.
 
-     The structure was already right — nothing at the very top, glass once you
-     move — but at blur(12px) the "glass" was barely doing anything, so it read
-     as a slightly grey bar rather than as a material. 24px of blur with the
-     saturation and brightness lift is what makes it look like a pane with the
-     page behind it, and 76% fill keeps text passing underneath from resolving
-     into readable words. */
+     The two requirements are not in tension, they just have to be stated
+     together: NOTHING at the very top of the page, real frosted glass the
+     moment you move. The resting state above is transparent; this is the
+     material.
+
+     28px of blur with the saturation and brightness lift is what makes it read
+     as a pane with the page travelling behind it. The original 12px was too
+     little to see — it looked like a slightly grey bar, which is the thing
+     that kept getting reported as "not blurred".
+
+     The fill is 68%: LOWER than before, on purpose. Blur is only visible
+     through the fill, so raising the opacity to make it feel more solid is
+     exactly what destroys the glass. 68% is the floor at which content passing
+     underneath still cannot be read — the fill carries legibility, the blur
+     never does — so this is as transparent as it is allowed to get. */
   .nav-pill-condensed {
-    background-color: color-mix(in srgb, var(--bg-surface-1) 76%, transparent);
+    background-color: color-mix(in srgb, var(--bg-surface-1) 68%, transparent);
     border-color: var(--border-glass);
-    -webkit-backdrop-filter: blur(24px) saturate(180%) brightness(1.15);
-    backdrop-filter: blur(24px) saturate(180%) brightness(1.15);
-    box-shadow:
-      0 1px 0 0 rgba(255, 255, 255, 0.06) inset,
-      0 8px 28px -12px rgba(0, 0, 0, 0.6);
+    -webkit-backdrop-filter: blur(28px) saturate(180%) brightness(1.12);
+    backdrop-filter: blur(28px) saturate(180%) brightness(1.12);
   }
 
   /* No backdrop-filter support: the fill alone cannot carry it at 72%, so the

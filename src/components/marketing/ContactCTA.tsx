@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { TextReveal } from "@/components/motion/TextReveal";
 import { Reveal } from "@/components/motion/Reveal";
-import { AmbientLight } from "@/components/motion/AmbientLight";
 import { WordReveal } from "@/components/motion/WordReveal";
 import { Magnetic } from "@/components/motion/Magnetic";
 import { Marquee } from "@/components/motion/Marquee";
@@ -81,25 +80,30 @@ export function ContactCTA() {
   }
 
   return (
-    /* AmbientLight replaces the static wash that used to sit here. It is the
-       site's ONE light source — a second would give the glass surfaces two
-       directions to agree with, which is the specific thing that reads as
-       wrong. Below `full` it renders a centred static glow, which is exactly
-       what the old wash was. */
-    <AmbientLight asSection className="relative overflow-hidden px-6 py-24">
+    /*
+      NO AMBIENT LIGHT. This section used to be wrapped in AmbientLight, a
+      900px accent-coloured radial that drifted toward the pointer. However
+      carefully it was tuned, what it read as was a purple blob following the
+      cursor, and it was asked to go more than once. There is no light source
+      on this page now; depth comes from the surface ladder and the hairlines,
+      which is what it comes from everywhere else on the site.
+    */
+    <section className="relative overflow-hidden px-6 py-24">
       {/*
-        The content now sits inside a panel with an edge.
+        TWO COLUMNS, NOT A CENTRED STACK.
 
-        It used to be a centred stack floating directly on the ambient wash,
-        which gave the tallest, loudest section on the page nothing to hold it
-        — the eye had no boundary to land on, so it read as an unfinished
-        footer rather than the close. A single bordered surface turns the same
-        content into a deliberate ending.
+        The content was centred in a wide panel, which left a large empty box
+        with a headline floating in it — the screenshot of that reads as a
+        section that has not been designed rather than as the close of the
+        page. Splitting it puts the argument on the left and the action on the
+        right, so the eye lands on a heading and travels to a button instead of
+        hunting around a symmetrical void.
 
-        py-24 rather than py-32 for the same reason: the emptiness was doing
-        the opposite of what emptiness is supposed to do here.
+        The actions also sit in their OWN bordered surface. Making the thing
+        you want people to do look like a distinct object, rather than more
+        content in the same box, is most of the difference here.
       */}
-      <div className="glass-depth glass-near glass-panel relative mx-auto max-w-2xl overflow-hidden px-6 py-14 text-center sm:px-12">
+      <div className="glass-depth glass-near glass-panel relative mx-auto max-w-4xl overflow-hidden px-6 py-12 sm:px-10">
         {/* A hairline of accent along the top edge — the one place this
             section spends colour on something other than the button. */}
         <span
@@ -107,99 +111,110 @@ export function ContactCTA() {
           className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[color:var(--accent)]/50 to-transparent"
         />
 
-        <TextReveal as="h2" by="word" className="block text-4xl">
-          Let&apos;s build the thing.
-        </TextReveal>
+        <div className="grid items-center gap-10 md:grid-cols-[1.1fr_1fr] md:gap-12">
+          <div>
+            <Reveal>
+              <span className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-hairline)] px-3 py-1.5 text-xs text-secondary">
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 animate-pulse rounded-full bg-accent"
+                />
+                Available for new work
+              </span>
+            </Reveal>
 
-        <WordReveal className="mx-auto mt-4 max-w-md text-secondary">
-          Tell me what you need. I reply to everything within a day.
-        </WordReveal>
+            <TextReveal as="h2" by="word" className="mt-5 block text-4xl">
+              Let&apos;s build the thing.
+            </TextReveal>
 
-        <Reveal delay={0.18}>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-            <Magnetic>
-              <Link
-                href="/pricing"
-                className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
-              >
-                Start a project
-              </Link>
-            </Magnetic>
-            <span className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-hairline)] px-3 py-1.5 text-xs text-secondary">
-              <span
-                aria-hidden="true"
-                className="size-1.5 animate-pulse rounded-full bg-accent"
-              />
-              Available for new work
-            </span>
+            <WordReveal className="mt-4 max-w-sm text-secondary">
+              Tell me what you need. I reply to everything within a day.
+            </WordReveal>
           </div>
-        </Reveal>
 
-        <Reveal delay={0.24}>
-          {/* noValidate: the browser's own bubble is unstyleable, renders in OS
+          <Reveal delay={0.12}>
+            <div className="hairline rounded-[var(--radius-lg)] bg-surface-1 p-5">
+              <Magnetic>
+                <Link
+                  href="/pricing"
+                  className="block rounded-full bg-primary px-5 py-3 text-center text-sm font-medium text-canvas transition-opacity duration-hover ease-hover hover:opacity-90"
+                >
+                  Start a project
+                </Link>
+              </Magnetic>
+
+              {/* The separator earns its place: it marks the two paths as
+                  alternatives rather than a sequence. */}
+              <div className="my-4 flex items-center gap-3">
+                <span className="h-px flex-1 bg-[color:var(--separator)]" />
+                <span className="text-[11px] text-muted">or</span>
+                <span className="h-px flex-1 bg-[color:var(--separator)]" />
+              </div>
+
+              {/* noValidate: the browser's own bubble is unstyleable, renders in OS
               chrome that ignores the theme entirely, and disappears on the next
               keystroke. Validation is ours, so the message can match the page
               and persist for screen readers. */}
-          <form
-            noValidate
-            onSubmit={onSubmit}
-            className="mx-auto mt-10 max-w-md"
-          >
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <label htmlFor="cta-email" className="sr-only">
-                Your email address
-              </label>
-              <input
-                id="cta-email"
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                value={email}
-                aria-invalid={touched && fieldError ? true : undefined}
-                aria-describedby={fieldError ? "cta-email-error" : undefined}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  // Clear as soon as it becomes valid, so the message goes away
-                  // the moment it stops being true.
-                  if (touched) setFieldError(validateEmail(e.target.value));
-                }}
-                onBlur={() => {
-                  if (email.trim() === "") return;
-                  setTouched(true);
-                  setFieldError(validateEmail(email));
-                }}
-                placeholder="you@company.com"
-                disabled={status === "sending" || status === "sent"}
-                className="hairline min-w-0 flex-1 rounded-full bg-surface-1 px-4 py-2.5 text-sm text-primary placeholder:text-secondary disabled:opacity-60"
-              />
-              <button
-                type="submit"
-                disabled={status === "sending" || status === "sent"}
-                className="shrink-0 rounded-full border border-[color:var(--border-hairline)] px-4 py-2.5 text-sm text-primary transition-colors duration-hover ease-hover hover:bg-surface-2 disabled:opacity-60"
+              <form noValidate onSubmit={onSubmit}>
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="cta-email" className="sr-only">
+                    Your email address
+                  </label>
+                  <input
+                    id="cta-email"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    value={email}
+                    aria-invalid={touched && fieldError ? true : undefined}
+                    aria-describedby={
+                      fieldError ? "cta-email-error" : undefined
+                    }
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      // Clear as soon as it becomes valid, so the message goes away
+                      // the moment it stops being true.
+                      if (touched) setFieldError(validateEmail(e.target.value));
+                    }}
+                    onBlur={() => {
+                      if (email.trim() === "") return;
+                      setTouched(true);
+                      setFieldError(validateEmail(email));
+                    }}
+                    placeholder="you@company.com"
+                    disabled={status === "sending" || status === "sent"}
+                    className="hairline w-full min-w-0 rounded-full bg-surface-2 px-4 py-2.5 text-sm text-primary placeholder:text-secondary disabled:opacity-60"
+                  />
+                  <button
+                    type="submit"
+                    disabled={status === "sending" || status === "sent"}
+                    className="control-outline w-full rounded-full px-4 py-2.5 text-sm text-primary transition-colors duration-hover ease-hover hover:bg-surface-2 disabled:opacity-60"
+                  >
+                    {status === "sending" ? "Sending…" : "Send me a note"}
+                  </button>
+                </div>
+
+                <div className="px-1">
+                  <FieldError id="cta-email-error">
+                    {touched ? fieldError : null}
+                  </FieldError>
+                </div>
+              </form>
+
+              <p
+                role="status"
+                aria-live="polite"
+                className="mt-3 min-h-5 text-xs text-secondary"
               >
-                {status === "sending" ? "Sending…" : "Send me a note"}
-              </button>
+                {status === "sent"
+                  ? "Got it — I'll be in touch."
+                  : status === "error"
+                    ? "That didn't send. Try hello@yusufcreates.com instead."
+                    : ""}
+              </p>
             </div>
-
-            <div className="px-4 text-left">
-              <FieldError id="cta-email-error">
-                {touched ? fieldError : null}
-              </FieldError>
-            </div>
-          </form>
-
-          <p
-            role="status"
-            aria-live="polite"
-            className="mt-3 min-h-5 text-xs text-secondary"
-          >
-            {status === "sent"
-              ? "Got it — I'll be in touch."
-              : status === "error"
-                ? "That didn't send. Try hello@yusufcreates.com instead."
-                : ""}
-          </p>
-        </Reveal>
+          </Reveal>
+        </div>
       </div>
 
       {/*
@@ -229,6 +244,6 @@ export function ContactCTA() {
           ))}
         </Marquee>
       </div>
-    </AmbientLight>
+    </section>
   );
 }
